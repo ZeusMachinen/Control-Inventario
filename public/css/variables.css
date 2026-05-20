@@ -1,0 +1,67 @@
+/* ============================================================
+   CSS Custom Properties — Paleta de colores y variables globales
+   ============================================================ */
+
+:root {
+  /* Colores principales */
+  --verde-principal: #2E7D32;
+  --verde-oscuro:    #1B5E20;
+  --verde-claro:     #A5D6A7;
+  --verde-hover:     #388E3C;
+  --verde-bg:        #E8F5E9;
+
+  /* Neutros */
+  --blanco:          #FFFFFF;
+  --gris-fondo:      #F5F5F5;
+  --gris-borde:      #E0E0E0;
+  --gris-texto:      #757575;
+  --gris-input:      #FAFAFA;
+
+  /* Texto */
+  --texto-principal: #1B1B1B;
+  --texto-secundario:#616161;
+
+  /* Estados */
+  --rojo:            #D32F2F;
+  --rojo-claro:      #FFEBEE;
+  --naranja:         #F57C00;
+  --naranja-claro:   #FFF3E0;
+  --azul:            #1976D2;
+  --azul-claro:      #E3F2FD;
+
+  /* Tipografía */
+  --font-family:     'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  --font-size-xs:    0.75rem;
+  --font-size-sm:    0.875rem;
+  --font-size-base:  1rem;
+  --font-size-lg:    1.125rem;
+  --font-size-xl:    1.25rem;
+  --font-size-2xl:   1.5rem;
+  --font-size-3xl:   2rem;
+
+  /* Espaciado */
+  --spacing-xs:      0.25rem;
+  --spacing-sm:      0.5rem;
+  --spacing-md:      1rem;
+  --spacing-lg:      1.5rem;
+  --spacing-xl:      2rem;
+  --spacing-2xl:     3rem;
+
+  /* Bordes */
+  --border-radius:   8px;
+  --border-radius-sm:4px;
+  --border-radius-lg:12px;
+
+  /* Sombras */
+  --shadow-sm:       0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:       0 4px 6px rgba(0,0,0,0.07);
+  --shadow-lg:       0 10px 25px rgba(0,0,0,0.1);
+
+  /* Sidebar */
+  --sidebar-width:   260px;
+  --sidebar-collapsed: 0px;
+  --navbar-height:   64px;
+
+  /* Transiciones */
+  --transition:      0.2s ease;
+}

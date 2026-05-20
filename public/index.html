@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2E7D32">
+  <title>Control Ganadero</title>
+
+  <!-- Librerías locales (sin depender de CDN) -->
+  <script src="vendor/axios.min.js" defer></script>
+  <script src="vendor/chart.umd.min.js" defer></script>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <div id="app">
+    <!-- MainLayout se renderiza aquí via JS -->
+  </div>
+
+  <!-- Scripts (defer en todos para mantener orden de ejecución) -->
+  <script src="js/utils/format.js" defer></script>
+  <script src="js/utils/date.js" defer></script>
+  <script src="js/utils/validators.js" defer></script>
+  <script src="js/api.js" defer></script>
+  <script src="js/router.js" defer></script>
+  <script src="js/components/Navbar.js" defer></script>
+  <script src="js/components/Sidebar.js" defer></script>
+  <script src="js/layouts/MainLayout.js" defer></script>
+  <script src="js/pages/Login.js" defer></script>
+  <script src="js/pages/Dashboard.js" defer></script>
+  <script src="js/pages/animales/AnimalList.js" defer></script>
+  <script src="js/pages/animales/AnimalForm.js" defer></script>
+  <script src="js/pages/animales/AnimalDetail.js" defer></script>
+  <script src="js/pages/rebanos/RebanoList.js" defer></script>
+  <script src="js/pages/rebanos/RebanoForm.js" defer></script>
+  <script src="js/pages/vacunacion/VacunacionList.js" defer></script>
+  <script src="js/pages/vacunacion/VacunacionForm.js" defer></script>
+  <script src="js/pages/vacunacion/MedicamentoList.js" defer></script>
+  <script src="js/pages/reproduccion/CeloList.js" defer></script>
+  <script src="js/pages/reproduccion/CeloForm.js" defer></script>
+  <script src="js/pages/estadisticas/DashboardStats.js" defer></script>
+  <script src="js/pages/ventas/CompaniaList.js" defer></script>
+  <script src="js/pages/ventas/CompaniaForm.js" defer></script>
+  <script src="js/pages/ventas/VentaList.js" defer></script>
+  <script src="js/pages/ventas/VentaForm.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
