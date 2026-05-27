@@ -13,10 +13,10 @@ const VacunacionListPage = {
         <div class="table-container">
           <table>
             <thead>
-              <tr><th>Fecha</th><th>Medicamento</th><th>Rebaño</th><th>Animales</th><th>Observaciones</th><th>Acciones</th></tr>
+              <tr><th>Fecha</th><th>Medicamento</th><th>Rebaño</th><th>Animales</th><th>Observaciones</th><th>Costo Vet.</th><th>Acciones</th></tr>
             </thead>
             <tbody id="vac-tbody">
-              <tr><td colspan="6" class="loading"><div class="spinner"></div>Cargando...</td></tr>
+              <tr><td colspan="7" class="loading"><div class="spinner"></div>Cargando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -33,7 +33,7 @@ const VacunacionListPage = {
       const tbody = document.getElementById('vac-tbody');
 
       if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay vacunaciones registradas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay vacunaciones registradas</td></tr>';
         return;
       }
 
@@ -44,13 +44,15 @@ const VacunacionListPage = {
           <td>${v.rebano_nombre || '-'}</td>
           <td><span class="badge badge-azul">${v.total_animales} animales</span></td>
           <td>${v.observaciones || '-'}</td>
+          <td>${v.costo_veterinario ? Formateador.moneda(v.costo_veterinario) : '-'}</td>
           <td class="table-actions">
+            <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/vacunacion/${v.id}/editar')">✏️</button>
             <button class="btn btn-sm btn-danger" onclick="VacunacionListPage.eliminar(${v.id})">🗑️</button>
           </td>
         </tr>
       `).join('');
     } catch (e) {
-      document.getElementById('vac-tbody').innerHTML = `<tr><td colspan="6" class="alert alert-danger">Error: ${e.message}</td></tr>`;
+      document.getElementById('vac-tbody').innerHTML = `<tr><td colspan="7" class="alert alert-danger">Error: ${e.message}</td></tr>`;
     }
   },
 

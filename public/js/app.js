@@ -14,7 +14,8 @@
   Router.registrar('/animales/:id/editar', (p) => AnimalFormPage.render(p));
   Router.registrar('/rebanos',      () => RebanoListPage.render());
   Router.registrar('/vacunacion',   () => VacunacionListPage.render());
-  Router.registrar('/vacunacion/nuevo', () => VacunacionFormPage.render());
+  Router.registrar('/vacunacion/nuevo', () => VacunacionFormPage.render({}));
+  Router.registrar('/vacunacion/:id/editar', (p) => VacunacionFormPage.render(p));
   Router.registrar('/medicamentos', () => MedicamentoListPage.render());
   Router.registrar('/celos',        () => CeloListPage.render());
   Router.registrar('/celos/nuevo',  () => CeloFormPage.render());
@@ -23,18 +24,26 @@
   Router.registrar('/companias/nuevo', () => CompaniaFormPage.render());
   Router.registrar('/ventas',       () => VentaListPage.render());
   Router.registrar('/ventas/nuevo', () => VentaFormPage.render());
+  Router.registrar('/rebanos/:id/movimientos', (p) => RebanoMovimientosPage.render(p));
+  Router.registrar('/historial',     () => HistorialPage.render());
+  Router.registrar('/gastos',       () => GastosPage.render());
 
   // ─── AfterRender hook ─────────────────────────────────
   const afterRenderMap = {
-    '/dashboard':      () => DashboardPage.afterRender(),
-    '/animales':       () => AnimalListPage.afterRender(),
-    '/animales/:id':   (p) => AnimalDetailPage.afterRender(),
-    '/rebanos':        () => RebanoListPage.afterRender(),
-    '/vacunacion':     () => VacunacionListPage.afterRender(),
-    '/medicamentos':   () => MedicamentoListPage.afterRender(),
-    '/celos':          () => CeloListPage.afterRender(),
-    '/estadisticas':   () => DashboardStatsPage.afterRender(),
-    '/companias':      () => CompaniaListPage.afterRender(),
+    '/dashboard':                    () => DashboardPage.afterRender(),
+    '/animales':                     () => AnimalListPage.afterRender(),
+    '/animales/nuevo':               () => AnimalFormPage.afterRender(),
+    '/animales/:id':                 (p) => AnimalDetailPage.afterRender(),
+    '/animales/:id/editar':          (p) => AnimalFormPage.afterRender(),
+    '/rebanos':                      () => RebanoListPage.afterRender(),
+    '/rebanos/:id/movimientos':      (p) => RebanoMovimientosPage.afterRender(),
+    '/vacunacion':                   () => VacunacionListPage.afterRender(),
+    '/medicamentos':                 () => MedicamentoListPage.afterRender(),
+    '/celos':                        () => CeloListPage.afterRender(),
+    '/estadisticas':                 () => DashboardStatsPage.afterRender(),
+    '/companias':                    () => CompaniaListPage.afterRender(),
+    '/historial':                    () => HistorialPage.afterRender(),
+    '/gastos':                       () => GastosPage.afterRender(),
     // VentaListPage carga datos en render(), no necesita afterRender
   };
 

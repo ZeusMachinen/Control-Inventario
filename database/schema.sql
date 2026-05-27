@@ -27,12 +27,14 @@ CREATE TABLE usuarios (
 -- 2. REBAÑOS
 -- -----------------------------------------------------------
 CREATE TABLE rebanos (
-  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre      VARCHAR(100)   NOT NULL,
-  usuario_id  INT UNSIGNED   NOT NULL,
-  activo      TINYINT(1)     NOT NULL DEFAULT 1,
-  created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre        VARCHAR(100)   NOT NULL,
+  costo_cabeza  DECIMAL(10,2) NULL,
+  fecha_inicio  DATE           NULL,
+  usuario_id    INT UNSIGNED   NOT NULL,
+  activo        TINYINT(1)     NOT NULL DEFAULT 1,
+  created_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_rebano_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -52,17 +54,23 @@ CREATE TABLE animales (
   madre_id              INT UNSIGNED   NULL,
   padre_id              INT UNSIGNED   NULL,
   etapa                 ENUM('Ternero','Novillo','Adulto') NOT NULL DEFAULT 'Ternero',
-  estado_reproductivo   ENUM('Vacia','Prenada','Lactando') NULL,
+  estado_reproductivo   ENUM('Vacia','Prenada','Lactando','Padrote','Ceba') NULL,
   peso_entrada          DECIMAL(10,2)  NULL,
   precio_kg             DECIMAL(12,2)  NULL,
   usuario_id            INT UNSIGNED   NOT NULL,
   activo                TINYINT(1)     NOT NULL DEFAULT 1,
+  estado_general        ENUM('Activo','Vendido','Muerto') NOT NULL DEFAULT 'Activo',
+  fecha_salida          DATE           NULL,
+  motivo_salida         VARCHAR(100)   NULL,
+  peso_salida           DECIMAL(10,2)  NULL,
+  rebano_nacimiento_id  INT UNSIGNED   NULL,
   created_at            TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at            TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_animal_rebano  FOREIGN KEY (rebano_id)   REFERENCES rebanos(id) ON DELETE CASCADE,
   CONSTRAINT fk_animal_usuario FOREIGN KEY (usuario_id)  REFERENCES usuarios(id) ON DELETE CASCADE,
   CONSTRAINT fk_animal_madre   FOREIGN KEY (madre_id)    REFERENCES animales(id) ON DELETE SET NULL,
-  CONSTRAINT fk_animal_padre   FOREIGN KEY (padre_id)    REFERENCES animales(id) ON DELETE SET NULL
+  CONSTRAINT fk_animal_padre   FOREIGN KEY (padre_id)    REFERENCES animales(id) ON DELETE SET NULL,
+  CONSTRAINT fk_animal_rebano_nacimiento FOREIGN KEY (rebano_nacimiento_id) REFERENCES rebanos(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_animales_usuario   ON animales(usuario_id);
@@ -231,3 +239,42 @@ CREATE TABLE refresh_tokens (
 
 CREATE INDEX idx_refresh_usuario ON refresh_tokens(usuario_id);
 CREATE INDEX idx_refresh_token   ON refresh_tokens(token);
+
+-- -----------------------------------------------------------
+-- 12. MOVIMIENTOS DE REBAÑOS
+-- -----------------------------------------------------------
+CREATE TABLE movimientos_rebano (
+  id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  animal_id         INT UNSIGNED   NOT NULL,
+  rebano_origen_id  INT UNSIGNED   NULL,
+  rebano_destino_id INT UNSIGNED   NOT NULL,
+  usuario_id        INT UNSIGNED   NOT NULL,
+  created_at        TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_mov_animal  FOREIGN KEY (animal_id) REFERENCES animales(id) ON DELETE CASCADE,
+  CONSTRAINT fk_mov_destino FOREIGN KEY (rebano_destino_id) REFERENCES rebanos(id) ON DELETE CASCADE,
+  CONSTRAINT fk_mov_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_mov_animal  ON movimientos_rebano(animal_id);
+CREATE INDEX idx_mov_destino ON movimientos_rebano(rebano_destino_id);
+
+-- -----------------------------------------------------------
+-- 13. GASTOS
+-- -----------------------------------------------------------
+CREATE TABLE gastos (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tipo        ENUM('mantenimiento','medicamentos','compras') NOT NULL,
+  descripcion VARCHAR(255)   NOT NULL,
+  monto       DECIMAL(12,2)  NOT NULL,
+  mes         DATE           NOT NULL,
+  rebano_id   INT UNSIGNED   NULL,
+  usuario_id  INT UNSIGNED   NOT NULL,
+  created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_gasto_rebano  FOREIGN KEY (rebano_id)  REFERENCES rebanos(id) ON DELETE SET NULL,
+  CONSTRAINT fk_gasto_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_gasto_mes      ON gastos(mes);
+CREATE INDEX idx_gasto_tipo     ON gastos(tipo);
+CREATE INDEX idx_gasto_rebano   ON gastos(rebano_id);
+CREATE INDEX idx_gasto_usuario  ON gastos(usuario_id);

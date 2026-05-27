@@ -59,14 +59,15 @@ class VacunacionController
 
         // Insertar vacunación
         Database::execute(
-            'INSERT INTO vacunaciones (fecha, medicamento_id, rebano_id, observaciones, usuario_id)
-             VALUES (:fecha, :med, :rebano, :obs, :uid)',
+            'INSERT INTO vacunaciones (fecha, medicamento_id, rebano_id, observaciones, costo_veterinario, usuario_id)
+             VALUES (:fecha, :med, :rebano, :obs, :costo_vet, :uid)',
             [
-                ':fecha'   => $datos['fecha'],
-                ':med'     => (int)$datos['medicamento_id'],
-                ':rebano'  => !empty($datos['rebano_id']) ? (int)$datos['rebano_id'] : null,
-                ':obs'     => $datos['observaciones'] ?? null,
-                ':uid'     => $uid,
+                ':fecha'     => $datos['fecha'],
+                ':med'       => (int)$datos['medicamento_id'],
+                ':rebano'    => !empty($datos['rebano_id']) ? (int)$datos['rebano_id'] : null,
+                ':obs'       => $datos['observaciones'] ?? null,
+                ':costo_vet' => $datos['costo_veterinario'] ?? null,
+                ':uid'       => $uid,
             ]
         );
 
@@ -143,7 +144,7 @@ class VacunacionController
 
         $campos = [];
         $params = [':id' => (int)$id];
-        foreach (['fecha', 'medicamento_id', 'observaciones'] as $c) {
+        foreach (['fecha', 'medicamento_id', 'observaciones', 'costo_veterinario'] as $c) {
             if (isset($datos[$c])) {
                 $campos[] = "$c = :$c";
                 $params[":$c"] = $datos[$c];
@@ -151,6 +152,17 @@ class VacunacionController
         }
         if (!empty($campos)) {
             Database::execute('UPDATE vacunaciones SET ' . implode(', ', $campos) . ' WHERE id = :id', $params);
+        }
+
+        // Reemplazar lista de animales si se envió
+        if (isset($datos['animales']) && is_array($datos['animales'])) {
+            Database::execute('DELETE FROM vacunacion_animales WHERE vacunacion_id = :id', [':id' => (int)$id]);
+            foreach ($datos['animales'] as $animalId) {
+                Database::execute(
+                    'INSERT INTO vacunacion_animales (vacunacion_id, animal_id) VALUES (:vac, :ani)',
+                    [':vac' => (int)$id, ':ani' => (int)$animalId]
+                );
+            }
         }
 
         $this->show($id);

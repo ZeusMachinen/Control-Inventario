@@ -26,6 +26,10 @@ const Sidebar = {
             <span class="sidebar-link-icon">🐑</span>
             Rebaños
           </a>
+          <a class="sidebar-link" href="#/historial">
+            <span class="sidebar-link-icon">📜</span>
+            Inactivos
+          </a>
 
           <div class="sidebar-section-title">Sanidad</div>
 
@@ -58,6 +62,13 @@ const Sidebar = {
           <a class="sidebar-link" href="#/ventas">
             <span class="sidebar-link-icon">💰</span>
             Ventas
+          </a>
+
+          <div class="sidebar-section-title">Finanzas</div>
+
+          <a class="sidebar-link" href="#/gastos">
+            <span class="sidebar-link-icon">💳</span>
+            Gastos
           </a>
         </nav>
       </aside>

@@ -78,10 +78,11 @@ class Validator
     {
         if ($valor !== null && $valor !== '') {
             $min = (int)($params[0] ?? 0);
-            if (is_string($valor) && mb_strlen($valor) < $min) {
-                $this->agregarError($campo, "El campo $campo debe tener al menos $min caracteres");
-            }
-            if (is_numeric($valor) && $valor < $min) {
+            if (is_string($valor)) {
+                if (mb_strlen($valor) < $min) {
+                    $this->agregarError($campo, "El campo $campo debe tener al menos $min caracteres");
+                }
+            } elseif (is_numeric($valor) && $valor < $min) {
                 $this->agregarError($campo, "El campo $campo debe ser mayor o igual a $min");
             }
         }
@@ -91,10 +92,11 @@ class Validator
     {
         if ($valor !== null && $valor !== '') {
             $max = (int)($params[0] ?? 0);
-            if (is_string($valor) && mb_strlen($valor) > $max) {
-                $this->agregarError($campo, "El campo $campo debe tener máximo $max caracteres");
-            }
-            if (is_numeric($valor) && $valor > $max) {
+            if (is_string($valor)) {
+                if (mb_strlen($valor) > $max) {
+                    $this->agregarError($campo, "El campo $campo debe tener máximo $max caracteres");
+                }
+            } elseif (is_numeric($valor) && $valor > $max) {
                 $this->agregarError($campo, "El campo $campo debe ser menor o igual a $max");
             }
         }
@@ -128,6 +130,13 @@ class Validator
     {
         if ($valor !== null && $valor !== '' && !in_array($valor, $params, true)) {
             $this->agregarError($campo, "El campo $campo debe ser uno de: " . implode(', ', $params));
+        }
+    }
+
+    private function validarAlfanumerico(string $campo, mixed $valor): void
+    {
+        if ($valor !== null && $valor !== '' && !preg_match('/[a-zA-Z]/', $valor)) {
+            $this->agregarError($campo, "El campo $campo debe contener al menos una letra (no solo números)");
         }
     }
 }

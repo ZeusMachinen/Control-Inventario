@@ -22,7 +22,7 @@ class AuthController
         if (!$validador->validar($datos, [
             'nombre'  => 'requerido|min:3|max:150',
             'email'   => 'requerido|email|max:255',
-            'password' => 'requerido|min:6|max:255',
+            'password' => 'requerido|min:6|max:255|alfanumerico',
         ])) {
             Response::error('Datos inválidos', 422, $validador->errores());
         }

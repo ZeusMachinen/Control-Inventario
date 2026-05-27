@@ -3,10 +3,12 @@
  */
 const AnimalFormPage = {
   editandoId: null,
+  estadoOriginal: '',
 
   async render(params) {
     const editando = !!params.id;
     this.editandoId = editando ? parseInt(params.id) : null;
+    this.estadoOriginal = '';
 
     try {
       const { data: rebanos } = await API.get('/rebanos');
@@ -16,11 +18,11 @@ const AnimalFormPage = {
       if (editando) {
         const { data } = await API.get(`/animales/${params.id}`);
         animal = data.data || {};
+        this.estadoOriginal = animal.estado_reproductivo || '';
       }
 
       const madres = (animales.data || []).filter(a => a.sexo === 'Hembra');
       const padres = (animales.data || []).filter(a => a.sexo === 'Macho');
-      const hembra = animal.sexo === 'Hembra';
       const titulo = editando ? 'Editar Animal' : 'Nuevo Animal';
 
       return MainLayout.render(`
@@ -54,26 +56,31 @@ const AnimalFormPage = {
 
                 <div class="form-group">
                   <label class="form-label">Fecha de Nacimiento *</label>
-                  <input type="date" class="form-input" id="animal-fecha" value="${DateUtil.formatoInput(animal.fecha_nacimiento) || ''}" required>
+                  <input type="date" class="form-input" id="animal-fecha" value="${DateUtil.formatoInput(animal.fecha_nacimiento) || ''}" required onchange="AnimalFormPage.calcularEtapaPorFecha()">
                 </div>
 
                 <div class="form-group">
                   <label class="form-label">Rebaño *</label>
-                  <select class="form-select" id="animal-rebano" required>
-                    <option value="">Seleccione...</option>
-                    ${(rebanos.data || []).map(r => `
-                      <option value="${r.id}" ${animal.rebano_id == r.id ? 'selected' : ''}>${r.nombre}</option>
-                    `).join('')}
-                  </select>
+                  ${(rebanos.data || []).length === 0 ? `
+                    <div class="alert alert-warning" style="margin-bottom:0.5rem">
+                      No hay rebaños creados. <a href="#" onclick="Router.navegar('/rebanos');return false">Crear uno primero</a>
+                    </div>
+                    <select class="form-select" disabled>
+                      <option value="">— Creá un rebaño primero —</option>
+                    </select>
+                  ` : `
+                    <select class="form-select" id="animal-rebano" required>
+                      <option value="">Seleccione...</option>
+                      ${(rebanos.data || []).map(r => `
+                        <option value="${r.id}" ${animal.rebano_id == r.id ? 'selected' : ''}>${r.nombre}</option>
+                      `).join('')}
+                    </select>
+                  `}
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">Etapa</label>
-                  <select class="form-select" id="animal-etapa">
-                    <option value="Ternero" ${animal.etapa === 'Ternero' ? 'selected' : ''}>Ternero</option>
-                    <option value="Novillo" ${animal.etapa === 'Novillo' ? 'selected' : ''}>Novillo</option>
-                    <option value="Adulto" ${animal.etapa === 'Adulto' ? 'selected' : ''}>Adulto</option>
-                  </select>
+                  <label class="form-label">Etapa <small>(calculada automáticamente)</small></label>
+                  <input type="text" class="form-input" id="animal-etapa" value="${animal.etapa || '—'}" readonly style="font-weight:600;background:#f5f5f5">
                 </div>
 
                 <div class="form-group">
@@ -86,13 +93,10 @@ const AnimalFormPage = {
                   <input type="number" step="0.01" min="0" class="form-input" id="animal-precio-kg" value="${animal.precio_kg || ''}" placeholder="Ej: 3.20">
                 </div>
 
-                <div class="form-group" id="animal-estado-group" style="${hembra ? '' : 'display:none'}">
-                  <label class="form-label">Estado Reproductivo</label>
+                <div class="form-group" id="animal-estado-group">
+                  <label class="form-label">Estado</label>
                   <select class="form-select" id="animal-estado">
                     <option value="">Seleccione...</option>
-                    <option value="Vacia" ${animal.estado_reproductivo === 'Vacia' ? 'selected' : ''}>Vacía</option>
-                    <option value="Prenada" ${animal.estado_reproductivo === 'Prenada' ? 'selected' : ''}>Preñada</option>
-                    <option value="Lactando" ${animal.estado_reproductivo === 'Lactando' ? 'selected' : ''}>Lactando</option>
                   </select>
                 </div>
 
@@ -140,21 +144,71 @@ const AnimalFormPage = {
 
   cambioSexo() {
     const sexo = document.getElementById('animal-sexo').value;
-    document.getElementById('animal-estado-group').style.display = sexo === 'Hembra' ? '' : 'none';
+    const select = document.getElementById('animal-estado');
+
+    if (!sexo) {
+      document.getElementById('animal-estado-group').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('animal-estado-group').style.display = '';
+    select.innerHTML = '<option value="">Seleccione...</option>';
+
+    if (sexo === 'Hembra') {
+      select.innerHTML += `
+        <option value="Vacia">Vacía</option>
+        <option value="Prenada">Preñada</option>
+        <option value="Lactando">Lactando</option>
+      `;
+    } else {
+      select.innerHTML += `
+        <option value="Padrote">Padrote</option>
+        <option value="Ceba">Ceba</option>
+      `;
+    }
+
+    // Restaurar valor original si aplica
+    if (AnimalFormPage.estadoOriginal) select.value = AnimalFormPage.estadoOriginal;
+  },
+
+  calcularEtapaPorFecha() {
+    const fecha = document.getElementById('animal-fecha').value;
+    if (!fecha) {
+      document.getElementById('animal-etapa').value = '—';
+      return;
+    }
+    const { totalMeses } = DateUtil.calcularEdad(fecha);
+    document.getElementById('animal-etapa').value = DateUtil.determinarEtapa(totalMeses);
+  },
+
+  afterRender() {
+    this.calcularEtapaPorFecha();
+    this.cambioSexo();
   },
 
   async guardar(e) {
     e.preventDefault();
+
+    const rebanoSelect = document.getElementById('animal-rebano');
+    if (!rebanoSelect) {
+      alert('Primero debes crear un rebaño para asignar el animal');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('nombre', document.getElementById('animal-nombre').value);
     formData.append('identificacion', document.getElementById('animal-identificacion').value);
     formData.append('sexo', document.getElementById('animal-sexo').value);
     formData.append('fecha_nacimiento', document.getElementById('animal-fecha').value);
-    formData.append('rebano_id', document.getElementById('animal-rebano').value);
-    formData.append('etapa', document.getElementById('animal-etapa').value);
-    formData.append('madre_id', document.getElementById('animal-madre').value || '');
-    formData.append('padre_id', document.getElementById('animal-padre').value || '');
+    formData.append('rebano_id', rebanoSelect.value);
+    const etapa = document.getElementById('animal-etapa').value;
+    formData.append('etapa', etapa === '—' ? 'Ternero' : etapa);
+
+    // Madre/Padre: enviar vacío como null
+    const madreId = document.getElementById('animal-madre').value;
+    if (madreId) formData.append('madre_id', madreId);
+    const padreId = document.getElementById('animal-padre').value;
+    if (padreId) formData.append('padre_id', padreId);
 
     const pesoEntrada = document.getElementById('animal-peso-entrada').value;
     if (pesoEntrada) formData.append('peso_entrada', pesoEntrada);
@@ -174,7 +228,7 @@ const AnimalFormPage = {
 
     try {
       if (this.editandoId) {
-        await API.post(`/animales/${this.editandoId}`, Object.fromEntries(formData));
+        await API.put(`/animales/${this.editandoId}`, Object.fromEntries(formData));
       } else {
         await API.post('/animales', Object.fromEntries(formData));
       }

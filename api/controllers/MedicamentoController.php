@@ -46,13 +46,14 @@ class MedicamentoController
         }
 
         Database::execute(
-            'INSERT INTO medicamentos (nombre, descripcion, stock, unidad, fecha_vencimiento, usuario_id)
-             VALUES (:nombre, :desc, :stock, :unidad, :venc, :uid)',
+            'INSERT INTO medicamentos (nombre, descripcion, stock, unidad, precio, fecha_vencimiento, usuario_id)
+             VALUES (:nombre, :desc, :stock, :unidad, :precio, :venc, :uid)',
             [
                 ':nombre' => $datos['nombre'],
                 ':desc'   => $datos['descripcion'] ?? null,
                 ':stock'  => $datos['stock'] ?? 0,
                 ':unidad' => $datos['unidad'],
+                ':precio' => $datos['precio'] ?? null,
                 ':venc'   => $datos['fecha_vencimiento'] ?? null,
                 ':uid'    => $uid,
             ]
@@ -94,7 +95,7 @@ class MedicamentoController
 
         $campos = [];
         $params = [':id' => (int)$id];
-        foreach (['nombre', 'descripcion', 'stock', 'unidad', 'fecha_vencimiento'] as $c) {
+        foreach (['nombre', 'descripcion', 'stock', 'unidad', 'precio', 'fecha_vencimiento'] as $c) {
             if (isset($datos[$c])) {
                 $campos[] = "$c = :$c";
                 $params[":$c"] = $datos[$c];

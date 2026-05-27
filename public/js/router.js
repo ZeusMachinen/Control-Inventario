@@ -27,7 +27,17 @@ const Router = (() => {
    * Obtiene la ruta activa y sus parámetros.
    */
   function obtenerRutaActiva() {
-    const hash = window.location.hash.replace(/^#/, '') || '/login';
+    let hash = window.location.hash.replace(/^#/, '') || '/login';
+    const queryParams = {};
+    const qIdx = hash.indexOf('?');
+    if (qIdx !== -1) {
+      const qs = hash.substring(qIdx + 1);
+      hash = hash.substring(0, qIdx);
+      qs.split('&').forEach(pair => {
+        const [k, v] = pair.split('=');
+        if (k) queryParams[decodeURIComponent(k)] = v ? decodeURIComponent(v) : '';
+      });
+    }
 
     for (const [, ruta] of Object.entries(rutas)) {
       const match = hash.match(ruta.patron);
@@ -36,7 +46,7 @@ const Router = (() => {
         for (const [key, value] of Object.entries(match.groups || {})) {
           params[key] = value;
         }
-        return { ...ruta, params, hash };
+        return { ...ruta, params, hash, query: queryParams };
       }
     }
 

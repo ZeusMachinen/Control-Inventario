@@ -13,10 +13,10 @@ const MedicamentoListPage = {
         <div class="table-container">
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Stock</th><th>Unidad</th><th>Vencimiento</th><th>Acciones</th></tr>
+              <tr><th>Nombre</th><th>Stock</th><th>Unidad</th><th>Precio</th><th>Vencimiento</th><th>Acciones</th></tr>
             </thead>
             <tbody id="med-tbody">
-              <tr><td colspan="5" class="loading"><div class="spinner"></div>Cargando...</td></tr>
+              <tr><td colspan="6" class="loading"><div class="spinner"></div>Cargando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -35,7 +35,7 @@ const MedicamentoListPage = {
       const tbody = document.getElementById('med-tbody');
 
       if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay medicamentos registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay medicamentos registrados</td></tr>';
         return;
       }
 
@@ -44,6 +44,7 @@ const MedicamentoListPage = {
           <td><strong>${m.nombre}</strong></td>
           <td>${Formateador.numero(m.stock, 2)}</td>
           <td>${m.unidad}</td>
+          <td>${m.precio ? Formateador.moneda(m.precio) : '-'}</td>
           <td>${m.fecha_vencimiento ? DateUtil.formatear(m.fecha_vencimiento) : '-'}</td>
           <td class="table-actions">
             <button class="btn btn-sm btn-secondary" onclick="MedicamentoListPage.editar(${m.id})">✏️</button>
@@ -52,7 +53,7 @@ const MedicamentoListPage = {
         </tr>
       `).join('');
     } catch (e) {
-      document.getElementById('med-tbody').innerHTML = `<tr><td colspan="5" class="alert alert-danger">Error: ${e.message}</td></tr>`;
+      document.getElementById('med-tbody').innerHTML = `<tr><td colspan="6" class="alert alert-danger">Error: ${e.message}</td></tr>`;
     }
   },
 
@@ -90,6 +91,10 @@ const MedicamentoListPage = {
                 </div>
               </div>
               <div class="form-group">
+                <label class="form-label">Precio por Unidad</label>
+                <input type="number" step="0.01" min="0" class="form-input" id="med-precio" placeholder="0.00">
+              </div>
+              <div class="form-group">
                 <label class="form-label">Descripción</label>
                 <textarea class="form-textarea" id="med-descripcion"></textarea>
               </div>
@@ -115,6 +120,7 @@ const MedicamentoListPage = {
       document.getElementById('med-nombre').value = m.nombre || '';
       document.getElementById('med-stock').value = m.stock || 0;
       document.getElementById('med-unidad').value = m.unidad || '';
+      document.getElementById('med-precio').value = m.precio || '';
       document.getElementById('med-descripcion').value = m.descripcion || '';
       document.getElementById('med-vencimiento').value = DateUtil.formatoInput(m.fecha_vencimiento) || '';
     } catch (e) { /* ignore */ }
@@ -126,6 +132,7 @@ const MedicamentoListPage = {
       nombre: document.getElementById('med-nombre').value,
       stock: document.getElementById('med-stock').value || 0,
       unidad: document.getElementById('med-unidad').value,
+      precio: document.getElementById('med-precio').value || null,
       descripcion: document.getElementById('med-descripcion').value,
       fecha_vencimiento: document.getElementById('med-vencimiento').value || null,
     };
