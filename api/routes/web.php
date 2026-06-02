@@ -24,7 +24,6 @@ return [
     'GET|/api/animales/{id}/vacunas'     => ['AnimalController', 'vacunas',     true],
     'GET|/api/animales/{id}/movimientos' => ['AnimalController', 'movimientos', true],
     'POST|/api/animales/{id}/baja'       => ['AnimalController', 'baja',        true],
-    'GET|/api/animales/historial'        => ['AnimalController', 'historial',   true],
 
     // ─── Rebaños ──────────────────────────────────────────
     'GET|/api/rebanos'                => ['RebanoController', 'index',           true],
@@ -98,6 +97,11 @@ return [
     'GET|/api/gastos/{id}'       => ['GastosController', 'show',    true],
     'PUT|/api/gastos/{id}'       => ['GastosController', 'update',  true],
     'DELETE|/api/gastos/{id}'    => ['GastosController', 'destroy', true],
+
+    // ─── Costos Mensuales ───────────────────────────────
+    'GET|/api/rebanos/{id}/costos'            => ['CostosController', 'index',      true],
+    'GET|/api/rebanos/{id}/costos/cabezas'    => ['CostosController', 'cabezas',    true],
+    'POST|/api/rebanos/{id}/costos/recalcular' => ['CostosController', 'recalcular', true],
 
     // ─── Archivos / Subidas ────────────────────────────
     'POST|/api/upload/foto'     => ['UploadController', 'subir',       true],

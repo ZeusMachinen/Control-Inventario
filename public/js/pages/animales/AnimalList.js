@@ -211,6 +211,7 @@ const AnimalListPage = {
           <td class="table-actions">
             <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/animales/${a.id}')">Ver</button>
             <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/animales/${a.id}/editar')">✏️</button>
+            <button class="btn btn-sm btn-info" onclick="AnimalListPage.moverIndividual(${a.id})" title="Mover a otro rebaño">↗️ Mover</button>
             <button class="btn btn-sm btn-danger" onclick="AnimalListPage.eliminar(${a.id}, '${a.nombre}')">🗑️</button>
           </td>
         </tr>
@@ -252,6 +253,11 @@ const AnimalListPage = {
     if (estado) this.filtros.estado = estado;
     this.paginaActual = 1;
     this.cargarAnimales();
+  },
+
+  moverIndividual(id) {
+    this.seleccionados = new Set([id]);
+    this.mostrarMoverModal();
   },
 
   async eliminar(id, nombre) {

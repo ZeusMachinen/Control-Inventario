@@ -18,12 +18,13 @@ const HistorialPage = {
                 <th>Fecha Salida</th>
                 <th>Motivo</th>
                 <th>Peso Salida</th>
+                <th>Precio/kg</th>
                 <th>Rebaño</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="historial-tbody">
-              <tr><td colspan="7" class="loading"><div class="spinner"></div>Cargando...</td></tr>
+              <tr><td colspan="8" class="loading"><div class="spinner"></div>Cargando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -45,7 +46,7 @@ const HistorialPage = {
       const total = data.total || 0;
 
       if (animales.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay animales en el historial</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No hay animales en el historial</td></tr>';
         return;
       }
 
@@ -57,6 +58,7 @@ const HistorialPage = {
           <td>${a.fecha_salida ? new Date(a.fecha_salida + 'T00:00:00').toLocaleDateString('es-CO') : '—'}</td>
           <td>${a.motivo_salida || '—'}</td>
           <td>${a.peso_salida ? a.peso_salida + ' kg' : '—'}</td>
+          <td>${a.precio_kg ? '$' + Number(a.precio_kg).toLocaleString('es-CO', { minimumFractionDigits: 2 }) : '—'}</td>
           <td>${a.rebano_nombre || '—'}</td>
           <td class="table-actions">
             <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/animales/${a.id}')">Ver</button>

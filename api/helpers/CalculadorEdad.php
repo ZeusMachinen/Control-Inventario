@@ -10,9 +10,18 @@ class CalculadorEdad
      */
     public static function calcular(string $fechaNacimiento): array
     {
+        return self::calcularHasta($fechaNacimiento, date('Y-m-d'));
+    }
+
+    /**
+     * Calcula la edad hasta una fecha de referencia específica.
+     * @return array{anios: int, meses: int, total_meses: int}
+     */
+    public static function calcularHasta(string $fechaNacimiento, string $fechaReferencia): array
+    {
         $nacimiento = new \DateTime($fechaNacimiento);
-        $hoy = new \DateTime();
-        $diferencia = $nacimiento->diff($hoy);
+        $referencia = new \DateTime($fechaReferencia);
+        $diferencia = $nacimiento->diff($referencia);
 
         return [
             'anios'       => $diferencia->y,

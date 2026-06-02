@@ -12,8 +12,8 @@ const MedicamentoListPage = {
       <div class="card">
         <div class="table-container">
           <table>
-            <thead>
-              <tr><th>Nombre</th><th>Stock</th><th>Unidad</th><th>Precio</th><th>Vencimiento</th><th>Acciones</th></tr>
+              <thead>
+                <tr><th>Nombre</th><th>Cantidad</th><th>Presentación</th><th>Precio</th><th>Vencimiento</th><th>Acciones</th></tr>
             </thead>
             <tbody id="med-tbody">
               <tr><td colspan="6" class="loading"><div class="spinner"></div>Cargando...</td></tr>
@@ -42,7 +42,7 @@ const MedicamentoListPage = {
       tbody.innerHTML = list.map(m => `
         <tr>
           <td><strong>${m.nombre}</strong></td>
-          <td>${Formateador.numero(m.stock, 2)}</td>
+          <td><strong>${parseInt(m.stock)}</strong></td>
           <td>${m.unidad}</td>
           <td>${m.precio ? Formateador.moneda(m.precio) : '-'}</td>
           <td>${m.fecha_vencimiento ? DateUtil.formatear(m.fecha_vencimiento) : '-'}</td>
@@ -82,12 +82,12 @@ const MedicamentoListPage = {
               </div>
               <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label">Stock</label>
-                  <input type="number" step="0.01" class="form-input" id="med-stock" value="0">
+                  <label class="form-label">Cantidad (unidades enteras)</label>
+                  <input type="number" step="1" min="0" class="form-input" id="med-stock" value="0">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Unidad *</label>
-                  <input type="text" class="form-input" id="med-unidad" placeholder="ml, dosis, frasco" required>
+                  <label class="form-label">Presentación *</label>
+                  <input type="text" class="form-input" id="med-unidad" placeholder="Ej: frasco, dosis, ml" required>
                 </div>
               </div>
               <div class="form-group">
@@ -118,7 +118,7 @@ const MedicamentoListPage = {
       const { data } = await API.get(`/medicamentos/${id}`);
       const m = data.data;
       document.getElementById('med-nombre').value = m.nombre || '';
-      document.getElementById('med-stock').value = m.stock || 0;
+      document.getElementById('med-stock').value = parseInt(m.stock) || 0;
       document.getElementById('med-unidad').value = m.unidad || '';
       document.getElementById('med-precio').value = m.precio || '';
       document.getElementById('med-descripcion').value = m.descripcion || '';

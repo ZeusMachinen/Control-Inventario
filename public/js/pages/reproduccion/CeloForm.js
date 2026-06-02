@@ -4,7 +4,7 @@
 const CeloFormPage = {
   async render() {
     try {
-      const { data: animals } = await API.get('/animales', { por_pagina: 1000, sexo: 'Hembra' });
+      const { data: animals } = await API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 15 });
 
       return MainLayout.render(`
         <div class="page-header">

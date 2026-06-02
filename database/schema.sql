@@ -103,7 +103,7 @@ CREATE TABLE medicamentos (
   id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre            VARCHAR(200)   NOT NULL,
   descripcion       TEXT           NULL,
-  stock             DECIMAL(10,2)  NOT NULL DEFAULT 0,
+  stock             INT UNSIGNED   NOT NULL DEFAULT 0,
   unidad            VARCHAR(50)    NOT NULL,
   fecha_vencimiento DATE           NULL,
   usuario_id        INT UNSIGNED   NOT NULL,

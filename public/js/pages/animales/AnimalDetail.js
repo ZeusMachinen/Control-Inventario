@@ -156,7 +156,7 @@ const AnimalDetailPage = {
                 <label class="form-label">Fecha de salida *</label>
                 <input type="date" class="form-input" id="baja-fecha" value="${new Date().toISOString().substring(0, 10)}" required>
               </div>
-              <div class="form-group" id="baja-peso-group">
+              <div class="form-group" id="baja-peso-group" style="display:none">
                 <label class="form-label">Peso de salida (kg)</label>
                 <input type="number" step="0.1" min="0" class="form-input" id="baja-peso" placeholder="Ej: 500">
               </div>
@@ -188,9 +188,20 @@ const AnimalDetailPage = {
 
   cambioMotivoBaja() {
     const motivo = document.getElementById('baja-motivo').value;
-    document.getElementById('baja-detalle-venta').style.display = motivo === 'Venta' ? '' : 'none';
-    document.getElementById('baja-detalle-muerte').style.display = motivo === 'Muerte' ? '' : 'none';
-    document.getElementById('baja-peso-group').style.display = motivo ? '' : 'none';
+    const ventaDiv = document.getElementById('baja-detalle-venta');
+    const muerteDiv = document.getElementById('baja-detalle-muerte');
+    const pesoGroup = document.getElementById('baja-peso-group');
+    ventaDiv.style.display = motivo === 'Venta' ? '' : 'none';
+    muerteDiv.style.display = motivo === 'Muerte' ? '' : 'none';
+    pesoGroup.style.display = motivo ? '' : 'none';
+    // Resetear campos ocultos para evitar enviar datos incorrectos
+    if (motivo !== 'Venta') {
+      document.getElementById('baja-precio').value = '';
+      document.getElementById('baja-comprador').value = '';
+    }
+    if (motivo !== 'Muerte') {
+      document.getElementById('baja-causa').value = '';
+    }
   },
 
   async confirmarBaja(e, id) {

@@ -71,6 +71,7 @@ const RebanoListPage = {
             <td>${costo ? '$' + total : '—'}</td>
             <td class="table-actions">
               <button class="btn btn-sm btn-info" onclick="RebanoListPage.verEstadisticas(${r.id}, '${r.nombre}')">📊</button>
+              <button class="btn btn-sm btn-primary" onclick="Router.navegar('/rebanos/${r.id}/costos')" title="Costos mensuales">💰</button>
               ${r.activo ? `<button class="btn btn-sm btn-secondary" onclick="RebanoListPage.editar(${r.id}, '${r.nombre}', ${r.costo_cabeza || ''}, '${r.fecha_inicio || ''}')">✏️</button>` : ''}
               <button class="btn btn-sm btn-info" onclick="Router.navegar('/rebanos/${r.id}/movimientos')">📋</button>
               <button class="btn btn-sm btn-outline" onclick="Router.navegar('/animales?rebano_id=${r.id}')">🐮 Ver</button>

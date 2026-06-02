@@ -47,8 +47,13 @@ class RebanoController
         }
 
         Database::execute(
-            'INSERT INTO rebanos (nombre, costo_cabeza, usuario_id) VALUES (:nombre, :costo, :uid)',
-            [':nombre' => $datos['nombre'], ':costo' => $datos['costo_cabeza'] ?? null, ':uid' => $uid]
+            'INSERT INTO rebanos (nombre, costo_cabeza, fecha_inicio, usuario_id) VALUES (:nombre, :costo, :fecha, :uid)',
+            [
+                ':nombre' => $datos['nombre'],
+                ':costo'  => $datos['costo_cabeza'] ?? null,
+                ':fecha'  => $datos['fecha_inicio'] ?? null,
+                ':uid'    => $uid,
+            ]
         );
 
         $id = Database::lastInsertId();

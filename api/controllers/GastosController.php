@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/Validator.php';
+require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
 
 class GastosController
 {
@@ -96,6 +97,12 @@ class GastosController
         );
 
         $id = Database::lastInsertId();
+
+        // Sincronizar a costos mensuales
+        if (!empty($datos['rebano_id'])) {
+            CostosSyncHelper::sincronizarGasto((int)$id, $uid);
+        }
+
         $this->show($id);
     }
 
@@ -147,6 +154,9 @@ class GastosController
             $params
         );
 
+        // Resincronizar costos mensuales
+        CostosSyncHelper::sincronizarGasto((int)$id, $uid);
+
         $this->show($id);
     }
 
@@ -157,6 +167,7 @@ class GastosController
             'DELETE FROM gastos WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
+        CostosSyncHelper::eliminarGasto((int)$id, $uid);
         Response::json(['mensaje' => 'Gasto eliminado']);
     }
 }

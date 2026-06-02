@@ -51,11 +51,17 @@ class CeloController
 
         // Validar que el animal existe y es del usuario
         $animal = Database::queryOne(
-            'SELECT id, sexo, estado_reproductivo FROM animales WHERE id = :id AND usuario_id = :uid AND activo = 1',
+            'SELECT id, sexo, estado_reproductivo, fecha_nacimiento FROM animales WHERE id = :id AND usuario_id = :uid AND activo = 1',
             [':id' => (int)$datos['animal_id'], ':uid' => $uid]
         );
         if (!$animal) Response::error('Animal no encontrado', 404);
         if ($animal['sexo'] !== 'Hembra') Response::error('Solo se puede registrar celo en hembras', 422);
+
+        // Validar edad mínima: 15 meses para entrar en celo
+        $edadMeses = CalculadorEdad::calcular($animal['fecha_nacimiento'])['total_meses'];
+        if ($edadMeses < 15) {
+            Response::error('La hembra debe tener al menos 15 meses para registrar celo', 422);
+        }
 
         $fechaPosibleServicio = CalculadorEdad::proximoCelo($datos['fecha_inicio']);
 

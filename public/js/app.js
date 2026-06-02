@@ -25,6 +25,7 @@
   Router.registrar('/ventas',       () => VentaListPage.render());
   Router.registrar('/ventas/nuevo', () => VentaFormPage.render());
   Router.registrar('/rebanos/:id/movimientos', (p) => RebanoMovimientosPage.render(p));
+  Router.registrar('/rebanos/:id/costos', (p) => CostosRebanoPage.render(p));
   Router.registrar('/historial',     () => HistorialPage.render());
   Router.registrar('/gastos',       () => GastosPage.render());
 
@@ -37,6 +38,7 @@
     '/animales/:id/editar':          (p) => AnimalFormPage.afterRender(),
     '/rebanos':                      () => RebanoListPage.afterRender(),
     '/rebanos/:id/movimientos':      (p) => RebanoMovimientosPage.afterRender(),
+    '/rebanos/:id/costos':           (p) => CostosRebanoPage.afterRender(),
     '/vacunacion':                   () => VacunacionListPage.afterRender(),
     '/medicamentos':                 () => MedicamentoListPage.afterRender(),
     '/celos':                        () => CeloListPage.afterRender(),

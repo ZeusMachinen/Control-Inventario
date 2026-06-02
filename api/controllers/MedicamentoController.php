@@ -51,7 +51,7 @@ class MedicamentoController
             [
                 ':nombre' => $datos['nombre'],
                 ':desc'   => $datos['descripcion'] ?? null,
-                ':stock'  => $datos['stock'] ?? 0,
+                ':stock'  => isset($datos['stock']) ? (int)$datos['stock'] : 0,
                 ':unidad' => $datos['unidad'],
                 ':precio' => $datos['precio'] ?? null,
                 ':venc'   => $datos['fecha_vencimiento'] ?? null,
