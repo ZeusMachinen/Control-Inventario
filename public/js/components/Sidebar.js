@@ -41,9 +41,9 @@ const Sidebar = {
             <span class="sidebar-link-icon">📦</span>
             Medicamentos
           </a>
-          <a class="sidebar-link" href="#/celos">
+          <a class="sidebar-link" href="#/reproduccion">
             <span class="sidebar-link-icon">🔄</span>
-            Reproducción / Celo
+            Reproducción
           </a>
 
           <div class="sidebar-section-title">Análisis</div>

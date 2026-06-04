@@ -42,7 +42,22 @@ INSERT INTO vacunacion_animales (vacunacion_id, animal_id, dosis_aplicada) VALUE
 (2, 3, 2.00),
 (2, 4, 2.00);
 
--- Ciclos de celo demo
-INSERT INTO ciclos_celo (animal_id, fecha_inicio, servicio_realizado, observaciones, usuario_id) VALUES
-(2, '2026-03-01', 1, 'Servicio natural con toro', 1),
-(4, '2026-04-10', 0, 'En observación', 1);
+-- Diagnósticos de celo demo
+INSERT INTO diagnosticos_celo (animal_id, fecha_inicio, fecha_fin, sintomas, comportamiento, observaciones, usuario_id) VALUES
+(2, '2026-03-01', '2026-03-03', 'Vulva enrojecida, secreción clara', 'Inquieta, monta a otras', 'Celo detectado en la mañana', 1),
+(4, '2026-04-10', '2026-04-12', 'Hinchazón leve', 'Menos activa', 'En observación — posible celo silencioso', 1),
+(3, '2026-05-15', '2026-05-16', 'Secreción cristalina, vulva edematizada', 'Bramidos frecuentes', 'Segundo celo del mes', 1),
+(6, '2026-05-20', '2026-05-21', 'Moco vulvar abundante', 'Montó al ternero vecino', NULL, 1);
+
+-- Servicios demo
+INSERT INTO servicios (diagnostico_celo_id, animal_id, tipo, reproductor_id, reproductor_nombre, fecha, observaciones, usuario_id) VALUES
+(1, 2, 'Monta Natural', 1, 'Torito', '2026-03-02', 'Servicio controlado en potrero norte', 1),
+(2, 4, 'Monta Natural', NULL, 'Toro alquilado', '2026-04-11', 'Toro Brahman alquilado para mejorar genética', 1);
+
+-- Diagnósticos de gestación demo
+INSERT INTO diagnosticos_gestacion (servicio_id, animal_id, fecha, metodo, resultado, observaciones, usuario_id) VALUES
+(1, 2, '2026-04-10', 'Ecografía', 'Positivo', '30 días post-servicio — embrión visible', 1);
+
+-- Partos demo
+INSERT INTO partos (diagnostico_gestacion_id, animal_id, fecha, crias, observaciones, usuario_id) VALUES
+(NULL, 2, '2025-11-15', '[{"cantidad":1,"sexo":"Macho","peso_promedio":38,"observaciones":"Parto normal sin complicaciones"}]', 'Primer parto de Lola', 1);

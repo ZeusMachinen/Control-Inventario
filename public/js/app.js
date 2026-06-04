@@ -17,8 +17,11 @@
   Router.registrar('/vacunacion/nuevo', () => VacunacionFormPage.render({}));
   Router.registrar('/vacunacion/:id/editar', (p) => VacunacionFormPage.render(p));
   Router.registrar('/medicamentos', () => MedicamentoListPage.render());
-  Router.registrar('/celos',        () => CeloListPage.render());
-  Router.registrar('/celos/nuevo',  () => CeloFormPage.render());
+  Router.registrar('/reproduccion',                () => ReproduccionPage.render());
+  Router.registrar('/reproduccion/celos/nuevo',    () => DiagnosticoCeloFormPage.render());
+  Router.registrar('/reproduccion/servicios/nuevo', () => ServicioFormPage.render());
+  Router.registrar('/reproduccion/diagnosticos/nuevo', () => DiagnosticoGestacionFormPage.render());
+  Router.registrar('/reproduccion/partos/nuevo',   () => PartoFormPage.render());
   Router.registrar('/estadisticas', () => DashboardStatsPage.render());
   Router.registrar('/companias',    () => CompaniaListPage.render());
   Router.registrar('/companias/nuevo', () => CompaniaFormPage.render());
@@ -41,7 +44,7 @@
     '/rebanos/:id/costos':           (p) => CostosRebanoPage.afterRender(),
     '/vacunacion':                   () => VacunacionListPage.afterRender(),
     '/medicamentos':                 () => MedicamentoListPage.afterRender(),
-    '/celos':                        () => CeloListPage.afterRender(),
+    // ReproduccionPage carga datos en render(), no necesita afterRender
     '/estadisticas':                 () => DashboardStatsPage.afterRender(),
     '/companias':                    () => CompaniaListPage.afterRender(),
     '/historial':                    () => HistorialPage.afterRender(),

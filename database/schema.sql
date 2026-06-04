@@ -154,28 +154,96 @@ CREATE INDEX idx_vac_animal       ON vacunacion_animales(animal_id);
 CREATE INDEX idx_vac_vacunacion   ON vacunacion_animales(vacunacion_id);
 
 -- -----------------------------------------------------------
--- 8. CICLOS DE CELO
+-- 8. DIAGNÓSTICOS DE CELO
 -- -----------------------------------------------------------
-CREATE TABLE ciclos_celo (
-  id                    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  animal_id             INT UNSIGNED   NOT NULL,
-  fecha_inicio          DATE           NOT NULL,
-  fecha_fin             DATE           NULL,
-  servicio_realizado    TINYINT(1)     NOT NULL DEFAULT 0,
-  fecha_posible_servicio DATE          NULL,
-  observaciones         TEXT           NULL,
-  usuario_id            INT UNSIGNED   NOT NULL,
-  created_at            TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_celo_animal  FOREIGN KEY (animal_id)  REFERENCES animales(id) ON DELETE CASCADE,
-  CONSTRAINT fk_celo_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+CREATE TABLE diagnosticos_celo (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  animal_id       INT UNSIGNED   NOT NULL,
+  fecha_inicio    DATE           NOT NULL,
+  fecha_fin       DATE           NULL,
+  sintomas        TEXT           NULL,
+  comportamiento  VARCHAR(100)   NULL,
+  observaciones   TEXT           NULL,
+  usuario_id      INT UNSIGNED   NOT NULL,
+  created_at      TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_diagcelo_animal  FOREIGN KEY (animal_id)  REFERENCES animales(id) ON DELETE CASCADE,
+  CONSTRAINT fk_diagcelo_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_celo_animal ON ciclos_celo(animal_id);
-CREATE INDEX idx_celo_fecha  ON ciclos_celo(fecha_inicio);
+CREATE INDEX idx_diagcelo_animal ON diagnosticos_celo(animal_id);
+CREATE INDEX idx_diagcelo_fecha  ON diagnosticos_celo(fecha_inicio);
 
 -- -----------------------------------------------------------
--- 9. COMPAÑÍAS (sociedades entre usuarios)
+-- 9. SERVICIOS (Monta Natural, Inseminación Artificial, TE)
+-- -----------------------------------------------------------
+CREATE TABLE servicios (
+  id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  diagnostico_celo_id INT UNSIGNED   NULL,
+  animal_id           INT UNSIGNED   NOT NULL,
+  tipo                ENUM('Monta Natural','Inseminación Artificial','Transferencia de Embriones') NOT NULL DEFAULT 'Monta Natural',
+  reproductor_id      INT UNSIGNED   NULL,
+  reproductor_nombre  VARCHAR(150)   NULL,
+  fecha               DATE           NOT NULL,
+  observaciones       TEXT           NULL,
+  usuario_id          INT UNSIGNED   NOT NULL,
+  created_at          TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_serv_diagcelo      FOREIGN KEY (diagnostico_celo_id) REFERENCES diagnosticos_celo(id) ON DELETE SET NULL,
+  CONSTRAINT fk_serv_animal        FOREIGN KEY (animal_id)           REFERENCES animales(id)          ON DELETE CASCADE,
+  CONSTRAINT fk_serv_reproductor   FOREIGN KEY (reproductor_id)      REFERENCES animales(id)          ON DELETE SET NULL,
+  CONSTRAINT fk_serv_usuario       FOREIGN KEY (usuario_id)          REFERENCES usuarios(id)           ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_serv_animal       ON servicios(animal_id);
+CREATE INDEX idx_serv_diagcelo     ON servicios(diagnostico_celo_id);
+CREATE INDEX idx_serv_fecha        ON servicios(fecha);
+
+-- -----------------------------------------------------------
+-- 10. DIAGNÓSTICOS DE GESTACIÓN
+-- -----------------------------------------------------------
+CREATE TABLE diagnosticos_gestacion (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  servicio_id    INT UNSIGNED   NOT NULL,
+  animal_id      INT UNSIGNED   NOT NULL,
+  fecha          DATE           NOT NULL,
+  metodo         ENUM('Palpación','Ecografía') NOT NULL DEFAULT 'Palpación',
+  resultado      ENUM('Positivo','Negativo')   NOT NULL,
+  observaciones  TEXT           NULL,
+  usuario_id     INT UNSIGNED   NOT NULL,
+  created_at     TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_diaggest_servicio FOREIGN KEY (servicio_id) REFERENCES servicios(id)             ON DELETE CASCADE,
+  CONSTRAINT fk_diaggest_animal   FOREIGN KEY (animal_id)   REFERENCES animales(id)              ON DELETE CASCADE,
+  CONSTRAINT fk_diaggest_usuario  FOREIGN KEY (usuario_id)  REFERENCES usuarios(id)              ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_diaggest_animal   ON diagnosticos_gestacion(animal_id);
+CREATE INDEX idx_diaggest_fecha    ON diagnosticos_gestacion(fecha);
+
+-- -----------------------------------------------------------
+-- 11. PARTOS
+-- -----------------------------------------------------------
+CREATE TABLE partos (
+  id                        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  diagnostico_gestacion_id  INT UNSIGNED   NULL,
+  animal_id                 INT UNSIGNED   NOT NULL,
+  fecha                     DATE           NOT NULL,
+  crias                     JSON           NULL COMMENT '[{cantidad, sexo, peso_promedio, observaciones}]',
+  observaciones             TEXT           NULL,
+  usuario_id                INT UNSIGNED   NOT NULL,
+  created_at                TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_parto_diaggest FOREIGN KEY (diagnostico_gestacion_id) REFERENCES diagnosticos_gestacion(id) ON DELETE SET NULL,
+  CONSTRAINT fk_parto_animal   FOREIGN KEY (animal_id)                REFERENCES animales(id)               ON DELETE CASCADE,
+  CONSTRAINT fk_parto_usuario  FOREIGN KEY (usuario_id)               REFERENCES usuarios(id)               ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_parto_animal ON partos(animal_id);
+CREATE INDEX idx_parto_fecha  ON partos(fecha);
+
+-- -----------------------------------------------------------
+-- 12. COMPAÑÍAS (sociedades entre usuarios)
 -- -----------------------------------------------------------
 CREATE TABLE companias (
   id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -201,7 +269,7 @@ CREATE INDEX idx_comp_animal ON companias(animal_id);
 CREATE INDEX idx_comp_socio  ON companias(socio_id);
 
 -- -----------------------------------------------------------
--- 10. VENTAS / TRANSFERENCIAS
+-- 13. VENTAS / TRANSFERENCIAS
 -- -----------------------------------------------------------
 CREATE TABLE ventas (
   id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -225,7 +293,7 @@ CREATE INDEX idx_ventas_comprador ON ventas(comprador_id);
 CREATE INDEX idx_ventas_animal    ON ventas(animal_id);
 
 -- -----------------------------------------------------------
--- 11. REFRESH TOKENS (JWT)
+-- 14. REFRESH TOKENS (JWT)
 -- -----------------------------------------------------------
 CREATE TABLE refresh_tokens (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -241,7 +309,7 @@ CREATE INDEX idx_refresh_usuario ON refresh_tokens(usuario_id);
 CREATE INDEX idx_refresh_token   ON refresh_tokens(token);
 
 -- -----------------------------------------------------------
--- 12. MOVIMIENTOS DE REBAÑOS
+-- 15. MOVIMIENTOS DE REBAÑOS
 -- -----------------------------------------------------------
 CREATE TABLE movimientos_rebano (
   id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -259,7 +327,7 @@ CREATE INDEX idx_mov_animal  ON movimientos_rebano(animal_id);
 CREATE INDEX idx_mov_destino ON movimientos_rebano(rebano_destino_id);
 
 -- -----------------------------------------------------------
--- 13. GASTOS
+-- 16. GASTOS
 -- -----------------------------------------------------------
 CREATE TABLE gastos (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

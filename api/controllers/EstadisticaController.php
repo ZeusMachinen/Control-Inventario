@@ -141,16 +141,19 @@ class EstadisticaController
     {
         $uid = $this->usuarioId();
 
+        // Celos registrados en el año actual desde la nueva tabla
         $celosRegistrados = Database::queryOne(
-            'SELECT COUNT(*) as total FROM ciclos_celo WHERE usuario_id = :uid AND YEAR(fecha_inicio) = YEAR(CURDATE())',
+            'SELECT COUNT(*) as total FROM diagnosticos_celo WHERE usuario_id = :uid AND YEAR(fecha_inicio) = YEAR(CURDATE())',
             [':uid' => $uid]
         )['total'];
 
+        // Servicios registrados en el año actual
         $serviciosRealizados = Database::queryOne(
-            'SELECT COUNT(*) as total FROM ciclos_celo WHERE usuario_id = :uid AND servicio_realizado = 1',
+            'SELECT COUNT(*) as total FROM servicios WHERE usuario_id = :uid AND YEAR(fecha) = YEAR(CURDATE())',
             [':uid' => $uid]
         )['total'];
 
+        // Conteo por estado reproductivo desde animales
         $prenadas = Database::queryOne(
             'SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid AND activo = 1 AND estado_reproductivo = \'Prenada\'',
             [':uid' => $uid]
@@ -161,11 +164,41 @@ class EstadisticaController
             [':uid' => $uid]
         )['total'];
 
+        $vacias = Database::queryOne(
+            'SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid AND activo = 1 AND estado_reproductivo = \'Vacia\'',
+            [':uid' => $uid]
+        )['total'];
+
+        // Diagnosticos de gestación del año (positivos/negativos)
+        $diagPositivos = Database::queryOne(
+            'SELECT COUNT(*) as total FROM diagnosticos_gestacion dg
+             JOIN servicios s ON s.id = dg.servicio_id
+             WHERE dg.usuario_id = :uid AND YEAR(dg.fecha) = YEAR(CURDATE()) AND dg.resultado = \'Positivo\'',
+            [':uid' => $uid]
+        )['total'];
+
+        $diagNegativos = Database::queryOne(
+            'SELECT COUNT(*) as total FROM diagnosticos_gestacion dg
+             JOIN servicios s ON s.id = dg.servicio_id
+             WHERE dg.usuario_id = :uid AND YEAR(dg.fecha) = YEAR(CURDATE()) AND dg.resultado = \'Negativo\'',
+            [':uid' => $uid]
+        )['total'];
+
+        // Partos en el año
+        $partosAnuales = Database::queryOne(
+            'SELECT COUNT(*) as total FROM partos WHERE usuario_id = :uid AND YEAR(fecha) = YEAR(CURDATE())',
+            [':uid' => $uid]
+        )['total'];
+
         Response::json([
-            'celos_anuales'       => (int)$celosRegistrados,
-            'servicios_realizados' => (int)$serviciosRealizados,
-            'prenadas_actuales'    => (int)$prenadas,
-            'lactando_actuales'    => (int)$lactando,
+            'celos_anuales'           => (int)$celosRegistrados,
+            'servicios_realizados'    => (int)$serviciosRealizados,
+            'prenadas_actuales'       => (int)$prenadas,
+            'lactando_actuales'       => (int)$lactando,
+            'vacias_actuales'         => (int)$vacias,
+            'diagnosticos_positivos'  => (int)$diagPositivos,
+            'diagnosticos_negativos'  => (int)$diagNegativos,
+            'partos_anuales'          => (int)$partosAnuales,
         ]);
     }
 

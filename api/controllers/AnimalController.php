@@ -342,20 +342,59 @@ class AnimalController
     }
 
     /**
-     * Historial de celo de un animal.
+     * Historial de eventos reproductivos de un animal.
+     * Retorna datos de las 4 tablas nuevas (diagnosticos_celo, servicios,
+     * diagnosticos_gestacion, partos) en un array unificado.
      * GET /api/animales/{id}/celos
      */
     public function celos(string $id): void
     {
         $uid = $this->usuarioId();
+        $animalId = (int)$id;
+
+        $eventos = [];
+
+        // Diagnósticos de celo
         $celos = Database::query(
-            'SELECT cc.* FROM ciclos_celo cc
-             JOIN animales a ON a.id = cc.animal_id
-             WHERE cc.animal_id = :id AND a.usuario_id = :uid
-             ORDER BY cc.fecha_inicio DESC',
-            [':id' => (int)$id, ':uid' => $uid]
+            'SELECT id, animal_id, fecha_inicio as fecha, \'diagnostico_celo\' as tipo,
+                    sintomas, comportamiento, observaciones, created_at
+             FROM diagnosticos_celo WHERE animal_id = :id AND usuario_id = :uid
+             ORDER BY fecha_inicio DESC',
+            [':id' => $animalId, ':uid' => $uid]
         );
-        Response::json($celos);
+        foreach ($celos as $c) $eventos[] = $c;
+
+        // Servicios
+        $servicios = Database::query(
+            'SELECT id, animal_id, fecha, \'servicio\' as tipo,
+                    tipo as subtipo, reproductor_nombre, observaciones, created_at
+             FROM servicios WHERE animal_id = :id AND usuario_id = :uid
+             ORDER BY fecha DESC',
+            [':id' => $animalId, ':uid' => $uid]
+        );
+        foreach ($servicios as $s) $eventos[] = $s;
+
+        // Diagnósticos de gestación
+        $diagnosticos = Database::query(
+            'SELECT id, animal_id, fecha, \'diagnostico_gestacion\' as tipo,
+                    metodo as subtipo, resultado, observaciones, created_at
+             FROM diagnosticos_gestacion WHERE animal_id = :id AND usuario_id = :uid
+             ORDER BY fecha DESC',
+            [':id' => $animalId, ':uid' => $uid]
+        );
+        foreach ($diagnosticos as $d) $eventos[] = $d;
+
+        // Partos
+        $partos = Database::query(
+            'SELECT id, animal_id, fecha, \'parto\' as tipo,
+                    crias, observaciones, created_at
+             FROM partos WHERE animal_id = :id AND usuario_id = :uid
+             ORDER BY fecha DESC',
+            [':id' => $animalId, ':uid' => $uid]
+        );
+        foreach ($partos as $p) $eventos[] = $p;
+
+        Response::json($eventos);
     }
 
     /**

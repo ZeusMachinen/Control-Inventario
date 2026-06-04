@@ -65,10 +65,10 @@ const AnimalDetailPage = {
           </div>
         </div>
 
-        <!-- Historial de celos -->
+        <!-- Historial reproductivo (timeline) -->
         <div class="card" style="margin-top:1rem">
-          <div class="card-header"><strong>🔄 Historial de Celo</strong></div>
-          <div class="card-body" id="historial-celos">
+          <div class="card-header"><strong>🔄 Historial Reproductivo</strong></div>
+          <div class="card-body" id="historial-reproductivo">
             <div class="loading"><div class="spinner"></div></div>
           </div>
         </div>
@@ -118,16 +118,27 @@ const AnimalDetailPage = {
     }
 
     try {
-      const { data: cel } = await API.get(`/animales/${id}/celos`);
-      const celDiv = document.getElementById('historial-celos');
-      const celos = cel.data || [];
-      if (celos.length === 0) {
-        celDiv.innerHTML = '<p class="empty-state">Sin registros de celo</p>';
+      const { data: timeline } = await API.get(`/reproduccion/timeline/${id}`);
+      const div = document.getElementById('historial-reproductivo');
+      const eventos = timeline.eventos || [];
+      if (eventos.length === 0) {
+        div.innerHTML = '<p class="empty-state">Sin eventos reproductivos</p>';
       } else {
-        celDiv.innerHTML = `<ul>${celos.map(c => `<li>${DateUtil.formatear(c.fecha_inicio)} — ${c.servicio_realizado ? '✅ Servicio realizado' : '⏳ En observación'}</li>`).join('')}</ul>`;
+        div.innerHTML = `<div class="timeline">${eventos.map(ev => {
+          let icono = '🔍', detalle = '';
+          if (ev.evento_tipo === 'diagnostico_celo') { icono = '🔍'; detalle = ev.sintomas || ev.comportamiento || ''; }
+          else if (ev.evento_tipo === 'servicio') { icono = '🤝'; detalle = ev.subtipo || ''; }
+          else if (ev.evento_tipo === 'diagnostico_gestacion') { icono = '🩺'; detalle = `${ev.subtipo || ''} — ${ev.resultado || ''}`; }
+          else if (ev.evento_tipo === 'parto') { icono = '🍼'; detalle = ev.crias ? (Array.isArray(ev.crias) ? `${ev.crias.length} cría(s)` : 'Con crías') : ''; }
+          return `<div style="display:flex;gap:0.75rem;padding:0.4rem 0;border-bottom:1px solid var(--gris-borde)">
+            <span style="min-width:40px;text-align:center">${icono}</span>
+            <span style="min-width:130px;font-size:0.85rem;color:var(--gris-texto)">${DateUtil.formatear(ev.fecha)}</span>
+            <span style="flex:1"><strong>${ev.evento_nombre}</strong>${detalle ? ' — ' + detalle : ''}</span>
+          </div>`;
+        }).join('')}</div>`;
       }
     } catch (e) {
-      document.getElementById('historial-celos').innerHTML = '<p class="empty-state">Error al cargar historial</p>';
+      document.getElementById('historial-reproductivo').innerHTML = '<p class="empty-state">Error al cargar historial</p>';
     }
   },
 

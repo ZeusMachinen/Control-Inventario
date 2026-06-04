@@ -61,14 +61,36 @@ return [
     'PUT|/api/vacunaciones/{id}'          => ['VacunacionController', 'update',      true],
     'DELETE|/api/vacunaciones/{id}'       => ['VacunacionController', 'destroy',     true],
 
-    // ─── Ciclos de Celo ──────────────────────────────────
-    'GET|/api/celos'            => ['CeloController', 'index',          true],
-    'POST|/api/celos'           => ['CeloController', 'store',         true],
-    'GET|/api/celos/activos'    => ['CeloController', 'activos',        true],
-    'GET|/api/celos/proximos'   => ['CeloController', 'proximos',       true],
-    'GET|/api/celos/{id}'       => ['CeloController', 'show',           true],
-    'PUT|/api/celos/{id}'       => ['CeloController', 'update',         true],
-    'DELETE|/api/celos/{id}'    => ['CeloController', 'destroy',        true],
+    // ─── Reproducción — Flujo Completo (reemplaza ciclos_celo) ───
+    // Diagnósticos de Celo
+    'GET|/api/reproduccion/celos'                    => ['ReproduccionController', 'indexCelo',              true],
+    'POST|/api/reproduccion/celos'                   => ['ReproduccionController', 'storeCelo',              true],
+    'GET|/api/reproduccion/celos/{id}'               => ['ReproduccionController', 'showCelo',               true],
+    'PUT|/api/reproduccion/celos/{id}'               => ['ReproduccionController', 'updateCelo',             true],
+    'DELETE|/api/reproduccion/celos/{id}'            => ['ReproduccionController', 'destroyCelo',            true],
+    'POST|/api/reproduccion/celos/{id}/servicio'     => ['ReproduccionController', 'storeServicio',          true],
+    // Servicios
+    'GET|/api/reproduccion/servicios'                => ['ReproduccionController', 'indexServicio',          true],
+    'POST|/api/reproduccion/servicios'               => ['ReproduccionController', 'storeServicio',          true],
+    'GET|/api/reproduccion/servicios/{id}'           => ['ReproduccionController', 'showServicio',           true],
+    'PUT|/api/reproduccion/servicios/{id}'           => ['ReproduccionController', 'updateServicio',         true],
+    'DELETE|/api/reproduccion/servicios/{id}'        => ['ReproduccionController', 'destroyServicio',        true],
+    'POST|/api/reproduccion/servicios/{id}/diagnostico' => ['ReproduccionController', 'storeDiagnosticoGestacion', true],
+    // Diagnósticos de Gestación
+    'GET|/api/reproduccion/diagnosticos-gestacion'        => ['ReproduccionController', 'indexDiagnosticoGestacion',  true],
+    'POST|/api/reproduccion/diagnosticos-gestacion'       => ['ReproduccionController', 'storeDiagnosticoGestacion',  true],
+    'GET|/api/reproduccion/diagnosticos-gestacion/{id}'   => ['ReproduccionController', 'showDiagnosticoGestacion',  true],
+    'PUT|/api/reproduccion/diagnosticos-gestacion/{id}'   => ['ReproduccionController', 'updateDiagnosticoGestacion', true],
+    'DELETE|/api/reproduccion/diagnosticos-gestacion/{id}' => ['ReproduccionController', 'destroyDiagnosticoGestacion', true],
+    'POST|/api/reproduccion/diagnosticos-gestacion/{id}/parto' => ['ReproduccionController', 'storeParto', true],
+    // Partos
+    'GET|/api/reproduccion/partos'                   => ['ReproduccionController', 'indexParto',             true],
+    'POST|/api/reproduccion/partos'                  => ['ReproduccionController', 'storeParto',             true],
+    'GET|/api/reproduccion/partos/{id}'              => ['ReproduccionController', 'showParto',              true],
+    'PUT|/api/reproduccion/partos/{id}'              => ['ReproduccionController', 'updateParto',            true],
+    'DELETE|/api/reproduccion/partos/{id}'           => ['ReproduccionController', 'destroyParto',           true],
+    // Timeline
+    'GET|/api/reproduccion/timeline/{animal_id}'     => ['ReproduccionController', 'timeline',               true],
 
     // ─── Estadísticas ──────────────────────────────────────
     'GET|/api/estadisticas/resumen'       => ['EstadisticaController', 'resumen',          true],
