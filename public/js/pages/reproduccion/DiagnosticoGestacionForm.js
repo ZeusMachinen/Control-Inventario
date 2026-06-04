@@ -11,7 +11,7 @@ const DiagnosticoGestacionFormPage = {
       ]);
 
       const animals = animalsRes.data.data || [];
-      const servicios = serviciosRes || [];
+      const servicios = serviciosRes.data?.data || [];
 
       return MainLayout.render(`
         <div class="page-header">
@@ -100,8 +100,9 @@ const DiagnosticoGestacionFormPage = {
     select.innerHTML = '<option value="">Cargando...</option>';
 
     // Re-fetch servicios filtered
-    API.get('/reproduccion/servicios').then(({ data: servicios }) => {
-      const filtrados = (servicios || []).filter(s => String(s.animal_id) === animalId);
+    API.get('/reproduccion/servicios').then(({ data: res }) => {
+      const servicios = res?.data || [];
+      const filtrados = servicios.filter(s => String(s.animal_id) === animalId);
       if (filtrados.length === 0) {
         select.innerHTML = '<option value="">Sin servicios registrados</option>';
         return;

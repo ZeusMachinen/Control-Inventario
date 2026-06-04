@@ -23,6 +23,7 @@ return [
     'GET|/api/animales/{id}/celos'       => ['AnimalController', 'celos',       true],
     'GET|/api/animales/{id}/vacunas'     => ['AnimalController', 'vacunas',     true],
     'GET|/api/animales/{id}/movimientos' => ['AnimalController', 'movimientos', true],
+    'GET|/api/animales/{id}/hijos'       => ['AnimalController', 'hijos',       true],
     'POST|/api/animales/{id}/baja'       => ['AnimalController', 'baja',        true],
 
     // ─── Rebaños ──────────────────────────────────────────

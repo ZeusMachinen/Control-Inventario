@@ -436,4 +436,24 @@ class AnimalController
         );
         Response::json($vacunas);
     }
+
+    /**
+     * Hijos de un animal (crías donde madre_id = :id).
+     * GET /api/animales/{id}/hijos
+     */
+    public function hijos(string $id): void
+    {
+        $uid = $this->usuarioId();
+        $hijos = Database::query(
+            'SELECT a.id, a.nombre, a.sexo, a.fecha_nacimiento, a.etapa, a.estado_reproductivo,
+                    a.estado_general, a.foto, a.peso_entrada,
+                    r.nombre as rebano_nombre
+             FROM animales a
+             LEFT JOIN rebanos r ON r.id = a.rebano_id
+             WHERE a.madre_id = :id AND a.usuario_id = :uid
+             ORDER BY a.fecha_nacimiento DESC',
+            [':id' => (int)$id, ':uid' => $uid]
+        );
+        Response::json($hijos);
+    }
 }

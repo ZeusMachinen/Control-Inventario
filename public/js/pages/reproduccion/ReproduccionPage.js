@@ -41,6 +41,7 @@ const ReproduccionPage = {
       });
 
       partos.forEach(p => {
+        p.crias = typeof p.crias === 'string' ? JSON.parse(p.crias) : (p.crias || []);
         const key = p.animal_id;
         if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: p.animal_nombre, eventos: [] };
         porAnimal[key].eventos.push({ ...p, tipo: 'parto', label: 'Parto' });
@@ -141,7 +142,7 @@ const ReproduccionPage = {
                           <strong>${ev.label}</strong>
                           ${ev.subtipo ? `<br><span style="font-size:0.85rem">${ev.subtipo}</span>` : ''}
                           ${ev.resultado ? `<br><span class="badge ${ev.resultado === 'Positivo' ? 'badge-verde' : 'badge-naranja'}">${ev.resultado}</span>` : ''}
-                          ${ev.tipo === 'parto' && ev.crias ? `<br><span style="font-size:0.85rem">${Array.isArray(ev.crias) ? ev.crias.length + ' cría(s)' : 'Con crías'}</span>` : ''}
+                          ${ev.tipo === 'parto' && Array.isArray(ev.crias) && ev.crias.length > 0 ? `<br><span style="font-size:0.85rem">${ev.crias.map(c => c.nombre || 'Cría').join(', ')} (${ev.crias.length})</span>` : ''}
                           ${ev.observaciones ? `<br><span style="font-size:0.8rem;color:var(--gris-texto)">${ev.observaciones}</span>` : ''}
                         </div>
                       </div>

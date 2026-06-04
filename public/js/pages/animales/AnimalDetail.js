@@ -49,10 +49,18 @@ const AnimalDetailPage = {
           </div>
         </div>
 
-        <!-- Historial de movimientos -->
+        <!-- Hijos -->
         <div class="card" style="margin-top:1rem">
-          <div class="card-header"><strong>📦 Historial de Movimientos</strong></div>
-          <div class="card-body" id="historial-movimientos">
+          <div class="card-header"><strong>🐄 Hijos</strong></div>
+          <div class="card-body" id="seccion-hijos">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Historial reproductivo (timeline) -->
+        <div class="card" style="margin-top:1rem">
+          <div class="card-header"><strong>🔄 Historial Reproductivo</strong></div>
+          <div class="card-body" id="historial-reproductivo">
             <div class="loading"><div class="spinner"></div></div>
           </div>
         </div>
@@ -65,10 +73,10 @@ const AnimalDetailPage = {
           </div>
         </div>
 
-        <!-- Historial reproductivo (timeline) -->
+        <!-- Historial de movimientos -->
         <div class="card" style="margin-top:1rem">
-          <div class="card-header"><strong>🔄 Historial Reproductivo</strong></div>
-          <div class="card-body" id="historial-reproductivo">
+          <div class="card-header"><strong>📦 Historial de Movimientos</strong></div>
+          <div class="card-body" id="historial-movimientos">
             <div class="loading"><div class="spinner"></div></div>
           </div>
         </div>
@@ -85,8 +93,81 @@ const AnimalDetailPage = {
   async cargarHistoriales() {
     const id = Router.obtenerRutaActiva().params.id;
 
+    // ─── Hijos ───────────────────────────────────────
     try {
-      // Movimientos
+      const { data: resHijos } = await API.get(`/animales/${id}/hijos`);
+      const hijosDiv = document.getElementById('seccion-hijos');
+      const hijos = resHijos.data || [];
+      if (hijos.length === 0) {
+        hijosDiv.innerHTML = '<p class="empty-state">Esta vaca no tiene hijos registrados</p>';
+      } else {
+        hijosDiv.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0.75rem">${hijos.map(h => `
+          <a href="#/animales/${h.id}" class="card" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem;text-decoration:none;color:var(--texto-principal);transition:box-shadow var(--transition)">
+            <div style="font-size:2rem">${h.sexo === 'Hembra' ? '🐄' : '🐂'}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:var(--font-size-base)">${h.nombre}</div>
+              <div style="font-size:var(--font-size-xs);color:var(--gris-texto)">
+                ${h.etapa} · ${h.estado_general}
+                ${h.estado_reproductivo ? ` · ${h.estado_reproductivo}` : ''}
+              </div>
+              <div style="font-size:var(--font-size-xs);color:var(--gris-texto)">${DateUtil.formatear(h.fecha_nacimiento)}</div>
+            </div>
+            <span style="color:var(--gris-texto);font-size:1.2rem">→</span>
+          </a>
+        `).join('')}</div>`;
+      }
+    } catch (e) {
+      document.getElementById('seccion-hijos').innerHTML = '<p class="empty-state">Error al cargar hijos</p>';
+    }
+
+    // ─── Historial Reproductivo (timeline) ────────────
+    try {
+      const { data: res } = await API.get(`/reproduccion/timeline/${id}`);
+      const div = document.getElementById('historial-reproductivo');
+      const timeline = res?.data || {};
+      const eventos = timeline.eventos || [];
+      if (eventos.length === 0) {
+        div.innerHTML = '<p class="empty-state">Sin eventos reproductivos</p>';
+      } else {
+        div.innerHTML = `<div class="timeline">${eventos.map(ev => {
+          let icono = '🔍', detalle = '';
+          if (ev.evento_tipo === 'diagnostico_celo') { icono = '🔍'; detalle = ev.sintomas || ev.comportamiento || ''; }
+          else if (ev.evento_tipo === 'servicio') { icono = '🤝'; detalle = ev.subtipo || ''; }
+          else if (ev.evento_tipo === 'diagnostico_gestacion') { icono = '🩺'; detalle = `${ev.subtipo || ''} — ${ev.resultado || ''}`; }
+          else if (ev.evento_tipo === 'parto') {
+            icono = '🍼';
+            const criasArr = typeof ev.crias === 'string' ? JSON.parse(ev.crias) : (ev.crias || []);
+            detalle = Array.isArray(criasArr) && criasArr.length > 0
+              ? criasArr.map(c => c.nombre || `Cría`).join(', ') + ` (${criasArr.length})`
+              : 'Sin datos de cría';
+          }
+          return `<div style="display:flex;gap:0.75rem;padding:0.4rem 0;border-bottom:1px solid var(--gris-borde)">
+            <span style="min-width:40px;text-align:center">${icono}</span>
+            <span style="min-width:130px;font-size:0.85rem;color:var(--gris-texto)">${DateUtil.formatear(ev.fecha)}</span>
+            <span style="flex:1"><strong>${ev.evento_nombre}</strong>${detalle ? ' — ' + detalle : ''}</span>
+          </div>`;
+        }).join('')}</div>`;
+      }
+    } catch (e) {
+      document.getElementById('historial-reproductivo').innerHTML = '<p class="empty-state">Error al cargar historial</p>';
+    }
+
+    // ─── Vacunas ──────────────────────────────────────
+    try {
+      const { data: vac } = await API.get(`/animales/${id}/vacunas`);
+      const vacDiv = document.getElementById('historial-vacunas');
+      const vacunas = vac.data || [];
+      if (vacunas.length === 0) {
+        vacDiv.innerHTML = '<p class="empty-state">Sin registros de vacunación</p>';
+      } else {
+        vacDiv.innerHTML = `<ul>${vacunas.map(v => `<li>${DateUtil.formatear(v.fecha)} — ${v.medicamento_nombre || 'N/A'}</li>`).join('')}</ul>`;
+      }
+    } catch (e) {
+      document.getElementById('historial-vacunas').innerHTML = '<p class="empty-state">Error al cargar historial</p>';
+    }
+
+    // ─── Movimientos ──────────────────────────────────
+    try {
       const { data: mov } = await API.get(`/animales/${id}/movimientos`);
       const movDiv = document.getElementById('historial-movimientos');
       const movimientos = mov.data || [];
@@ -101,44 +182,6 @@ const AnimalDetailPage = {
       }
     } catch (e) {
       document.getElementById('historial-movimientos').innerHTML = '<p class="empty-state">Error al cargar movimientos</p>';
-    }
-
-    try {
-      // Vacunas
-      const { data: vac } = await API.get(`/animales/${id}/vacunas`);
-      const vacDiv = document.getElementById('historial-vacunas');
-      const vacunas = vac.data || [];
-      if (vacunas.length === 0) {
-        vacDiv.innerHTML = '<p class="empty-state">Sin registros de vacunación</p>';
-      } else {
-        vacDiv.innerHTML = `<ul>${vacunas.map(v => `<li>${DateUtil.formatear(v.fecha)} — ${v.medicamento_nombre || 'N/A'}</li>`).join('')}</ul>`;
-      }
-    } catch (e) {
-      document.getElementById('historial-vacunas').innerHTML = '<p class="empty-state">Error al cargar historial</p>';
-    }
-
-    try {
-      const { data: timeline } = await API.get(`/reproduccion/timeline/${id}`);
-      const div = document.getElementById('historial-reproductivo');
-      const eventos = timeline.eventos || [];
-      if (eventos.length === 0) {
-        div.innerHTML = '<p class="empty-state">Sin eventos reproductivos</p>';
-      } else {
-        div.innerHTML = `<div class="timeline">${eventos.map(ev => {
-          let icono = '🔍', detalle = '';
-          if (ev.evento_tipo === 'diagnostico_celo') { icono = '🔍'; detalle = ev.sintomas || ev.comportamiento || ''; }
-          else if (ev.evento_tipo === 'servicio') { icono = '🤝'; detalle = ev.subtipo || ''; }
-          else if (ev.evento_tipo === 'diagnostico_gestacion') { icono = '🩺'; detalle = `${ev.subtipo || ''} — ${ev.resultado || ''}`; }
-          else if (ev.evento_tipo === 'parto') { icono = '🍼'; detalle = ev.crias ? (Array.isArray(ev.crias) ? `${ev.crias.length} cría(s)` : 'Con crías') : ''; }
-          return `<div style="display:flex;gap:0.75rem;padding:0.4rem 0;border-bottom:1px solid var(--gris-borde)">
-            <span style="min-width:40px;text-align:center">${icono}</span>
-            <span style="min-width:130px;font-size:0.85rem;color:var(--gris-texto)">${DateUtil.formatear(ev.fecha)}</span>
-            <span style="flex:1"><strong>${ev.evento_nombre}</strong>${detalle ? ' — ' + detalle : ''}</span>
-          </div>`;
-        }).join('')}</div>`;
-      }
-    } catch (e) {
-      document.getElementById('historial-reproductivo').innerHTML = '<p class="empty-state">Error al cargar historial</p>';
     }
   },
 
