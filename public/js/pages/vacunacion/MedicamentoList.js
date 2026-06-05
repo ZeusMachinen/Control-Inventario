@@ -48,7 +48,7 @@ const MedicamentoListPage = {
           <td>${m.fecha_vencimiento ? DateUtil.formatear(m.fecha_vencimiento) : '-'}</td>
           <td class="table-actions">
             <button class="btn btn-sm btn-secondary" onclick="MedicamentoListPage.editar(${m.id})">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="MedicamentoListPage.eliminar(${m.id})">🗑️</button>
+            <button class="btn btn-sm btn-warning" onclick="MedicamentoListPage.agotar(${m.id})">❌ Agotado</button>
           </td>
         </tr>
       `).join('');
@@ -150,13 +150,13 @@ const MedicamentoListPage = {
     }
   },
 
-  async eliminar(id) {
-    if (!confirm('¿Eliminar este medicamento?')) return;
+  async agotar(id) {
+    if (!confirm('¿Marcar este medicamento como agotado?')) return;
     try {
-      await API.delete(`/medicamentos/${id}`);
+      await API.put(`/medicamentos/${id}/agotar`);
       this.cargar();
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al eliminar');
+      alert(err.response?.data?.error || 'Error al marcar como agotado');
     }
   },
 

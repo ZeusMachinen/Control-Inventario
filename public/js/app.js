@@ -7,12 +7,12 @@
 
   // ─── Registrar rutas ─────────────────────────────────
   Router.registrar('/login',        () => LoginPage.render(), false);
-  Router.registrar('/dashboard',    () => DashboardPage.render());
   Router.registrar('/animales',     () => AnimalListPage.render());
   Router.registrar('/animales/nuevo', () => AnimalFormPage.render({}));
   Router.registrar('/animales/:id', (p) => AnimalDetailPage.render(p));
   Router.registrar('/animales/:id/editar', (p) => AnimalFormPage.render(p));
   Router.registrar('/rebanos',      () => RebanoListPage.render());
+  Router.registrar('/rebanos/:id',  (p) => RebanoDetailPage.render(p));
   Router.registrar('/vacunacion',   () => VacunacionListPage.render());
   Router.registrar('/vacunacion/nuevo', () => VacunacionFormPage.render({}));
   Router.registrar('/vacunacion/:id/editar', (p) => VacunacionFormPage.render(p));
@@ -23,8 +23,6 @@
   Router.registrar('/reproduccion/diagnosticos/nuevo', () => DiagnosticoGestacionFormPage.render());
   Router.registrar('/reproduccion/partos/nuevo',   () => PartoFormPage.render());
   Router.registrar('/estadisticas', () => DashboardStatsPage.render());
-  Router.registrar('/companias',    () => CompaniaListPage.render());
-  Router.registrar('/companias/nuevo', () => CompaniaFormPage.render());
   Router.registrar('/ventas',       () => VentaListPage.render());
   Router.registrar('/ventas/nuevo', () => VentaFormPage.render());
   Router.registrar('/rebanos/:id/movimientos', (p) => RebanoMovimientosPage.render(p));
@@ -34,19 +32,18 @@
 
   // ─── AfterRender hook ─────────────────────────────────
   const afterRenderMap = {
-    '/dashboard':                    () => DashboardPage.afterRender(),
     '/animales':                     () => AnimalListPage.afterRender(),
     '/animales/nuevo':               () => AnimalFormPage.afterRender(),
-    '/animales/:id':                 (p) => AnimalDetailPage.afterRender(),
+    '/animales/:id':                 (p) => AnimalDetailPage.afterRender(p),
     '/animales/:id/editar':          (p) => AnimalFormPage.afterRender(),
     '/rebanos':                      () => RebanoListPage.afterRender(),
+    '/rebanos/:id':                  (p) => RebanoDetailPage.afterRender(),
     '/rebanos/:id/movimientos':      (p) => RebanoMovimientosPage.afterRender(),
     '/rebanos/:id/costos':           (p) => CostosRebanoPage.afterRender(),
     '/vacunacion':                   () => VacunacionListPage.afterRender(),
     '/medicamentos':                 () => MedicamentoListPage.afterRender(),
     // ReproduccionPage carga datos en render(), no necesita afterRender
     '/estadisticas':                 () => DashboardStatsPage.afterRender(),
-    '/companias':                    () => CompaniaListPage.afterRender(),
     '/historial':                    () => HistorialPage.afterRender(),
     '/gastos':                       () => GastosPage.afterRender(),
     // VentaListPage carga datos en render(), no necesita afterRender
@@ -81,7 +78,7 @@
     // Si no hay hash, redirigir según auth
     if (!window.location.hash) {
       const usuario = localStorage.getItem('usuario');
-      window.location.hash = usuario ? '#/dashboard' : '#/login';
+      window.location.hash = usuario ? '#/estadisticas' : '#/login';
     }
 
     // Cerrar sidebar al hacer clic fuera en mobile

@@ -11,9 +11,9 @@ const Sidebar = {
         </div>
 
         <nav class="sidebar-nav">
-          <a class="sidebar-link" href="#/dashboard">
+          <a class="sidebar-link" href="#/estadisticas">
             <span class="sidebar-link-icon">📊</span>
-            Dashboard
+            Estadísticas
           </a>
 
           <div class="sidebar-section-title">Registro</div>
@@ -46,19 +46,8 @@ const Sidebar = {
             Reproducción
           </a>
 
-          <div class="sidebar-section-title">Análisis</div>
-
-          <a class="sidebar-link" href="#/estadisticas">
-            <span class="sidebar-link-icon">📈</span>
-            Estadísticas
-          </a>
-
           <div class="sidebar-section-title">Comercial</div>
 
-          <a class="sidebar-link" href="#/companias">
-            <span class="sidebar-link-icon">🤝</span>
-            Compañías
-          </a>
           <a class="sidebar-link" href="#/ventas">
             <span class="sidebar-link-icon">💰</span>
             Ventas

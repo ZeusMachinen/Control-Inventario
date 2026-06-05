@@ -72,7 +72,7 @@ const Router = (() => {
     }
 
     if (!ruta.requiereAuth && usuario && ruta.hash === '/login') {
-      navegar('/dashboard');
+      navegar('/estadisticas');
       return;
     }
 

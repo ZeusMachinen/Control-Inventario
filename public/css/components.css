@@ -45,6 +45,15 @@
   background: #C62828;
 }
 
+.btn-warning {
+  background: var(--naranja);
+  color: var(--blanco);
+}
+
+.btn-warning:hover {
+  background: #E65100;
+}
+
 .btn-sm {
   padding: 0.375rem 0.75rem;
   font-size: var(--font-size-xs);
@@ -128,6 +137,18 @@
 .stat-card-info p {
   font-size: var(--font-size-sm);
   color: var(--texto-secundario);
+}
+
+/* ─── Links de animal ──────────────────────────────── */
+.animal-link {
+  color: var(--texto-principal);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+.animal-link:hover {
+  color: var(--azul);
+  text-decoration: underline;
 }
 
 /* ─── Tablas ─────────────────────────────────────────── */

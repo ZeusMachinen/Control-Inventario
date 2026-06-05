@@ -111,17 +111,17 @@ class MedicamentoController
     }
 
     /**
-     * Elimina (soft delete) un medicamento.
-     * DELETE /api/medicamentos/{id}
+     * Marca un medicamento como agotado (inactivo + stock a cero).
+     * PUT /api/medicamentos/{id}/agotar
      */
-    public function destroy(string $id): void
+    public function agotar(string $id): void
     {
         $uid = $this->usuarioId();
         Database::execute(
-            'UPDATE medicamentos SET activo = 0 WHERE id = :id AND usuario_id = :uid',
+            'UPDATE medicamentos SET activo = 0, stock = 0 WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
-        Response::json(['mensaje' => 'Medicamento eliminado']);
+        Response::json(['mensaje' => 'Medicamento marcado como agotado']);
     }
 
     /**

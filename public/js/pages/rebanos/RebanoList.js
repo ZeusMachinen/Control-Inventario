@@ -1,16 +1,55 @@
 const RebanoListPage = {
   mostrarInactivos: false,
+  filtroNombre: '',
 
   async render() {
     return MainLayout.render(`
       <div class="page-header">
         <h1 class="page-title">Rebaños</h1>
-        <div style="display:flex;gap:0.5rem;align-items:center">
+        <button class="btn btn-primary" onclick="RebanoListPage.mostrarFormulario()">+ Nuevo Rebaño</button>
+      </div>
+
+      <div class="stats-grid" id="rebanos-kpis">
+        <div class="stat-card" style="border-left-color:var(--azul)">
+          <div class="stat-card-icon" style="background:var(--azul-claro);color:var(--azul)">🐮</div>
+          <div class="stat-card-info">
+            <h3 id="kpi-animales">0</h3>
+            <p>Animales Activos</p>
+          </div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--verde-principal)">
+          <div class="stat-card-icon" style="background:var(--verde-bg);color:var(--verde-principal)">🐣</div>
+          <div class="stat-card-info">
+            <h3 id="kpi-nacidos">0</h3>
+            <p>Nacidos Totales</p>
+          </div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--rojo)">
+          <div class="stat-card-icon" style="background:var(--rojo-claro);color:var(--rojo)">💀</div>
+          <div class="stat-card-info">
+            <h3 id="kpi-muertes">0</h3>
+            <p>Muertes</p>
+          </div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--naranja)">
+          <div class="stat-card-icon" style="background:var(--naranja-claro);color:var(--naranja)">📦</div>
+          <div class="stat-card-info">
+            <h3 id="kpi-rebanos">0</h3>
+            <p>Rebaños Activos</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-panel">
+        <div class="form-group">
+          <label class="form-label">Buscar rebaño</label>
+          <input type="text" class="form-input" id="filtro-nombre" placeholder="Nombre..." oninput="RebanoListPage.aplicarFiltros()">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
           <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer">
             <input type="checkbox" id="toggle-inactivos" onchange="RebanoListPage.toggleInactivos()">
             Mostrar inactivos
           </label>
-          <button class="btn btn-primary" onclick="RebanoListPage.mostrarFormulario()">+ Nuevo Rebaño</button>
         </div>
       </div>
 
@@ -38,10 +77,31 @@ const RebanoListPage = {
     `);
   },
 
-  afterRender() { this.cargar(); },
+  afterRender() {
+    this.cargarKpis();
+    this.cargar();
+  },
+
+  async cargarKpis() {
+    try {
+      const { data } = await API.get('/rebanos/kpis');
+      const k = data.data || {};
+      document.getElementById('kpi-animales').textContent = k.total_animales ?? 0;
+      document.getElementById('kpi-nacidos').textContent = k.total_nacidos ?? 0;
+      document.getElementById('kpi-muertes').textContent = k.total_muertes ?? 0;
+      document.getElementById('kpi-rebanos').textContent = k.rebanos_activos ?? 0;
+    } catch (e) {
+      // los KPIs se quedan en 0 si falla la carga
+    }
+  },
 
   toggleInactivos() {
     this.mostrarInactivos = document.getElementById('toggle-inactivos').checked;
+    this.cargar();
+  },
+
+  aplicarFiltros() {
+    this.filtroNombre = (document.getElementById('filtro-nombre')?.value || '').toLowerCase().trim();
     this.cargar();
   },
 
@@ -50,8 +110,13 @@ const RebanoListPage = {
       const params = {};
       if (this.mostrarInactivos) params.inactivos = 1;
       const { data } = await API.get('/rebanos', params);
-      const rebanos = Array.isArray(data) ? data : (data.data || []);
+      let rebanos = Array.isArray(data) ? data : (data.data || []);
       const tbody = document.getElementById('rebanos-tbody');
+
+      // Filtrar por nombre localmente
+      if (this.filtroNombre) {
+        rebanos = rebanos.filter(r => r.nombre.toLowerCase().includes(this.filtroNombre));
+      }
 
       if (rebanos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay rebaños creados</td></tr>';
@@ -64,7 +129,7 @@ const RebanoListPage = {
         const fechaInicio = r.fecha_inicio ? new Date(r.fecha_inicio + 'T00:00:00').toLocaleDateString('es-CO') : '—';
         return `
           <tr style="${!r.activo ? 'opacity:0.5' : ''}">
-            <td><strong>${r.nombre}</strong>${!r.activo ? ' <span class="badge badge-rojo">Inactivo</span>' : ''}</td>
+            <td><a href="#/rebanos/${r.id}" class="animal-link"><strong>${r.nombre}</strong></a>${!r.activo ? ' <span class="badge badge-rojo">Inactivo</span>' : ''}</td>
             <td><span style="font-size:0.85rem;color:var(--muted)">${fechaInicio}</span></td>
             <td><span class="badge badge-verde">${r.total_animales} animales</span></td>
             <td>${costo ? '$' + costo.toFixed(2) : '—'}</td>
@@ -176,6 +241,7 @@ const RebanoListPage = {
     try {
       await API.post('/rebanos', { nombre, costo_cabeza: costo || null, fecha_inicio: fechaInicio || null });
       this.cerrarModal();
+      this.cargarKpis();
       this.cargar();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al guardar');
@@ -237,6 +303,7 @@ const RebanoListPage = {
     if (!confirm(`¿Eliminar el rebaño "${nombre}"?`)) return;
     try {
       await API.delete(`/rebanos/${id}`);
+      this.cargarKpis();
       this.cargar();
     } catch (err) {
       alert(err.response?.data?.error || 'Error al eliminar');

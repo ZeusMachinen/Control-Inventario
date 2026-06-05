@@ -114,7 +114,7 @@ class ReproduccionController
         );
 
         $id = Database::lastInsertId();
-        $this->showCelo($id);
+        Response::json(['id' => (int)$id, 'mensaje' => 'Diagnóstico de celo registrado correctamente']);
     }
 
     /**
@@ -282,7 +282,7 @@ class ReproduccionController
         );
 
         $nuevoId = Database::lastInsertId();
-        $this->showServicio($nuevoId);
+        Response::json(['id' => (int)$nuevoId, 'mensaje' => 'Servicio registrado correctamente']);
     }
 
     /**
@@ -377,7 +377,7 @@ class ReproduccionController
             'SELECT dg.*, a.nombre as animal_nombre, s.fecha as servicio_fecha, s.tipo as servicio_tipo
              FROM diagnosticos_gestacion dg
              JOIN animales a ON a.id = dg.animal_id
-             JOIN servicios s ON s.id = dg.servicio_id
+             LEFT JOIN servicios s ON s.id = dg.servicio_id
              WHERE dg.usuario_id = :uid
              ORDER BY dg.fecha DESC',
             [':uid' => $uid]
@@ -402,10 +402,6 @@ class ReproduccionController
         // Si viene de ruta anidada, el {id} es el servicio_id
         $servicioId = $id ?? $datos['servicio_id'] ?? null;
 
-        if (!$servicioId) {
-            Response::error('El servicio_id es requerido', 422);
-        }
-
         $validador = new Validator();
         if (!$validador->validar($datos, [
             'fecha'     => 'requerido|fecha',
@@ -415,21 +411,32 @@ class ReproduccionController
             Response::error('Datos inválidos', 422, $validador->errores());
         }
 
-        // Validar que el servicio existe y pertenece al usuario
-        $servicio = Database::queryOne(
-            'SELECT s.id, s.animal_id FROM servicios s
-             WHERE s.id = :id AND s.usuario_id = :uid',
-            [':id' => (int)$servicioId, ':uid' => $uid]
-        );
-        if (!$servicio) Response::error('Servicio no encontrado', 404);
-
-        $animalId = (int)$servicio['animal_id'];
+        if ($servicioId) {
+            // Validar que el servicio existe y pertenece al usuario
+            $servicio = Database::queryOne(
+                'SELECT s.id, s.animal_id FROM servicios s
+                 WHERE s.id = :id AND s.usuario_id = :uid',
+                [':id' => (int)$servicioId, ':uid' => $uid]
+            );
+            if (!$servicio) Response::error('Servicio no encontrado', 404);
+            $animalId = (int)$servicio['animal_id'];
+        } else {
+            // Sin servicio asociado — obtener animal_id del payload
+            $animalId = (int)($datos['animal_id'] ?? 0);
+            if (!$animalId) Response::error('Debe especificar un animal_id si no asocia un servicio', 422);
+            // Validar que el animal existe y es del usuario
+            $animal = Database::queryOne(
+                'SELECT id FROM animales WHERE id = :id AND usuario_id = :uid AND activo = 1',
+                [':id' => $animalId, ':uid' => $uid]
+            );
+            if (!$animal) Response::error('Animal no encontrado', 404);
+        }
 
         Database::execute(
             'INSERT INTO diagnosticos_gestacion (servicio_id, animal_id, fecha, metodo, resultado, observaciones, usuario_id)
              VALUES (:servicio, :animal, :fecha, :metodo, :resultado, :obs, :uid)',
             [
-                ':servicio'  => (int)$servicioId,
+                ':servicio'  => $servicioId ? (int)$servicioId : null,
                 ':animal'    => $animalId,
                 ':fecha'     => $datos['fecha'],
                 ':metodo'    => $datos['metodo'] ?? 'Palpación',
@@ -449,7 +456,7 @@ class ReproduccionController
         // Si es Positivo, el estado se mantiene como Prenada (sin cambios)
 
         $nuevoId = Database::lastInsertId();
-        $this->showDiagnosticoGestacion($nuevoId);
+        Response::json(['id' => (int)$nuevoId, 'mensaje' => 'Diagnóstico de gestación registrado correctamente']);
     }
 
     /**
@@ -463,7 +470,7 @@ class ReproduccionController
             'SELECT dg.*, a.nombre as animal_nombre, s.fecha as servicio_fecha, s.tipo as servicio_tipo
              FROM diagnosticos_gestacion dg
              JOIN animales a ON a.id = dg.animal_id
-             JOIN servicios s ON s.id = dg.servicio_id
+             LEFT JOIN servicios s ON s.id = dg.servicio_id
              WHERE dg.id = :id AND dg.usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
@@ -583,9 +590,6 @@ class ReproduccionController
         );
         if (!$madre) Response::error('Animal no encontrado', 404);
         if ($madre['sexo'] !== 'Hembra') Response::error('Solo hembras pueden tener partos', 422);
-        if ($madre['estado_reproductivo'] !== 'Prenada') {
-            Response::error('El animal no está en estado de preñez', 422);
-        }
 
         // Si se vincula a diagnóstico de gestación, validar
         if ($diagnosticoGestacionId) {
@@ -661,7 +665,7 @@ class ReproduccionController
             [':id' => $animalId]
         );
 
-        $this->showParto($partoId);
+        Response::json(['id' => (int)$partoId, 'mensaje' => 'Parto registrado correctamente']);
     }
 
     /**

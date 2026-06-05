@@ -7,6 +7,7 @@ const AnimalListPage = {
 
   async render() {
     try {
+      this.filtroRebanoUrl = null;
       // Leer query params del hash
       const hash = window.location.hash;
       const qIdx = hash.indexOf('?');
@@ -36,6 +37,10 @@ const AnimalListPage = {
         </div>
 
         <div class="filter-panel">
+          <div class="form-group">
+            <label class="form-label">Buscar nombre</label>
+            <input type="text" class="form-input" id="filtro-nombre" placeholder="Nombre..." oninput="AnimalListPage.aplicarFiltro()">
+          </div>
           <div class="form-group">
             <label class="form-label">Sexo</label>
             <select class="form-select" id="filtro-sexo" onchange="AnimalListPage.aplicarFiltro()">
@@ -200,7 +205,7 @@ const AnimalListPage = {
       tbody.innerHTML = animales.map(a => `
         <tr>
           <td><input type="checkbox" class="animal-checkbox" data-id="${a.id}" onchange="AnimalListPage.toggleAnimal(this, ${a.id})"></td>
-          <td><strong>${a.nombre}</strong></td>
+          <td><a href="#/animales/${a.id}" class="animal-link"><strong>${a.nombre}</strong></a></td>
           <td><span class="badge ${a.sexo === 'Macho' ? 'badge-sexo-macho' : 'badge-sexo-hembra'}">${a.sexo}</span></td>
           <td>${DateUtil.edadTexto(a.fecha_nacimiento)}</td>
           <td>${a.rebano_nombre || '-'}</td>
@@ -210,9 +215,7 @@ const AnimalListPage = {
           <td>${a.estado_reproductivo ? `<span class="badge badge-${a.estado_reproductivo === 'Prenada' ? 'naranja' : 'azul'}">${a.estado_reproductivo}</span>` : '-'}</td>
           <td class="table-actions">
             <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/animales/${a.id}')">Ver</button>
-            <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/animales/${a.id}/editar')">✏️</button>
             <button class="btn btn-sm btn-info" onclick="AnimalListPage.moverIndividual(${a.id})" title="Mover a otro rebaño">↗️ Mover</button>
-            <button class="btn btn-sm btn-danger" onclick="AnimalListPage.eliminar(${a.id}, '${a.nombre}')">🗑️</button>
           </td>
         </tr>
       `).join('');
@@ -243,10 +246,12 @@ const AnimalListPage = {
 
   aplicarFiltro() {
     this.filtros = {};
+    const nombre = document.getElementById('filtro-nombre')?.value.trim();
     const sexo = document.getElementById('filtro-sexo')?.value;
     const rebano = document.getElementById('filtro-rebano')?.value;
     const etapa = document.getElementById('filtro-etapa')?.value;
     const estado = document.getElementById('filtro-estado')?.value;
+    if (nombre) this.filtros.search = nombre;
     if (sexo) this.filtros.sexo = sexo;
     if (rebano) this.filtros.rebano_id = rebano;
     if (etapa) this.filtros.etapa = etapa;
@@ -258,15 +263,5 @@ const AnimalListPage = {
   moverIndividual(id) {
     this.seleccionados = new Set([id]);
     this.mostrarMoverModal();
-  },
-
-  async eliminar(id, nombre) {
-    if (!confirm(`¿Eliminar a "${nombre}"?`)) return;
-    try {
-      await API.delete(`/animales/${id}`);
-      this.cargarAnimales();
-    } catch (error) {
-      alert(error.response?.data?.error || 'Error al eliminar');
-    }
   },
 };

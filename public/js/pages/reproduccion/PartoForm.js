@@ -11,6 +11,7 @@ const PartoFormPage = {
       const { data: animals } = await API.get('/animales', {
         por_pagina: 1000,
         sexo: 'Hembra',
+        edad_min: 15,
       });
       const animalsList = animals.data || [];
 

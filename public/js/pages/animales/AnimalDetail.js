@@ -86,12 +86,12 @@ const AnimalDetailPage = {
     }
   },
 
-  afterRender() {
-    this.cargarHistoriales();
+  afterRender(params) {
+    const id = params?.id || Router.obtenerRutaActiva()?.params?.id;
+    if (id) this.cargarHistoriales(id);
   },
 
-  async cargarHistoriales() {
-    const id = Router.obtenerRutaActiva().params.id;
+  async cargarHistoriales(id) {
 
     // ─── Hijos ───────────────────────────────────────
     try {

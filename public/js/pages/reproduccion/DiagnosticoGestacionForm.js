@@ -6,7 +6,7 @@ const DiagnosticoGestacionFormPage = {
   async render() {
     try {
       const [animalsRes, serviciosRes] = await Promise.all([
-        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra' }),
+        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 15 }),
         API.get('/reproduccion/servicios'),
       ]);
 
@@ -119,17 +119,13 @@ const DiagnosticoGestacionFormPage = {
   async guardar(e) {
     e.preventDefault();
     const payload = {
-      servicio_id: document.getElementById('dg-servicio').value,
+      animal_id: document.getElementById('dg-animal').value,
+      servicio_id: document.getElementById('dg-servicio').value || null,
       fecha: document.getElementById('dg-fecha').value,
       metodo: document.getElementById('dg-metodo').value,
       resultado: document.getElementById('dg-resultado').value,
       observaciones: document.getElementById('dg-observaciones').value || null,
     };
-
-    if (!payload.servicio_id) {
-      alert('Debe seleccionar un servicio asociado');
-      return;
-    }
 
     try {
       await API.post('/reproduccion/diagnosticos-gestacion', payload);

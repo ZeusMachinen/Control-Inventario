@@ -101,7 +101,7 @@ const LoginPage = {
       localStorage.setItem('refresh_token', data.data.refresh_token);
       localStorage.setItem('usuario', JSON.stringify(data.data.usuario));
 
-      Router.navegar('/dashboard');
+      Router.navegar('/estadisticas');
     } catch (error) {
       const msg = error.response?.data?.error || 'Error al iniciar sesión';
       this.mostrarError(msg);
@@ -126,7 +126,7 @@ const LoginPage = {
       localStorage.setItem('refresh_token', data.data.refresh_token);
       localStorage.setItem('usuario', JSON.stringify(data.data.usuario));
 
-      setTimeout(() => Router.navegar('/dashboard'), 500);
+      setTimeout(() => Router.navegar('/estadisticas'), 500);
     } catch (error) {
       const msg = error.response?.data?.error || 'Error al registrarse';
       const detalles = error.response?.data?.detalles;

@@ -29,6 +29,7 @@ return [
     // ─── Rebaños ──────────────────────────────────────────
     'GET|/api/rebanos'                => ['RebanoController', 'index',           true],
     'POST|/api/rebanos'               => ['RebanoController', 'store',          true],
+    'GET|/api/rebanos/kpis'           => ['RebanoController', 'kpisGlobales',    true],
     'GET|/api/rebanos/{id}'           => ['RebanoController', 'show',            true],
     'PUT|/api/rebanos/{id}'           => ['RebanoController', 'update',          true],
     'DELETE|/api/rebanos/{id}'        => ['RebanoController', 'destroy',         true],
@@ -51,6 +52,7 @@ return [
     'GET|/api/medicamentos/proximos-vencer' => ['MedicamentoController', 'proximosVencer',  true],
     'GET|/api/medicamentos/{id}'            => ['MedicamentoController', 'show',            true],
     'PUT|/api/medicamentos/{id}'            => ['MedicamentoController', 'update',          true],
+    'PUT|/api/medicamentos/{id}/agotar'     => ['MedicamentoController', 'agotar',          true],
     'DELETE|/api/medicamentos/{id}'         => ['MedicamentoController', 'destroy',         true],
 
     // ─── Vacunaciones ──────────────────────────────────────

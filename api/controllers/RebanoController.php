@@ -236,6 +236,48 @@ class RebanoController
     }
 
     /**
+     * KPIs globales del usuario (entre todos los rebaños).
+     * GET /api/rebanos/kpis
+     */
+    public function kpisGlobales(): void
+    {
+        $uid = $this->usuarioId();
+
+        $totalAnimales = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid AND activo = 1",
+            [':uid' => $uid]
+        )['total'] ?? 0;
+
+        $totalNacidos = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid",
+            [':uid' => $uid]
+        )['total'] ?? 0;
+
+        $totalMuertes = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid AND estado_general = 'Muerto'",
+            [':uid' => $uid]
+        )['total'] ?? 0;
+
+        $totalVendidos = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid AND estado_general = 'Vendido'",
+            [':uid' => $uid]
+        )['total'] ?? 0;
+
+        $rebanosActivos = Database::queryOne(
+            "SELECT COUNT(*) as total FROM rebanos WHERE usuario_id = :uid AND activo = 1",
+            [':uid' => $uid]
+        )['total'] ?? 0;
+
+        Response::json([
+            'total_animales'  => (int)$totalAnimales,
+            'total_nacidos'   => (int)$totalNacidos,
+            'total_muertes'   => (int)$totalMuertes,
+            'total_vendidos'  => (int)$totalVendidos,
+            'rebanos_activos' => (int)$rebanosActivos,
+        ]);
+    }
+
+    /**
      * Historial de movimientos de un rebaño.
      * GET /api/rebanos/{id}/movimientos
      */
@@ -261,52 +303,96 @@ class RebanoController
 
     /**
      * Estadísticas de un rebaño: nacimientos, muertes, peso producido.
-     * GET /api/rebanos/{id}/estadisticas
+     * GET /api/rebanos/{id}/estadisticas?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD
      */
     public function estadisticas(string $id): void
     {
         $uid = $this->usuarioId();
 
-        // Nacidos en este rebaño
+        // Filtro opcional de período
+        $fechaDesde = $_GET['fecha_desde'] ?? null;
+        $fechaHasta = $_GET['fecha_hasta'] ?? null;
+        $filtroFecha = '';
+        $params = [':id' => (int)$id, ':uid' => $uid];
+        if ($fechaDesde && $fechaHasta) {
+            $filtroFecha = ' AND a.fecha_nacimiento BETWEEN :fdesde AND :fhasta';
+            $params[':fdesde'] = $fechaDesde;
+            $params[':fhasta'] = $fechaHasta;
+        }
+
+        // Nacidos: todos los animales que están o estuvieron en este rebaño (rebano_id porque
+        // rebano_nacimiento_id nunca se popula en la creación de animales).
         $nacidos = Database::queryOne(
-            'SELECT COUNT(*) as total FROM animales WHERE rebano_nacimiento_id = :id AND usuario_id = :uid',
-            [':id' => (int)$id, ':uid' => $uid]
+            'SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid' . $filtroFecha,
+            $params
         )['total'] ?? 0;
 
-        // Muertes (nacidos en este rebaño que murieron)
-        $muertes = Database::queryOne(
-            "SELECT COUNT(*) as total FROM animales WHERE rebano_nacimiento_id = :id AND usuario_id = :uid AND estado_general = 'Muerto'",
-            [':id' => (int)$id, ':uid' => $uid]
-        )['total'] ?? 0;
+        // ── IMPORTANTE: usamos rebano_id (rebaño actual/de salida) para activos/muertes/vendidos ──
 
-        // Vendidos (nacidos en este rebaño que se vendieron)
-        $vendidos = Database::queryOne(
-            "SELECT COUNT(*) as total FROM animales WHERE rebano_nacimiento_id = :id AND usuario_id = :uid AND estado_general = 'Vendido'",
-            [':id' => (int)$id, ':uid' => $uid]
-        )['total'] ?? 0;
+        $paramsRebano = [':id' => (int)$id, ':uid' => $uid];
 
-        // Activos actuales nacidos aquí
+        // Activos: animales que están AHORA en este rebaño
         $activos = Database::queryOne(
-            "SELECT COUNT(*) as total FROM animales WHERE rebano_nacimiento_id = :id AND usuario_id = :uid AND estado_general = 'Activo'",
-            [':id' => (int)$id, ':uid' => $uid]
+            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.estado_general = 'Activo'",
+            $paramsRebano
         )['total'] ?? 0;
 
-        // Kilos producidos (suma de peso_salida - peso_entrada de los que salieron)
+        // Muertes: animales que MURIERON estando en este rebaño (con filtro de fecha de salida)
+        $filtroM = '';
+        $paramsM = [':id' => (int)$id, ':uid' => $uid];
+        if ($fechaDesde && $fechaHasta) {
+            $filtroM = ' AND a.fecha_salida BETWEEN :fdesde AND :fhasta';
+            $paramsM[':fdesde'] = $fechaDesde;
+            $paramsM[':fhasta'] = $fechaHasta;
+        }
+        $muertes = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.estado_general = 'Muerto'" . $filtroM,
+            $paramsM
+        )['total'] ?? 0;
+
+        // Vendidos: animales que se VENDIERON estando en este rebaño (con filtro de fecha de salida)
+        $filtroV = '';
+        $paramsV = [':id' => (int)$id, ':uid' => $uid];
+        if ($fechaDesde && $fechaHasta) {
+            $filtroV = ' AND a.fecha_salida BETWEEN :fdesde AND :fhasta';
+            $paramsV[':fdesde'] = $fechaDesde;
+            $paramsV[':fhasta'] = $fechaHasta;
+        }
+        $vendidos = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.estado_general = 'Vendido'" . $filtroV,
+            $paramsV
+        )['total'] ?? 0;
+
+        // Kilos producidos (con filtro de fecha de salida)
+        $paramsK = [':id' => (int)$id, ':uid' => $uid];
+        $filtroK = '';
+        if ($fechaDesde && $fechaHasta) {
+            $filtroK = ' AND a.fecha_salida BETWEEN :fdesde AND :fhasta';
+            $paramsK[':fdesde'] = $fechaDesde;
+            $paramsK[':fhasta'] = $fechaHasta;
+        }
         $kilos = Database::queryOne(
-            "SELECT COALESCE(SUM(peso_salida - peso_entrada), 0) as total
-             FROM animales
-             WHERE rebano_id = :id AND usuario_id = :uid AND estado_general != 'Activo'
-               AND peso_salida IS NOT NULL AND peso_entrada IS NOT NULL",
-            [':id' => (int)$id, ':uid' => $uid]
+            "SELECT COALESCE(SUM(a.peso_salida - a.peso_entrada), 0) as total
+             FROM animales a
+             WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.estado_general != 'Activo'
+               AND a.peso_salida IS NOT NULL AND a.peso_entrada IS NOT NULL" . $filtroK,
+            $paramsK
         )['total'] ?? 0;
 
-        // Dinero generado por ventas de animales de este rebaño
+        // Dinero generado por ventas de animales de este rebaño (con filtro de fecha de venta)
+        $paramsI = [':id' => (int)$id, ':uid' => $uid];
+        $filtroI = '';
+        if ($fechaDesde && $fechaHasta) {
+            $filtroI = ' AND v.fecha BETWEEN :fdesde AND :fhasta';
+            $paramsI[':fdesde'] = $fechaDesde;
+            $paramsI[':fhasta'] = $fechaHasta;
+        }
         $ingresos = Database::queryOne(
             'SELECT COALESCE(SUM(v.precio), 0) as total
              FROM ventas v
              JOIN animales a ON a.id = v.animal_id
-             WHERE a.rebano_id = :id AND a.usuario_id = :uid',
-            [':id' => (int)$id, ':uid' => $uid]
+             WHERE a.rebano_id = :id AND a.usuario_id = :uid' . $filtroI,
+            $paramsI
         )['total'] ?? 0;
 
         Response::json([

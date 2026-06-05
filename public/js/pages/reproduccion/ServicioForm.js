@@ -3,21 +3,22 @@
  * POST /api/reproduccion/servicios
  */
 const ServicioFormPage = {
+  celosSinServicio: [],
+
   async render() {
     try {
       const [animalsRes, reproductoresRes] = await Promise.all([
-        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra' }),
-        API.get('/animales', { por_pagina: 1000, sexo: 'Macho' }),
+        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 15 }),
+        API.get('/animales', { por_pagina: 1000, sexo: 'Macho', edad_min: 15 }),
       ]);
 
       const animals = animalsRes.data.data || [];
       const reproductores = reproductoresRes.data.data || [];
 
       // Fetch diagnosticos_celo sin servicio asociado
-      let celosSinServicio = [];
       try {
         const { data: celos } = await API.get('/reproduccion/celos');
-        celosSinServicio = celos?.data || [];
+        this.celosSinServicio = celos?.data || [];
       } catch (_) { /* opcional */ }
 
       return MainLayout.render(`
@@ -32,7 +33,7 @@ const ServicioFormPage = {
               <div class="form-row">
                 <div class="form-group">
                   <label class="form-label">Animal (Hembra) *</label>
-                  <select class="form-select" id="servicio-animal" required>
+                  <select class="form-select" id="servicio-animal" required onchange="ServicioFormPage.filtrarCelos()">
                     <option value="">Seleccione...</option>
                     ${animals.map(a => `
                       <option value="${a.id}">${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
@@ -70,9 +71,6 @@ const ServicioFormPage = {
                 <label class="form-label">Diagnóstico de Celo asociado</label>
                 <select class="form-select" id="servicio-celo">
                   <option value="">Sin diagnóstico asociado</option>
-                  ${celosSinServicio.map(c => `
-                    <option value="${c.id}">#${c.id} — ${c.animal_nombre} — ${DateUtil.formatear(c.fecha_inicio)}</option>
-                  `).join('')}
                 </select>
               </div>
 
@@ -100,6 +98,19 @@ const ServicioFormPage = {
       `);
     } catch (e) {
       return MainLayout.render(`<div class="alert alert-danger">Error: ${e.message}</div>`);
+    }
+  },
+
+  filtrarCelos() {
+    const animalId = document.getElementById('servicio-animal').value;
+    const select = document.getElementById('servicio-celo');
+    select.innerHTML = '<option value="">Sin diagnóstico asociado</option>';
+    if (animalId) {
+      this.celosSinServicio
+        .filter(c => c.animal_id == animalId)
+        .forEach(c => {
+          select.innerHTML += `<option value="${c.id}">#${c.id} — ${DateUtil.formatear(c.fecha_inicio)}</option>`;
+        });
     }
   },
 
