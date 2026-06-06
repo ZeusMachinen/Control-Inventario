@@ -23,8 +23,13 @@
   Router.registrar('/reproduccion/diagnosticos/nuevo', () => DiagnosticoGestacionFormPage.render());
   Router.registrar('/reproduccion/partos/nuevo',   () => PartoFormPage.render());
   Router.registrar('/estadisticas', () => DashboardStatsPage.render());
-  Router.registrar('/ventas',       () => VentaListPage.render());
-  Router.registrar('/ventas/nuevo', () => VentaFormPage.render());
+  Router.registrar('/compras',         () => CompraListPage.render());
+  Router.registrar('/compras/nuevo',   () => CompraFormPage.render());
+  Router.registrar('/compras/:id',     (p) => CompraDetailPage.render(p));
+  Router.registrar('/ventas',         () => VentaListPage.render());
+  Router.registrar('/ventas/nuevo',   () => VentaFormPage.render());
+  Router.registrar('/ventas/:id',     (p) => VentaDetailPage.render(p));
+  Router.registrar('/ventas/:id/editar', (p) => VentaFormPage.render(p));
   Router.registrar('/rebanos/:id/movimientos', (p) => RebanoMovimientosPage.render(p));
   Router.registrar('/rebanos/:id/costos', (p) => CostosRebanoPage.render(p));
   Router.registrar('/historial',     () => HistorialPage.render());
@@ -46,7 +51,11 @@
     '/estadisticas':                 () => DashboardStatsPage.afterRender(),
     '/historial':                    () => HistorialPage.afterRender(),
     '/gastos':                       () => GastosPage.afterRender(),
-    // VentaListPage carga datos en render(), no necesita afterRender
+    '/compras':                      () => CompraListPage.afterRender(),
+    '/compras/nuevo':                () => CompraFormPage.afterRender?.(),
+    '/ventas':                       () => VentaListPage.afterRender(),
+    '/ventas/nuevo':                 () => VentaFormPage.afterRender?.(),
+    '/ventas/:id/editar':            (p) => VentaFormPage.afterRender?.(),
   };
 
   const originalResolver = Router.resolver.bind(Router);

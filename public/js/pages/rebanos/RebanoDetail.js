@@ -231,7 +231,7 @@ const RebanoDetailPage = {
       document.getElementById('kpi-muertes').textContent = k.muertes ?? 0;
       document.getElementById('kpi-vendidos').textContent = k.vendidos ?? 0;
 
-      const valor = this.costoPorCabeza * (k.activos || 0);
+      const valor = this.costoPorCabeza * (k.activos_pastaje ?? k.activos ?? 0);
       document.getElementById('kpi-valor').textContent =
         this.costoPorCabeza > 0 ? '$' + valor.toLocaleString('es-CO', { minimumFractionDigits: 2 }) : '—';
 

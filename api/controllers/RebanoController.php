@@ -22,7 +22,9 @@ class RebanoController
         $uid = $this->usuarioId();
 
         $rebanos = Database::query(
-            'SELECT r.*, (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1) as total_animales
+            'SELECT r.*,
+                    (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1) as total_animales,
+                    (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1 AND a.etapa != \'Ternero\') as total_animales_pastaje
              FROM rebanos r
              WHERE r.usuario_id = :uid' . (!empty($_GET['inactivos']) ? '' : ' AND r.activo = 1') . '
              ORDER BY r.activo DESC, r.nombre',
@@ -122,6 +124,16 @@ class RebanoController
     public function destroy(string $id): void
     {
         $uid = $this->usuarioId();
+
+        // No permitir inactivar un rebaño con animales activos
+        $animales = Database::queryOne(
+            'SELECT COUNT(*) as total FROM animales WHERE rebano_id = :id AND usuario_id = :uid AND activo = 1',
+            [':id' => (int)$id, ':uid' => $uid]
+        );
+        if ($animales && (int)$animales['total'] > 0) {
+            Response::error('No se puede inactivar un rebaño con animales activos', 400);
+        }
+
         Database::execute(
             'UPDATE rebanos SET activo = 0 WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
@@ -333,7 +345,13 @@ class RebanoController
 
         // Activos: animales que están AHORA en este rebaño
         $activos = Database::queryOne(
-            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.estado_general = 'Activo'",
+            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.activo = 1",
+            $paramsRebano
+        )['total'] ?? 0;
+
+        // Activos que pagan pastaje (excluye Terneros < 12 meses)
+        $activosPastaje = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.activo = 1 AND a.etapa != 'Ternero'",
             $paramsRebano
         )['total'] ?? 0;
 
@@ -400,6 +418,7 @@ class RebanoController
             'muertes' => (int)$muertes,
             'vendidos' => (int)$vendidos,
             'activos' => (int)$activos,
+            'activos_pastaje' => (int)$activosPastaje,
             'kilos_producidos' => (float)$kilos,
             'ingresos_generados' => (float)$ingresos,
         ]);

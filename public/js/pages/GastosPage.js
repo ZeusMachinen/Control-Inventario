@@ -5,6 +5,9 @@ const GastosPage = {
   anioActual: new Date().getFullYear().toString(),
   desdeActual: '',
   hastaActual: '',
+  columnaOrden: null,
+  direccionOrden: 'asc',
+  datos: [],
 
   async render() {
     return MainLayout.render(`
@@ -55,16 +58,16 @@ const GastosPage = {
       <div class="card">
         <div class="table-container">
           <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Descripción</th>
-                <th>Tipo</th>
-                <th>Rebaño</th>
-                <th>Monto</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
+              <thead>
+                <tr>
+                  <th onclick="GastosPage.ordenarPor('mes')" data-columna="mes" class="th-sortable">Fecha</th>
+                  <th onclick="GastosPage.ordenarPor('descripcion')" data-columna="descripcion" class="th-sortable">Descripción</th>
+                  <th onclick="GastosPage.ordenarPor('tipo')" data-columna="tipo" class="th-sortable">Tipo</th>
+                  <th onclick="GastosPage.ordenarPor('rebano_nombre')" data-columna="rebano_nombre" class="th-sortable">Rebaño</th>
+                  <th onclick="GastosPage.ordenarPor('monto')" data-columna="monto" class="th-sortable">Monto</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
             <tbody id="gastos-tbody">
               <tr><td colspan="6" class="loading"><div class="spinner"></div>Cargando...</td></tr>
             </tbody>
@@ -121,7 +124,7 @@ const GastosPage = {
       }
 
       const { data } = await API.get('/gastos', params);
-      const gastos = data.data?.gastos || [];
+      this.datos = data.data?.gastos || [];
       const totales = data.data?.totales || {};
 
       // Resumen de totales
@@ -135,29 +138,66 @@ const GastosPage = {
         </div>
       `).join('');
 
-      const tbody = document.getElementById('gastos-tbody');
-      if (gastos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay gastos para este período</td></tr>';
-        return;
-      }
-
-      const tipoLabels = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' };
-      tbody.innerHTML = gastos.map(g => `
-        <tr>
-          <td>${new Date(g.mes + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long' })}</td>
-          <td>${g.descripcion}</td>
-          <td><span class="badge badge-${g.tipo === 'medicamentos' ? 'naranja' : g.tipo === 'compras' ? 'rojo' : 'verde'}">${tipoLabels[g.tipo] || g.tipo}</span></td>
-          <td>${g.rebano_nombre || '—'}</td>
-          <td><strong>$${parseFloat(g.monto).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</strong></td>
-          <td class="table-actions">
-            <button class="btn btn-sm btn-secondary" onclick="GastosPage.editar(${JSON.stringify(g).replace(/"/g, '&quot;')})">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="GastosPage.eliminar(${g.id}, '${g.descripcion}')">🗑️</button>
-          </td>
-        </tr>
-      `).join('');
+      this.renderTabla();
     } catch (e) {
       document.getElementById('gastos-tbody').innerHTML = `<tr><td colspan="6" class="alert alert-danger">Error: ${e.message}</td></tr>`;
     }
+  },
+
+  obtenerValor(columna, item) {
+    const map = {
+      mes: item.mes,
+      descripcion: item.descripcion,
+      tipo: item.tipo,
+      rebano_nombre: item.rebano_nombre,
+      monto: parseFloat(item.monto) || 0,
+    };
+    return map[columna];
+  },
+
+  ordenarPor(columna) {
+    if (this.columnaOrden === columna) {
+      this.direccionOrden = SortUtil.toggleDir(this.direccionOrden);
+    } else {
+      this.columnaOrden = columna;
+      this.direccionOrden = 'asc';
+    }
+    SortUtil.actualizarEncabezados('gastos-tbody', this.columnaOrden, this.direccionOrden);
+    this.renderTabla();
+  },
+
+  renderTabla() {
+    const tbody = document.getElementById('gastos-tbody');
+    const gastos = [...this.datos];
+
+    if (this.columnaOrden) {
+      gastos.sort((a, b) => SortUtil.comparar(
+        this.obtenerValor(this.columnaOrden, a),
+        this.obtenerValor(this.columnaOrden, b),
+        this.direccionOrden
+      ));
+    }
+
+    if (gastos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay gastos para este período</td></tr>';
+      return;
+    }
+
+    const tipoLabels = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' };
+    tbody.innerHTML = gastos.map(g => `
+      <tr>
+        <td>${new Date(g.mes + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long' })}</td>
+        <td>${g.descripcion}</td>
+        <td><span class="badge badge-${g.tipo === 'medicamentos' ? 'naranja' : g.tipo === 'compras' ? 'rojo' : 'verde'}">${tipoLabels[g.tipo] || g.tipo}</span></td>
+        <td>${g.rebano_nombre || '—'}</td>
+        <td><strong>$${parseFloat(g.monto).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</strong></td>
+        <td class="table-actions">
+          <button class="btn btn-sm btn-secondary" onclick="GastosPage.editar(${JSON.stringify(g).replace(/"/g, '&quot;')})">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="GastosPage.eliminar(${g.id}, '${g.descripcion}')">🗑️</button>
+        </td>
+      </tr>
+      `).join('');
+    SortUtil.actualizarEncabezados('gastos-tbody', this.columnaOrden, this.direccionOrden);
   },
 
   async mostrarFormulario(gasto) {

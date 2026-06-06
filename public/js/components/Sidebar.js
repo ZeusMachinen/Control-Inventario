@@ -48,6 +48,10 @@ const Sidebar = {
 
           <div class="sidebar-section-title">Comercial</div>
 
+          <a class="sidebar-link" href="#/compras">
+            <span class="sidebar-link-icon">📥</span>
+            Compras
+          </a>
           <a class="sidebar-link" href="#/ventas">
             <span class="sidebar-link-icon">💰</span>
             Ventas

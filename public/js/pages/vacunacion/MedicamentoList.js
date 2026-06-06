@@ -2,6 +2,10 @@
  * Página: Inventario de Medicamentos
  */
 const MedicamentoListPage = {
+  columnaOrden: null,
+  direccionOrden: 'asc',
+  datos: [],
+
   async render() {
     return MainLayout.render(`
       <div class="page-header">
@@ -13,7 +17,14 @@ const MedicamentoListPage = {
         <div class="table-container">
           <table>
               <thead>
-                <tr><th>Nombre</th><th>Cantidad</th><th>Presentación</th><th>Precio</th><th>Vencimiento</th><th>Acciones</th></tr>
+                <tr>
+                  <th onclick="MedicamentoListPage.ordenarPor('nombre')" data-columna="nombre" class="th-sortable">Nombre</th>
+                  <th onclick="MedicamentoListPage.ordenarPor('stock')" data-columna="stock" class="th-sortable">Cantidad</th>
+                  <th onclick="MedicamentoListPage.ordenarPor('unidad')" data-columna="unidad" class="th-sortable">Presentación</th>
+                  <th onclick="MedicamentoListPage.ordenarPor('precio')" data-columna="precio" class="th-sortable">Precio</th>
+                  <th onclick="MedicamentoListPage.ordenarPor('fecha_vencimiento')" data-columna="fecha_vencimiento" class="th-sortable">Vencimiento</th>
+                  <th>Acciones</th>
+                </tr>
             </thead>
             <tbody id="med-tbody">
               <tr><td colspan="6" class="loading"><div class="spinner"></div>Cargando...</td></tr>
@@ -28,33 +39,69 @@ const MedicamentoListPage = {
 
   afterRender() { this.cargar(); },
 
+  obtenerValor(columna, item) {
+    const map = {
+      nombre: item.nombre,
+      stock: parseInt(item.stock) || 0,
+      unidad: item.unidad,
+      precio: parseFloat(item.precio) || 0,
+      fecha_vencimiento: item.fecha_vencimiento,
+    };
+    return map[columna];
+  },
+
+  ordenarPor(columna) {
+    if (this.columnaOrden === columna) {
+      this.direccionOrden = SortUtil.toggleDir(this.direccionOrden);
+    } else {
+      this.columnaOrden = columna;
+      this.direccionOrden = 'asc';
+    }
+    SortUtil.actualizarEncabezados('med-tbody', this.columnaOrden, this.direccionOrden);
+    this.renderTabla();
+  },
+
   async cargar() {
     try {
       const { data } = await API.get('/medicamentos');
-      const list = data.data || [];
-      const tbody = document.getElementById('med-tbody');
-
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay medicamentos registrados</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = list.map(m => `
-        <tr>
-          <td><strong>${m.nombre}</strong></td>
-          <td><strong>${parseInt(m.stock)}</strong></td>
-          <td>${m.unidad}</td>
-          <td>${m.precio ? Formateador.moneda(m.precio) : '-'}</td>
-          <td>${m.fecha_vencimiento ? DateUtil.formatear(m.fecha_vencimiento) : '-'}</td>
-          <td class="table-actions">
-            <button class="btn btn-sm btn-secondary" onclick="MedicamentoListPage.editar(${m.id})">✏️</button>
-            <button class="btn btn-sm btn-warning" onclick="MedicamentoListPage.agotar(${m.id})">❌ Agotado</button>
-          </td>
-        </tr>
-      `).join('');
+      this.datos = data.data || [];
+      this.renderTabla();
     } catch (e) {
       document.getElementById('med-tbody').innerHTML = `<tr><td colspan="6" class="alert alert-danger">Error: ${e.message}</td></tr>`;
     }
+  },
+
+  renderTabla() {
+    const tbody = document.getElementById('med-tbody');
+    const list = [...this.datos];
+
+    if (this.columnaOrden) {
+      list.sort((a, b) => SortUtil.comparar(
+        this.obtenerValor(this.columnaOrden, a),
+        this.obtenerValor(this.columnaOrden, b),
+        this.direccionOrden
+      ));
+    }
+
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay medicamentos registrados</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(m => `
+      <tr>
+        <td><strong>${m.nombre}</strong></td>
+        <td><strong>${parseInt(m.stock)}</strong></td>
+        <td>${m.unidad}</td>
+        <td>${m.precio ? Formateador.moneda(m.precio) : '-'}</td>
+        <td>${m.fecha_vencimiento ? DateUtil.formatear(m.fecha_vencimiento) : '-'}</td>
+        <td class="table-actions">
+          <button class="btn btn-sm btn-secondary" onclick="MedicamentoListPage.editar(${m.id})">✏️</button>
+          <button class="btn btn-sm btn-warning" onclick="MedicamentoListPage.agotar(${m.id})">❌ Agotado</button>
+        </td>
+      </tr>
+      `).join('');
+    SortUtil.actualizarEncabezados('med-tbody', this.columnaOrden, this.direccionOrden);
   },
 
   mostrarFormulario() {

@@ -1,6 +1,9 @@
 const RebanoListPage = {
   mostrarInactivos: false,
   filtroNombre: '',
+  columnaOrden: null,
+  direccionOrden: 'asc',
+  datos: [],
 
   async render() {
     return MainLayout.render(`
@@ -58,11 +61,11 @@ const RebanoListPage = {
           <table>
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>Inicio</th>
-                <th>Animales</th>
-                <th>Costo/Cabeza</th>
-                <th>Valor Total</th>
+                <th onclick="RebanoListPage.ordenarPor('nombre')" data-columna="nombre" class="th-sortable">Nombre</th>
+                <th onclick="RebanoListPage.ordenarPor('fecha_inicio')" data-columna="fecha_inicio" class="th-sortable">Inicio</th>
+                <th onclick="RebanoListPage.ordenarPor('animales')" data-columna="animales" class="th-sortable">Animales</th>
+                <th onclick="RebanoListPage.ordenarPor('costo_cabeza')" data-columna="costo_cabeza" class="th-sortable">Costo/Cabeza</th>
+                <th onclick="RebanoListPage.ordenarPor('coste_mensual')" data-columna="coste_mensual" class="th-sortable">Coste Mensual</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -100,6 +103,28 @@ const RebanoListPage = {
     this.cargar();
   },
 
+  obtenerValor(columna, item) {
+    const map = {
+      nombre: item.nombre,
+      fecha_inicio: item.fecha_inicio,
+      animales: parseInt(item.total_animales) || 0,
+      costo_cabeza: parseFloat(item.costo_cabeza) || 0,
+      coste_mensual: (parseFloat(item.costo_cabeza) || 0) * (parseInt(item.total_animales_pastaje) || item.total_animales || 0),
+    };
+    return map[columna];
+  },
+
+  ordenarPor(columna) {
+    if (this.columnaOrden === columna) {
+      this.direccionOrden = SortUtil.toggleDir(this.direccionOrden);
+    } else {
+      this.columnaOrden = columna;
+      this.direccionOrden = 'asc';
+    }
+    SortUtil.actualizarEncabezados('rebanos-tbody', this.columnaOrden, this.direccionOrden);
+    this.renderTabla();
+  },
+
   aplicarFiltros() {
     this.filtroNombre = (document.getElementById('filtro-nombre')?.value || '').toLowerCase().trim();
     this.cargar();
@@ -110,44 +135,56 @@ const RebanoListPage = {
       const params = {};
       if (this.mostrarInactivos) params.inactivos = 1;
       const { data } = await API.get('/rebanos', params);
-      let rebanos = Array.isArray(data) ? data : (data.data || []);
-      const tbody = document.getElementById('rebanos-tbody');
+      this.datos = Array.isArray(data) ? data : (data.data || []);
 
-      // Filtrar por nombre localmente
       if (this.filtroNombre) {
-        rebanos = rebanos.filter(r => r.nombre.toLowerCase().includes(this.filtroNombre));
+        this.datos = this.datos.filter(r => r.nombre.toLowerCase().includes(this.filtroNombre));
       }
 
-      if (rebanos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay rebaños creados</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = rebanos.map(r => {
-        const costo = parseFloat(r.costo_cabeza) || 0;
-        const total = (costo * (r.total_animales || 0)).toFixed(2);
-        const fechaInicio = r.fecha_inicio ? new Date(r.fecha_inicio + 'T00:00:00').toLocaleDateString('es-CO') : '—';
-        return `
-          <tr style="${!r.activo ? 'opacity:0.5' : ''}">
-            <td><a href="#/rebanos/${r.id}" class="animal-link"><strong>${r.nombre}</strong></a>${!r.activo ? ' <span class="badge badge-rojo">Inactivo</span>' : ''}</td>
-            <td><span style="font-size:0.85rem;color:var(--muted)">${fechaInicio}</span></td>
-            <td><span class="badge badge-verde">${r.total_animales} animales</span></td>
-            <td>${costo ? '$' + costo.toFixed(2) : '—'}</td>
-            <td>${costo ? '$' + total : '—'}</td>
-            <td class="table-actions">
-              <button class="btn btn-sm btn-info" onclick="RebanoListPage.verEstadisticas(${r.id}, '${r.nombre}')">📊</button>
-              <button class="btn btn-sm btn-primary" onclick="Router.navegar('/rebanos/${r.id}/costos')" title="Costos mensuales">💰</button>
-              ${r.activo ? `<button class="btn btn-sm btn-secondary" onclick="RebanoListPage.editar(${r.id}, '${r.nombre}', ${r.costo_cabeza || ''}, '${r.fecha_inicio || ''}')">✏️</button>` : ''}
-              <button class="btn btn-sm btn-info" onclick="Router.navegar('/rebanos/${r.id}/movimientos')">📋</button>
-              <button class="btn btn-sm btn-outline" onclick="Router.navegar('/animales?rebano_id=${r.id}')">🐮 Ver</button>
-              <button class="btn btn-sm btn-danger" onclick="RebanoListPage.eliminar(${r.id}, '${r.nombre}')">🗑️</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
+      this.renderTabla();
     } catch (e) {
       document.getElementById('rebanos-tbody').innerHTML = `<tr><td colspan="6" class="alert alert-danger">Error: ${e.message}</td></tr>`;
     }
+  },
+
+  renderTabla() {
+    const tbody = document.getElementById('rebanos-tbody');
+    const rebanos = [...this.datos];
+
+    if (this.columnaOrden) {
+      rebanos.sort((a, b) => SortUtil.comparar(
+        this.obtenerValor(this.columnaOrden, a),
+        this.obtenerValor(this.columnaOrden, b),
+        this.direccionOrden
+      ));
+    }
+
+    if (rebanos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay rebaños creados</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rebanos.map(r => {
+      const costo = parseFloat(r.costo_cabeza) || 0;
+      const cabezasPastaje = parseInt(r.total_animales_pastaje) || r.total_animales || 0;
+      const total = (costo * cabezasPastaje).toFixed(2);
+      const fechaInicio = r.fecha_inicio ? new Date(r.fecha_inicio + 'T00:00:00').toLocaleDateString('es-CO') : '—';
+      return `
+        <tr style="${!r.activo ? 'opacity:0.5' : ''}">
+          <td><a href="#/rebanos/${r.id}" class="animal-link"><strong>${r.nombre}</strong></a>${!r.activo ? ' <span class="badge badge-rojo">Inactivo</span>' : ''}</td>
+          <td><span style="font-size:0.85rem;color:var(--muted)">${fechaInicio}</span></td>
+          <td><span class="badge badge-verde">${r.total_animales} animales</span></td>
+          <td>${costo ? '$' + costo.toFixed(2) : '—'}</td>
+          <td>${costo ? '$' + total : '—'}</td>
+          <td class="table-actions">
+            <button class="btn btn-sm btn-outline" onclick="Router.navegar('/rebanos/${r.id}')">🐮 Ver</button>
+            ${r.activo ? `<button class="btn btn-sm btn-secondary" onclick="RebanoListPage.editar(${r.id}, '${r.nombre}', ${r.costo_cabeza || ''}, '${r.fecha_inicio || ''}')">✏️ Editar</button>
+            <button class="btn btn-sm btn-danger" onclick="RebanoListPage.eliminar(${r.id}, '${r.nombre}', ${r.total_animales || 0})">Inactivar</button>` : ''}
+          </td>
+        </tr>
+      `;
+    }).join('');
+    SortUtil.actualizarEncabezados('rebanos-tbody', this.columnaOrden, this.direccionOrden);
   },
 
   async verEstadisticas(id, nombre) {
@@ -299,8 +336,12 @@ const RebanoListPage = {
     }
   },
 
-  async eliminar(id, nombre) {
-    if (!confirm(`¿Eliminar el rebaño "${nombre}"?`)) return;
+  async eliminar(id, nombre, totalAnimales) {
+    if (totalAnimales > 0) {
+      alert(`No se puede inactivar "${nombre}" porque tiene ${totalAnimales} animal(es) activo(s). Primero mové o da de baja los animales.`);
+      return;
+    }
+    if (!confirm(`¿Inactivar el rebaño "${nombre}"?`)) return;
     try {
       await API.delete(`/rebanos/${id}`);
       this.cargarKpis();

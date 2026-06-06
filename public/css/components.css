@@ -193,6 +193,21 @@ tbody tr:last-child td {
   gap: var(--spacing-xs);
 }
 
+/* ─── Sortable Table Headers ──────────────────────────── */
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  white-space: nowrap;
+}
+.th-sortable:hover {
+  background: var(--gris-fondo);
+  color: var(--verde-principal);
+}
+.th-sortable.th-active {
+  color: var(--verde-principal);
+}
+
 /* ─── Formularios ────────────────────────────────────── */
 .form-group {
   margin-bottom: var(--spacing-md);
@@ -543,4 +558,39 @@ tbody tr:last-child td {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ─── Grid de detalle (CompraDetail, etc.) ────────── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md, 1rem);
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-label {
+  font-size: 0.8rem;
+  color: var(--gris-texto, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* ─── Table link (nombre clickeable) ──────────────── */
+.table-link {
+  color: var(--verde-principal, #2E7D32);
+  text-decoration: none;
+  font-weight: 500;
+}
+.table-link:hover {
+  text-decoration: underline;
 }

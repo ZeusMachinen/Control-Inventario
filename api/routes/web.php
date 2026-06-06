@@ -110,11 +110,18 @@ return [
     'DELETE|/api/companias/{id}'=> ['CompaniaController', 'destroy',    true],
 
     // ─── Ventas ─────────────────────────────────────────
-    'GET|/api/ventas'            => ['VentaController', 'index',       true],
-    'POST|/api/ventas'           => ['VentaController', 'store',      true],
-    'GET|/api/ventas/compras'    => ['VentaController', 'compras',     true],
-    'GET|/api/ventas/{id}'       => ['VentaController', 'show',        true],
-    'DELETE|/api/ventas/{id}'    => ['VentaController', 'destroy',     true],
+    'GET|/api/ventas'            => ['VentaController', 'index',        true],
+    'POST|/api/ventas'           => ['VentaController', 'store',       true],
+    'GET|/api/ventas/compras'    => ['VentaController', 'compras',      true],
+    'POST|/api/ventas/multiple'  => ['VentaController', 'ventaMultiple', true],
+    'GET|/api/ventas/{id}'       => ['VentaController', 'show',         true],
+    'PUT|/api/ventas/{id}'       => ['VentaController', 'update',       true],
+    'DELETE|/api/ventas/{id}'    => ['VentaController', 'destroy',      true],
+
+    // ─── Compras de animales (lotes) ─────────────────────
+    'GET|/api/compras'           => ['CompraController', 'index',      true],
+    'POST|/api/compras'          => ['CompraController', 'store',      true],
+    'GET|/api/compras/{id}'      => ['CompraController', 'show',       true],
 
     // ─── Gastos ─────────────────────────────────────────
     'GET|/api/gastos'            => ['GastosController', 'index',    true],

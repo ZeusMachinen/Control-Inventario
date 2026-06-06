@@ -248,7 +248,7 @@ class AnimalController
         $uid = $this->usuarioId();
 
         Database::execute(
-            'UPDATE animales SET activo = 0 WHERE id = :id AND usuario_id = :uid',
+            'UPDATE animales SET activo = 0, estado_general = \'Muerto\' WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
 
