@@ -14,6 +14,44 @@ class VacunacionController
     }
 
     /**
+     * Calcula el monto del gasto automático asociado a una vacunación.
+     *
+     * @param array $datos Datos del request (medicamento, animales, etc.)
+     * @param int   $vacunacionId ID de la vacunación ya insertada
+     * @param int   $uid ID del usuario
+     * @return array ['monto' => float, 'descripcion' => string, 'count' => int, 'precio_unitario' => float]
+     */
+    private function calcularMontoGasto(array $datos, int $vacunacionId, int $uid): array
+    {
+        $med = Database::queryOne(
+            'SELECT precio, nombre FROM medicamentos WHERE id = :id AND usuario_id = :uid',
+            [':id' => (int)$datos['medicamento_id'], ':uid' => $uid]
+        );
+        $precio = $med ? (float)($med['precio'] ?? 0) : 0;
+        $medNombre = $med ? $med['nombre'] : 'Desconocido';
+
+        if (!empty($datos['vacunar_rebano']) && !empty($datos['rebano_id'])) {
+            $count = (int)(Database::queryOne(
+                'SELECT COUNT(*) as total FROM vacunacion_animales va WHERE va.vacunacion_id = :vid',
+                [':vid' => $vacunacionId]
+            )['total'] ?? 0);
+        } else {
+            $count = !empty($datos['animales']) && is_array($datos['animales']) ? count($datos['animales']) : 0;
+        }
+
+        $costoVet = (float)($datos['costo_veterinario'] ?? 0);
+        $monto = ($precio * $count) + $costoVet;
+        $descripcion = "Vacunación - {$medNombre} ({$count} animales)";
+
+        return [
+            'monto' => $monto,
+            'descripcion' => $descripcion,
+            'count' => $count,
+            'precio_unitario' => $precio,
+        ];
+    }
+
+    /**
      * Lista eventos de vacunación.
      * GET /api/vacunaciones
      */
