@@ -60,9 +60,11 @@ class VacunacionController
         $uid = $this->usuarioId();
         $vacunaciones = Database::query(
             'SELECT v.*, m.nombre as medicamento_nombre, r.nombre as rebano_nombre,
+                    g.monto as gasto_monto,
                     (SELECT COUNT(*) FROM vacunacion_animales va WHERE va.vacunacion_id = v.id) as total_animales
              FROM vacunaciones v
              JOIN medicamentos m ON m.id = v.medicamento_id
+             LEFT JOIN gastos g ON g.id = v.gasto_id
              LEFT JOIN rebanos r ON r.id = v.rebano_id
              WHERE v.usuario_id = :uid
              ORDER BY v.fecha DESC',
