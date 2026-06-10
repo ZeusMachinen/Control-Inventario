@@ -53,10 +53,10 @@ class GastosController
             $params
         );
 
-        // Totales por tipo
+        // Totales por tipo — usar los MISMOS filtros que el listado
         $totales = Database::query(
-            'SELECT tipo, SUM(monto) as total FROM gastos WHERE usuario_id = :uid GROUP BY tipo',
-            [':uid' => $uid]
+            'SELECT g.tipo, SUM(g.monto) as total FROM gastos g WHERE ' . implode(' AND ', $where) . ' GROUP BY g.tipo',
+            $params
         );
 
         Response::json([
