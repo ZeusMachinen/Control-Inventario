@@ -135,6 +135,39 @@ class VacunacionController
             }
         }
 
+        // === GASTO AUTOMÁTICO ===
+        $gasto = $this->calcularMontoGasto($datos, $vacunacionId, $uid);
+        $mes = date('Y-m-01', strtotime($datos['fecha']));
+        $rebanoId = !empty($datos['rebano_id']) ? (int)$datos['rebano_id'] : null;
+
+        Database::execute(
+            'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
+             VALUES (:tipo, :desc, :monto, :mes, :rebano, :uid)',
+            [
+                ':tipo'   => 'medicamentos',
+                ':desc'   => $gasto['descripcion'],
+                ':monto'  => $gasto['monto'],
+                ':mes'    => $mes,
+                ':rebano' => $rebanoId,
+                ':uid'    => $uid,
+            ]
+        );
+
+        $gastoId = Database::lastInsertId();
+
+        // Sincronizar a costos_mensuales si el gasto tiene rebano_id
+        if ($rebanoId) {
+            require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
+            CostosSyncHelper::sincronizarGasto((int)$gastoId, $uid);
+        }
+
+        // Vincular gasto a vacunación
+        Database::execute(
+            'UPDATE vacunaciones SET gasto_id = :gasto WHERE id = :id',
+            [':gasto' => $gastoId, ':id' => $vacunacionId]
+        );
+        // === FIN GASTO AUTOMÁTICO ===
+
         $this->show($vacunacionId);
     }
 
