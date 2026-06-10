@@ -129,11 +129,13 @@ CREATE TABLE vacunaciones (
   updated_at      TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_vacunacion_medicamento FOREIGN KEY (medicamento_id) REFERENCES medicamentos(id) ON DELETE CASCADE,
   CONSTRAINT fk_vacunacion_rebano      FOREIGN KEY (rebano_id)      REFERENCES rebanos(id) ON DELETE SET NULL,
+  CONSTRAINT fk_vacunacion_gasto       FOREIGN KEY (gasto_id)       REFERENCES gastos(id) ON DELETE SET NULL,
   CONSTRAINT fk_vacunacion_usuario     FOREIGN KEY (usuario_id)     REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_vac_fecha       ON vacunaciones(fecha);
 CREATE INDEX idx_vac_medicamento ON vacunaciones(medicamento_id);
+CREATE INDEX idx_vac_gasto       ON vacunaciones(gasto_id);
 CREATE INDEX idx_vac_usuario     ON vacunaciones(usuario_id);
 
 -- -----------------------------------------------------------
@@ -185,8 +187,9 @@ CREATE TABLE servicios (
   reproductor_id      INT UNSIGNED   NULL,
   reproductor_nombre  VARCHAR(150)   NULL,
   fecha               DATE           NOT NULL,
-  observaciones       TEXT           NULL,
-  usuario_id          INT UNSIGNED   NOT NULL,
+  observaciones   TEXT           NULL,
+  gasto_id        INT UNSIGNED   NULL,
+  usuario_id      INT UNSIGNED   NOT NULL,
   created_at          TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_serv_diagcelo      FOREIGN KEY (diagnostico_celo_id) REFERENCES diagnosticos_celo(id) ON DELETE SET NULL,
