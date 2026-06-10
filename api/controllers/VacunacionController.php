@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/Validator.php';
+require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
 
 class VacunacionController
 {
@@ -159,7 +160,6 @@ class VacunacionController
 
         // Sincronizar a costos_mensuales si el gasto tiene rebano_id
         if ($rebanoId) {
-            require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
             CostosSyncHelper::sincronizarGasto((int)$gastoId, $uid);
         }
 
@@ -210,7 +210,8 @@ class VacunacionController
         $datos = json_decode(file_get_contents('php://input'), true) ?? [];
 
         $existente = Database::queryOne(
-            'SELECT id, gasto_id, fecha FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
+            'SELECT id, gasto_id, fecha, medicamento_id, costo_veterinario, rebano_id
+             FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
         if (!$existente) Response::error('Vacunación no encontrada', 404);
@@ -254,49 +255,55 @@ class VacunacionController
         }
 
         // === GASTO AUTOMÁTICO (UPDATE) ===
-        $gasto = $this->calcularMontoGasto($datos, (int)$id, $uid);
-        $mes = date('Y-m-01', strtotime($datos['fecha'] ?? $existente['fecha']));
-        $rebanoId = !empty($datos['rebano_id']) ? (int)$datos['rebano_id'] : null;
+        // Solo recalcular si cambiaron campos relevantes (medicamento, animales, costo_veterinario, rebano)
+        $medCambio  = isset($datos['medicamento_id']);
+        $vetCambio  = isset($datos['costo_veterinario']);
+        $rebCambio  = isset($datos['rebano_id']);
+        $animCambio = isset($datos['animales']) || isset($datos['vacunar_rebano']);
 
-        if ($existente['gasto_id']) {
-            // Actualizar gasto existente
-            Database::execute(
-                'UPDATE gastos SET monto = :monto, descripcion = :desc, mes = :mes, rebano_id = :rebano WHERE id = :id',
-                [
-                    ':monto' => $gasto['monto'],
-                    ':desc' => $gasto['descripcion'],
-                    ':mes' => $mes,
-                    ':rebano' => $rebanoId,
-                    ':id' => $existente['gasto_id'],
-                ]
-            );
-            if ($rebanoId) {
-                require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
-                CostosSyncHelper::sincronizarGasto((int)$existente['gasto_id'], $uid);
+        if ($medCambio || $vetCambio || $rebCambio || $animCambio) {
+            $gasto = $this->calcularMontoGasto($datos, (int)$id, $uid);
+            $mes = date('Y-m-01', strtotime($datos['fecha'] ?? $existente['fecha']));
+            $rebanoId = !empty($datos['rebano_id']) ? (int)$datos['rebano_id'] : null;
+
+            if ($existente['gasto_id']) {
+                // Actualizar gasto existente
+                Database::execute(
+                    'UPDATE gastos SET monto = :monto, descripcion = :desc, mes = :mes, rebano_id = :rebano WHERE id = :id',
+                    [
+                        ':monto' => $gasto['monto'],
+                        ':desc' => $gasto['descripcion'],
+                        ':mes' => $mes,
+                        ':rebano' => $rebanoId,
+                        ':id' => $existente['gasto_id'],
+                    ]
+                );
+                if ($rebanoId) {
+                    CostosSyncHelper::sincronizarGasto((int)$existente['gasto_id'], $uid);
+                }
+            } else {
+                // Crear nuevo gasto
+                Database::execute(
+                    'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
+                     VALUES (:tipo, :desc, :monto, :mes, :rebano, :uid)',
+                    [
+                        ':tipo' => 'medicamentos',
+                        ':desc' => $gasto['descripcion'],
+                        ':monto' => $gasto['monto'],
+                        ':mes' => $mes,
+                        ':rebano' => $rebanoId,
+                        ':uid' => $uid,
+                    ]
+                );
+                $gastoId = Database::lastInsertId();
+                if ($rebanoId) {
+                    CostosSyncHelper::sincronizarGasto((int)$gastoId, $uid);
+                }
+                Database::execute(
+                    'UPDATE vacunaciones SET gasto_id = :gasto WHERE id = :id',
+                    [':gasto' => $gastoId, ':id' => (int)$id]
+                );
             }
-        } else {
-            // Crear nuevo gasto
-            Database::execute(
-                'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
-                 VALUES (:tipo, :desc, :monto, :mes, :rebano, :uid)',
-                [
-                    ':tipo' => 'medicamentos',
-                    ':desc' => $gasto['descripcion'],
-                    ':monto' => $gasto['monto'],
-                    ':mes' => $mes,
-                    ':rebano' => $rebanoId,
-                    ':uid' => $uid,
-                ]
-            );
-            $gastoId = Database::lastInsertId();
-            if ($rebanoId) {
-                require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
-                CostosSyncHelper::sincronizarGasto((int)$gastoId, $uid);
-            }
-            Database::execute(
-                'UPDATE vacunaciones SET gasto_id = :gasto WHERE id = :id',
-                [':gasto' => $gastoId, ':id' => (int)$id]
-            );
         }
         // === FIN GASTO AUTOMÁTICO ===
 
@@ -327,7 +334,6 @@ class VacunacionController
         // Eliminar gasto asociado si existe
         if ($vac['gasto_id']) {
             $gastoId = (int)$vac['gasto_id'];
-            require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
             CostosSyncHelper::eliminarGasto($gastoId, $uid);
             Database::execute(
                 'DELETE FROM gastos WHERE id = :id',

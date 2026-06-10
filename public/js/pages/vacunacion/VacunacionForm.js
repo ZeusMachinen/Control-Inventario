@@ -2,6 +2,12 @@ const VacunacionFormPage = {
   editandoId: null,
   preciosMedicamentos: {},
 
+  afterRender() {
+    if (this.editandoId) {
+      setTimeout(() => this.recalcularCosto(), 150);
+    }
+  },
+
   async render(params) {
     const editando = !!params.id;
     this.editandoId = editando ? parseInt(params.id) : null;
@@ -93,7 +99,7 @@ const VacunacionFormPage = {
                 <button type="submit" class="btn btn-primary">${editando ? 'Guardar Cambios' : 'Registrar Vacunación'}</button>
               </div>
             </form>
-            ${editando ? '<script>setTimeout(() => VacunacionFormPage.recalcularCosto(), 150)</script>' : ''}
+            ${editando ? '<div id="vac-form-edit-trigger" data-ready="true"></div>' : ''}
           </div>
         </div>
       `);

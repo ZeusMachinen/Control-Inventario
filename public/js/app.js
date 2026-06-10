@@ -46,6 +46,8 @@
     '/rebanos/:id/movimientos':      (p) => RebanoMovimientosPage.afterRender(),
     '/rebanos/:id/costos':           (p) => CostosRebanoPage.afterRender(),
     '/vacunacion':                   () => VacunacionListPage.afterRender(),
+    '/vacunacion/nuevo':             () => VacunacionFormPage.afterRender(),
+    '/vacunacion/:id/editar':        (p) => VacunacionFormPage.afterRender(),
     '/medicamentos':                 () => MedicamentoListPage.afterRender(),
     '/reproduccion':                 () => ReproduccionPage.afterRender(),
     '/estadisticas':                 () => DashboardStatsPage.afterRender(),
