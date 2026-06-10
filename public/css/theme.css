@@ -1,0 +1,109 @@
+/* ============================================================
+   theme.css — Override de Bootstrap 5 para paleta verde
+   Control Ganadero (#2E7D32)
+   ============================================================ */
+
+:root {
+  --bs-primary: #2E7D32;
+  --bs-primary-rgb: 46, 125, 50;
+  --bs-danger: #D32F2F;
+  --bs-danger-rgb: 211, 47, 47;
+  --bs-warning: #F57C00;
+  --bs-warning-rgb: 245, 124, 0;
+  --bs-info: #1976D2;
+  --bs-info-rgb: 25, 118, 210;
+  --bs-success: #2E7D32;
+  --bs-success-rgb: 46, 125, 50;
+
+  --bs-body-color: #1B1B1B;
+  --bs-body-color-rgb: 27, 27, 27;
+  --bs-secondary-color: #616161;
+  --bs-body-bg: #F5F5F5;
+  --bs-border-color: #E0E0E0;
+
+  --bs-border-radius: 8px;
+  --bs-border-radius-lg: 12px;
+  --bs-box-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --bs-box-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --bs-body-font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+/* ─── Botón primary ──────────────────────────────────── */
+.btn-primary {
+  --bs-btn-bg: #2E7D32;
+  --bs-btn-border-color: #2E7D32;
+  --bs-btn-hover-bg: #388E3C;
+  --bs-btn-hover-border-color: #388E3C;
+  --bs-btn-active-bg: #1B5E20;
+  --bs-btn-active-border-color: #1B5E20;
+}
+.btn-outline-primary {
+  --bs-btn-color: #2E7D32;
+  --bs-btn-border-color: #2E7D32;
+  --bs-btn-hover-bg: #2E7D32;
+  --bs-btn-hover-border-color: #2E7D32;
+  --bs-btn-active-bg: #1B5E20;
+}
+
+/* ─── Botón danger ───────────────────────────────────── */
+.btn-danger {
+  --bs-btn-bg: #D32F2F;
+  --bs-btn-border-color: #D32F2F;
+  --bs-btn-hover-bg: #C62828;
+  --bs-btn-hover-border-color: #C62828;
+  --bs-btn-active-bg: #B71C1C;
+}
+.btn-outline-danger {
+  --bs-btn-color: #D32F2F;
+  --bs-btn-border-color: #D32F2F;
+  --bs-btn-hover-bg: #D32F2F;
+  --bs-btn-hover-border-color: #D32F2F;
+  --bs-btn-active-bg: #C62828;
+}
+
+/* ─── Botón warning ──────────────────────────────────── */
+.btn-warning {
+  --bs-btn-bg: #F57C00;
+  --bs-btn-border-color: #F57C00;
+  --bs-btn-hover-bg: #E65100;
+  --bs-btn-hover-border-color: #E65100;
+}
+
+/* ─── Botón info ─────────────────────────────────────── */
+.btn-info {
+  --bs-btn-bg: #1976D2;
+  --bs-btn-border-color: #1976D2;
+  --bs-btn-hover-bg: #1565C0;
+  --bs-btn-color: #fff;
+}
+
+/* ─── Badges ─────────────────────────────────────────── */
+.badge.bg-primary { background-color: #2E7D32 !important; }
+.badge.bg-danger  { background-color: #D32F2F !important; }
+.badge.bg-warning { background-color: #F57C00 !important; }
+.badge.bg-info    { background-color: #1976D2 !important; }
+
+/* ─── Links ──────────────────────────────────────────── */
+a {
+  color: #2E7D32;
+}
+a:hover {
+  color: #388E3C;
+}
+
+/* ─── Tablas: hover row ──────────────────────────────── */
+.table-hover tbody tr:hover {
+  --bs-table-hover-bg: #E8F5E9;
+}
+
+/* ─── Paginación activa ──────────────────────────────── */
+.page-item.active .page-link {
+  background-color: #2E7D32;
+  border-color: #2E7D32;
+}
+
+/* ─── Nav tabs activas ───────────────────────────────── */
+.nav-tabs .nav-link.active {
+  color: #2E7D32;
+  border-bottom-color: #2E7D32;
+}

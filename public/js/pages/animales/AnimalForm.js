@@ -28,24 +28,26 @@ const AnimalFormPage = {
       return MainLayout.render(`
         <div class="page-header">
           <h1 class="page-title">${titulo}</h1>
-          <button class="btn btn-secondary" onclick="history.back()">Volver</button>
+          <button class="btn btn-outline-secondary" onclick="history.back()">
+            <i class="fas fa-arrow-left"></i> Volver
+          </button>
         </div>
 
         <div class="card">
           <div class="card-body">
             <form id="animal-form" onsubmit="AnimalFormPage.guardar(event)">
-              <div class="form-grid">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Nombre *</label>
-                  <input type="text" class="form-input" id="animal-nombre" value="${animal.nombre || ''}" required>
+                  <input type="text" class="form-control" id="animal-nombre" value="${animal.nombre || ''}" required>
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Identificación (arete/caravana)</label>
-                  <input type="text" class="form-input" id="animal-identificacion" value="${animal.identificacion || ''}">
+                  <input type="text" class="form-control" id="animal-identificacion" value="${animal.identificacion || ''}">
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Sexo *</label>
                   <select class="form-select" id="animal-sexo" required onchange="AnimalFormPage.cambioSexo()">
                     <option value="">Seleccione...</option>
@@ -54,15 +56,15 @@ const AnimalFormPage = {
                   </select>
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Fecha de Nacimiento *</label>
-                  <input type="date" class="form-input" id="animal-fecha" value="${DateUtil.formatoInput(animal.fecha_nacimiento) || ''}" required onchange="AnimalFormPage.calcularEtapaPorFecha()">
+                  <input type="date" class="form-control" id="animal-fecha" value="${DateUtil.formatoInput(animal.fecha_nacimiento) || ''}" required onchange="AnimalFormPage.calcularEtapaPorFecha()">
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Rebaño *</label>
                   ${(rebanos.data || []).length === 0 ? `
-                    <div class="alert alert-warning" style="margin-bottom:0.5rem">
+                    <div class="alert alert-warning py-2 mb-2">
                       No hay rebaños creados. <a href="#" onclick="Router.navegar('/rebanos');return false">Crear uno primero</a>
                     </div>
                     <select class="form-select" disabled>
@@ -78,29 +80,29 @@ const AnimalFormPage = {
                   `}
                 </div>
 
-                <div class="form-group">
-                  <label class="form-label">Etapa <small>(calculada automáticamente)</small></label>
-                  <input type="text" class="form-input" id="animal-etapa" value="${animal.etapa || '—'}" readonly style="font-weight:600;background:#f5f5f5">
+                <div class="col-md-6">
+                  <label class="form-label">Etapa <small class="text-secondary">(calculada automáticamente)</small></label>
+                  <input type="text" class="form-control" id="animal-etapa" value="${animal.etapa || '—'}" readonly style="background:#f5f5f5;font-weight:600">
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Peso de Entrada (kg)</label>
-                  <input type="number" step="0.01" min="0" class="form-input" id="animal-peso-entrada" value="${animal.peso_entrada || ''}" placeholder="Ej: 450.50">
+                  <input type="number" step="0.01" min="0" class="form-control" id="animal-peso-entrada" value="${animal.peso_entrada || ''}" placeholder="Ej: 450.50">
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Precio por kg ($)</label>
-                  <input type="number" step="0.01" min="0" class="form-input" id="animal-precio-kg" value="${animal.precio_kg || ''}" placeholder="Ej: 3.20">
+                  <input type="number" step="0.01" min="0" class="form-control" id="animal-precio-kg" value="${animal.precio_kg || ''}" placeholder="Ej: 3.20">
                 </div>
 
-                <div class="form-group" id="animal-estado-group">
+                <div class="col-md-6 d-none" id="animal-estado-group">
                   <label class="form-label">Estado</label>
                   <select class="form-select" id="animal-estado">
                     <option value="">Seleccione...</option>
                   </select>
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Madre</label>
                   <select class="form-select" id="animal-madre">
                     <option value="">Sin madre</option>
@@ -110,7 +112,7 @@ const AnimalFormPage = {
                   </select>
                 </div>
 
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Padre</label>
                   <select class="form-select" id="animal-padre">
                     <option value="">Sin padre</option>
@@ -119,19 +121,23 @@ const AnimalFormPage = {
                     `).join('')}
                   </select>
                 </div>
-              </div>
 
-              <div class="form-group">
-                <label class="form-label">Foto</label>
-                <div>
-                  <input type="file" id="animal-foto" accept="image/jpeg,image/png,image/webp">
-                  ${animal.foto ? `<p style="margin-top:8px"><img src="/api/${animal.foto}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;"></p>` : ''}
+                <div class="col-12">
+                  <label class="form-label">Foto</label>
+                  <div>
+                    <input type="file" class="form-control" id="animal-foto" accept="image/jpeg,image/png,image/webp">
+                    ${animal.foto ? `<p class="mt-2"><img src="/api/${animal.foto}" class="rounded" style="width:80px;height:80px;object-fit:cover"></p>` : ''}
+                  </div>
                 </div>
               </div>
 
-              <div style="margin-top: 1.5rem; display:flex; gap: 0.5rem; justify-content: flex-end;">
-                <button type="button" class="btn btn-secondary" onclick="history.back()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">${editando ? 'Guardar Cambios' : 'Crear Animal'}</button>
+              <div class="mt-4 d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                  <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save"></i> ${editando ? 'Guardar Cambios' : 'Crear Animal'}
+                </button>
               </div>
             </form>
           </div>
@@ -145,13 +151,14 @@ const AnimalFormPage = {
   cambioSexo() {
     const sexo = document.getElementById('animal-sexo').value;
     const select = document.getElementById('animal-estado');
+    const group = document.getElementById('animal-estado-group');
 
     if (!sexo) {
-      document.getElementById('animal-estado-group').style.display = 'none';
+      group.classList.add('d-none');
       return;
     }
 
-    document.getElementById('animal-estado-group').style.display = '';
+    group.classList.remove('d-none');
     select.innerHTML = '<option value="">Seleccione...</option>';
 
     if (sexo === 'Hembra') {
@@ -167,7 +174,6 @@ const AnimalFormPage = {
       `;
     }
 
-    // Restaurar valor original si aplica
     if (AnimalFormPage.estadoOriginal) select.value = AnimalFormPage.estadoOriginal;
   },
 
@@ -191,7 +197,7 @@ const AnimalFormPage = {
 
     const rebanoSelect = document.getElementById('animal-rebano');
     if (!rebanoSelect) {
-      alert('Primero debes crear un rebaño para asignar el animal');
+      Toast.warning('Primero debes crear un rebaño para asignar el animal');
       return;
     }
 
@@ -204,7 +210,6 @@ const AnimalFormPage = {
     const etapa = document.getElementById('animal-etapa').value;
     formData.append('etapa', etapa === '—' ? 'Ternero' : etapa);
 
-    // Madre/Padre: enviar vacío como null
     const madreId = document.getElementById('animal-madre').value;
     if (madreId) formData.append('madre_id', madreId);
     const padreId = document.getElementById('animal-padre').value;
@@ -216,9 +221,9 @@ const AnimalFormPage = {
     const precioKg = document.getElementById('animal-precio-kg').value;
     if (precioKg) formData.append('precio_kg', precioKg);
 
-    const estadoSelect = document.getElementById('animal-estado');
-    if (estadoSelect.style.display !== 'none') {
-      formData.append('estado_reproductivo', estadoSelect.value);
+    const estadoGroup = document.getElementById('animal-estado-group');
+    if (!estadoGroup.classList.contains('d-none')) {
+      formData.append('estado_reproductivo', document.getElementById('animal-estado').value);
     }
 
     const fotoInput = document.getElementById('animal-foto');
@@ -234,7 +239,7 @@ const AnimalFormPage = {
       }
       Router.navegar('/animales');
     } catch (error) {
-      alert(error.response?.data?.error || 'Error al guardar');
+      Toast.error(error.response?.data?.error || 'Error al guardar');
     }
   },
 };

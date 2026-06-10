@@ -1,5 +1,5 @@
 /**
- * Layout principal — Sidebar + Navbar + Contenido
+ * Layout principal — Sidebar + Navbar + Contenido (Bootstrap)
  */
 const MainLayout = {
   /**
@@ -8,11 +8,11 @@ const MainLayout = {
    */
   render(contenidoHtml) {
     return `
-      <div class="app-shell">
+      <div class="app-shell d-flex vh-100">
         ${Sidebar.render()}
-        <div class="main-content">
+        <div class="main-content flex-grow-1 d-flex flex-column" style="margin-left:260px">
           ${Navbar.render()}
-          <main class="page-content">
+          <main class="page-content flex-grow-1 p-4 overflow-auto">
             ${contenidoHtml}
           </main>
         </div>

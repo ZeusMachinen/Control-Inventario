@@ -90,69 +90,14 @@
   min-height: 100vh;
 }
 
-/* ─── Navbar ───────────────────────────────────────────── */
-.navbar {
-  height: var(--navbar-height);
-  background: var(--blanco);
-  border-bottom: 1px solid var(--gris-borde);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--spacing-xl);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  box-shadow: var(--shadow-sm);
-}
-
-.navbar-left {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
+/* ─── Navbar (custom, complementa Bootstrap) ──────────── */
 .menu-toggle {
   display: none;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
   color: var(--texto-principal);
-  padding: var(--spacing-xs);
 }
 
 .navbar-title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
   color: var(--texto-principal);
-}
-
-.navbar-right {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.navbar-user {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  color: var(--texto-secundario);
-  font-size: var(--font-size-sm);
-}
-
-.btn-logout {
-  background: none;
-  border: 1px solid var(--gris-borde);
-  color: var(--texto-secundario);
-  padding: var(--spacing-xs) var(--spacing-md);
-  border-radius: var(--border-radius);
-  font-size: var(--font-size-sm);
-  transition: all var(--transition);
-}
-
-.btn-logout:hover {
-  border-color: var(--rojo);
-  color: var(--rojo);
 }
 
 /* ─── Page Content ──────────────────────────────────────── */

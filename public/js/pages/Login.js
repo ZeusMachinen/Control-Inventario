@@ -1,13 +1,10 @@
-/**
- * Página de Login / Registro
- */
 const LoginPage = {
   async render() {
     return `
       <div class="auth-page">
         <div class="auth-card">
           <div class="auth-logo">
-            <h1>🐄 Control Ganadero</h1>
+            <h1><i class="fas fa-cow me-2"></i>Control Ganadero</h1>
             <p>Gestión integral de ganado bovino</p>
           </div>
 
@@ -25,40 +22,38 @@ const LoginPage = {
           <div id="auth-error" class="alert alert-danger" style="display:none"></div>
           <div id="auth-success" class="alert alert-success" style="display:none"></div>
 
-          <!-- Login Form -->
           <form id="login-form" onsubmit="LoginPage.login(event)">
-            <div class="form-group">
+            <div class="mb-3">
               <label class="form-label" for="login-email">Email</label>
-              <input type="email" id="login-email" class="form-input" placeholder="correo@ejemplo.com" required>
+              <input type="email" id="login-email" class="form-control" placeholder="correo@ejemplo.com" required>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
               <label class="form-label" for="login-password">Contraseña</label>
-              <input type="password" id="login-password" class="form-input" placeholder="••••••" required>
+              <input type="password" id="login-password" class="form-control" placeholder="••••••" required>
             </div>
-            <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <button type="submit" class="btn btn-primary w-100 btn-lg">
               Ingresar
             </button>
           </form>
 
-          <!-- Register Form -->
           <form id="register-form" style="display:none" onsubmit="LoginPage.registro(event)">
-            <div class="form-group">
+            <div class="mb-3">
               <label class="form-label" for="reg-nombre">Nombre completo</label>
-              <input type="text" id="reg-nombre" class="form-input" placeholder="Juan Pérez" required>
+              <input type="text" id="reg-nombre" class="form-control" placeholder="Juan Pérez" required>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
               <label class="form-label" for="reg-email">Email</label>
-              <input type="email" id="reg-email" class="form-input" placeholder="correo@ejemplo.com" required>
+              <input type="email" id="reg-email" class="form-control" placeholder="correo@ejemplo.com" required>
             </div>
-            <div class="form-group">
+            <div class="mb-3">
               <label class="form-label" for="reg-password">Contraseña</label>
-              <input type="password" id="reg-password" class="form-input" placeholder="Mínimo 6 caracteres" required minlength="6">
+              <input type="password" id="reg-password" class="form-control" placeholder="Mínimo 6 caracteres" required minlength="6">
             </div>
-            <div class="form-group">
+            <div class="mb-3">
               <label class="form-label" for="reg-telefono">Teléfono (opcional)</label>
-              <input type="text" id="reg-telefono" class="form-input" placeholder="300 123 4567">
+              <input type="text" id="reg-telefono" class="form-control" placeholder="300 123 4567">
             </div>
-            <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <button type="submit" class="btn btn-primary w-100 btn-lg">
               Crear Cuenta
             </button>
           </form>

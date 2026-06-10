@@ -30,19 +30,19 @@ const VacunacionFormPage = {
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">${editando ? 'Editar Vacunación' : 'Nueva Vacunación'}</h1>
-          <button class="btn btn-secondary" onclick="Router.navegar('/vacunacion')">Volver</button>
+          <h1 class="page-title"><i class="fas fa-syringe me-2"></i>${editando ? 'Editar Vacunación' : 'Nueva Vacunación'}</h1>
+          <button class="btn btn-outline-secondary" onclick="Router.navegar('/vacunacion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
         <div class="card">
           <div class="card-body">
             <form id="vac-form" onsubmit="VacunacionFormPage.guardar(event)">
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Fecha *</label>
-                  <input type="date" class="form-input" id="vac-fecha" value="${editar.fecha || new Date().toISOString().substring(0, 10)}" required>
+                  <input type="date" class="form-control" id="vac-fecha" value="${editar.fecha || new Date().toISOString().substring(0, 10)}" required>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Medicamento *</label>
                   <select class="form-select" id="vac-medicamento" required onchange="VacunacionFormPage.recalcularCosto()">
                     <option value="">Seleccione...</option>
@@ -53,7 +53,7 @@ const VacunacionFormPage = {
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Vacunar por Rebaño (opcional)</label>
                 <select class="form-select" id="vac-rebano" onchange="VacunacionFormPage.cambioRebano();VacunacionFormPage.recalcularCosto()">
                   <option value="">Seleccionar animales individualmente</option>
@@ -63,39 +63,39 @@ const VacunacionFormPage = {
                 </select>
               </div>
 
-              <div class="form-group" id="vac-animales-group" style="${editar.rebano_id ? 'display:none' : ''}">
+              <div class="mb-3" id="vac-animales-group" style="${editar.rebano_id ? 'display:none' : ''}">
                 <label class="form-label">Animales a vacunar</label>
                 <div style="max-height:200px;overflow-y:auto;border:1px solid var(--gris-borde);border-radius:var(--border-radius);padding:var(--spacing-sm)">
                   ${(animals.data || []).map(a => `
-                    <label style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0">
-                      <input type="checkbox" class="vac-animal" value="${a.id}" ${animalesSeleccionados.has(a.id) ? 'checked' : ''} onchange="VacunacionFormPage.recalcularCosto()">
+                    <label class="d-flex align-items-center gap-2 py-1" style="cursor:pointer">
+                      <input type="checkbox" class="vac-animal form-check-input m-0" value="${a.id}" ${animalesSeleccionados.has(a.id) ? 'checked' : ''} onchange="VacunacionFormPage.recalcularCosto()">
                       <span>${a.nombre}</span>
-                      <span class="badge ${a.sexo === 'Macho' ? 'badge-sexo-macho' : 'badge-sexo-hembra'}" style="font-size:10px">${a.sexo}</span>
+                      <span class="badge ${a.sexo === 'Macho' ? 'bg-info' : 'bg-warning'}" style="font-size:10px">${a.sexo}</span>
                     </label>
                   `).join('')}
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-textarea" id="vac-observaciones" placeholder="Dosis, lote, observaciones...">${editar.observaciones || ''}</textarea>
+                <textarea class="form-control" id="vac-observaciones" rows="2" placeholder="Dosis, lote, observaciones...">${editar.observaciones || ''}</textarea>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Costo Veterinario</label>
-                <input type="number" step="0.01" min="0" class="form-input" id="vac-costo-vet" placeholder="0.00" value="${editar.costo_veterinario || ''}" oninput="VacunacionFormPage.recalcularCosto()">
+                <input type="number" step="0.01" min="0" class="form-control" id="vac-costo-vet" placeholder="0.00" value="${editar.costo_veterinario || ''}" oninput="VacunacionFormPage.recalcularCosto()" style="max-width:250px">
               </div>
 
-              <div id="vac-costo-estimado" class="costo-estimado" style="display:none;margin-top:0.5rem;padding:0.75rem;background:var(--gris-fondo);border-radius:var(--border-radius);border-left:3px solid var(--primary)">
+              <div id="vac-costo-estimado" class="alert alert-primary py-2 mb-3" style="display:none">
                 <strong>Costo estimado:</strong> <span id="vac-costo-total">$0</span><br>
-                <small style="color:var(--texto-secundario)">
+                <small>
                   Droga: <span id="vac-costo-droga">$0</span> ·
                   Veterinario: <span id="vac-costo-vet-label">$0</span>
                 </small>
               </div>
 
-              <div style="display:flex;gap:0.5rem;justify-content:flex-end">
-                <button type="button" class="btn btn-secondary" onclick="Router.navegar('/vacunacion')">Cancelar</button>
+              <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/vacunacion')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">${editando ? 'Guardar Cambios' : 'Registrar Vacunación'}</button>
               </div>
             </form>
@@ -160,7 +160,7 @@ const VacunacionFormPage = {
     } else {
       document.querySelectorAll('.vac-animal:checked').forEach(cb => animales.push(parseInt(cb.value)));
       if (animales.length === 0) {
-        alert('Seleccione al menos un animal');
+        Toast.warning('Seleccione al menos un animal');
         return;
       }
       basePayload.animales = animales;
@@ -174,7 +174,8 @@ const VacunacionFormPage = {
       }
       Router.navegar('/vacunacion');
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al guardar');
+      Toast.error(err.response?.data?.error || 'Error al guardar');
     }
   },
 };
+

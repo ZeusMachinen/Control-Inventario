@@ -1,31 +1,24 @@
-/**
- * Página: Formulario de Parto
- * POST /api/reproduccion/partos
- * Crías dinámicas con add/remove
- */
 const PartoFormPage = {
   contadorCrias: 0,
 
   async render() {
     try {
       const { data: animals } = await API.get('/animales', {
-        por_pagina: 1000,
-        sexo: 'Hembra',
-        edad_min: 15,
+        por_pagina: 1000, sexo: 'Hembra', edad_min: 15,
       });
       const animalsList = animals.data || [];
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">Registrar Parto</h1>
-          <button class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Volver</button>
+          <h1 class="page-title"><i class="fas fa-baby me-2"></i>Registrar Parto</h1>
+          <button class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
         <div class="card">
           <div class="card-body">
             <form id="parto-form" onsubmit="PartoFormPage.guardar(event)">
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Madre (Hembra preñada) *</label>
                   <select class="form-select" id="parto-animal" required>
                     <option value="">Seleccione...</option>
@@ -34,32 +27,29 @@ const PartoFormPage = {
                     `).join('')}
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Fecha del Parto *</label>
-                  <input type="date" class="form-input" id="parto-fecha"
-                    value="${new Date().toISOString().substring(0, 10)}" required>
+                  <input type="date" class="form-control" id="parto-fecha" value="${new Date().toISOString().substring(0, 10)}" required>
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-textarea" id="parto-observaciones"
-                  placeholder="Complicaciones, atención recibida, estado de la madre..."></textarea>
+                <textarea class="form-control" id="parto-observaciones" rows="2" placeholder="Complicaciones, atención recibida, estado de la madre..."></textarea>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">
+              <div class="mb-3">
+                <label class="form-label d-flex align-items-center gap-2">
                   <strong>Crías</strong>
-                  <button type="button" class="btn btn-sm btn-primary" style="margin-left:0.5rem"
-                    onclick="PartoFormPage.agregarCria()">+ Agregar Cría</button>
+                  <button type="button" class="btn btn-sm btn-primary" onclick="PartoFormPage.agregarCria()"><i class="fas fa-plus me-1"></i>Agregar Cría</button>
                 </label>
-                <div id="crias-container" style="margin-top:0.5rem">
-                  <p class="empty-state" id="crias-empty">No hay crías registradas. Agregue al menos una.</p>
+                <div id="crias-container">
+                  <p class="text-center text-secondary py-3" id="crias-empty">No hay crías registradas. Agregue al menos una.</p>
                 </div>
               </div>
 
-              <div style="display:flex;gap:0.5rem;justify-content:flex-end">
-                <button type="button" class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
+              <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Registrar Parto</button>
               </div>
             </form>
@@ -79,20 +69,16 @@ const PartoFormPage = {
     if (empty) empty.remove();
 
     const div = document.createElement('div');
-    div.className = 'cria-row';
+    div.className = 'd-flex gap-2 mb-2 align-items-center';
     div.id = `cria-row-${idx}`;
-    div.style.cssText = 'display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center';
     div.innerHTML = `
-      <input type="text" class="form-input" id="cria-nombre-${idx}"
-        placeholder="Nombre" value="${nombre || ''}" style="flex:2">
+      <input type="text" class="form-control" id="cria-nombre-${idx}" placeholder="Nombre" value="${nombre || ''}" style="flex:2">
       <select class="form-select" id="cria-sexo-${idx}" style="flex:1">
         <option value="Macho" ${sexo === 'Hembra' ? '' : 'selected'}>Macho</option>
         <option value="Hembra" ${sexo === 'Hembra' ? 'selected' : ''}>Hembra</option>
       </select>
-      <input type="number" step="0.1" min="0" class="form-input" id="cria-peso-${idx}"
-        placeholder="Peso kg" value="${peso || ''}" style="flex:1">
-      <button type="button" class="btn btn-sm btn-danger"
-        onclick="PartoFormPage.eliminarCria(${idx})">×</button>
+      <input type="number" step="0.1" min="0" class="form-control" id="cria-peso-${idx}" placeholder="Peso kg" value="${peso || ''}" style="flex:1">
+      <button type="button" class="btn btn-outline-danger btn-sm" onclick="PartoFormPage.eliminarCria(${idx})"><i class="fas fa-times"></i></button>
     `;
     container.appendChild(div);
   },
@@ -101,12 +87,11 @@ const PartoFormPage = {
     const row = document.getElementById(`cria-row-${idx}`);
     if (row) {
       row.remove();
-      // Show empty state if no rows left
       if (document.querySelectorAll('[id^="cria-row-"]').length === 0) {
         const container = document.getElementById('crias-container');
         if (container && !document.getElementById('crias-empty')) {
           const p = document.createElement('p');
-          p.className = 'empty-state';
+          p.className = 'text-center text-secondary py-3';
           p.id = 'crias-empty';
           p.textContent = 'No hay crías registradas. Agregue al menos una.';
           container.appendChild(p);
@@ -120,11 +105,10 @@ const PartoFormPage = {
 
     const animalId = document.getElementById('parto-animal').value;
     if (!animalId) {
-      alert('Debe seleccionar un animal');
+      Toast.warning('Debe seleccionar un animal');
       return;
     }
 
-    // Collect crías
     const crias = [];
     document.querySelectorAll('[id^="cria-row-"]').forEach(row => {
       const id = row.id.replace('cria-row-', '');
@@ -145,7 +129,8 @@ const PartoFormPage = {
       await API.post('/reproduccion/partos', payload);
       Router.navegar('/reproduccion');
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al guardar');
+      Toast.error(err.response?.data?.error || 'Error al guardar');
     }
   },
 };
+

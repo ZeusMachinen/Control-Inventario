@@ -1,6 +1,3 @@
-/**
- * Página: Listado de Ventas con filtro de período
- */
 const VentaListPage = {
   modoFiltro: 'todo',
   tipoActual: 'todo',
@@ -23,48 +20,46 @@ const VentaListPage = {
     try {
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">💰 Ventas</h1>
-          <button class="btn btn-primary" onclick="Router.navegar('/ventas/nuevo')">+ Nueva Venta</button>
+          <h1 class="page-title"><i class="fas fa-sack-dollar me-2"></i>Ventas</h1>
+          <button class="btn btn-primary" onclick="Router.navegar('/ventas/nuevo')"><i class="fas fa-plus me-1"></i>Nueva Venta</button>
         </div>
 
         <div class="filter-panel">
-          <div class="form-group">
+          <div class="mb-0">
             <label class="form-label">Tipo</label>
-            <select class="form-select" id="ventas-filtro-tipo" onchange="VentaListPage.cambiarTipo()">
+            <select class="form-select form-select-sm" id="ventas-filtro-tipo" onchange="VentaListPage.cambiarTipo()" style="min-width:160px">
               <option value="todo">Todas</option>
               <option value="Venta">Ventas</option>
               <option value="Transferencia">Transferencias</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="mb-0">
             <label class="form-label">Período</label>
-            <select class="form-select" id="ventas-filtro-modo" onchange="VentaListPage.cambiarModo()">
+            <select class="form-select form-select-sm" id="ventas-filtro-modo" onchange="VentaListPage.cambiarModo()" style="min-width:160px">
               <option value="todo">Todo</option>
               <option value="mes">Mes</option>
               <option value="anio">Año</option>
             </select>
           </div>
-          <div class="form-group" id="ventas-filtro-mes-group" style="display:none">
+          <div class="mb-0" id="ventas-filtro-mes-group" style="display:none">
             <label class="form-label">Mes</label>
-            <input type="month" class="form-input" id="ventas-filtro-mes" value="${this.mesActual}" onchange="VentaListPage.cargar()">
+            <input type="month" class="form-control form-control-sm" id="ventas-filtro-mes" value="${this.mesActual}" onchange="VentaListPage.cargar()">
           </div>
-          <div class="form-group" id="ventas-filtro-anio-group" style="display:none">
+          <div class="mb-0" id="ventas-filtro-anio-group" style="display:none">
             <label class="form-label">Año</label>
-            <select class="form-select" id="ventas-filtro-anio" onchange="VentaListPage.cargar()">
+            <select class="form-select form-select-sm" id="ventas-filtro-anio" onchange="VentaListPage.cargar()">
               ${this.generarOpcionesAnio()}
             </select>
           </div>
         </div>
 
-        <!-- KPIs -->
-        <div id="ventas-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem"></div>
+        <div id="ventas-resumen" class="row g-3 mb-3"></div>
 
-        <!-- Ventas realizadas -->
-        <div class="card" style="margin-bottom:1rem">
-          <div class="card-header"><strong>Ventas Realizadas</strong></div>
-          <div class="table-container">
-            <table>
-              <thead>
+        <div class="card mb-3">
+          <div class="card-header"><strong><i class="fas fa-receipt me-2"></i>Ventas Realizadas</strong></div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
                 <tr>
                   <th onclick="VentaListPage.ordenarPor('animal_nombre')" data-columna="animal_nombre" class="th-sortable">Animal</th>
                   <th onclick="VentaListPage.ordenarPor('comprador_nombre')" data-columna="comprador_nombre" class="th-sortable">Comprador</th>
@@ -72,25 +67,22 @@ const VentaListPage = {
                   <th onclick="VentaListPage.ordenarPor('peso_salida')" data-columna="peso_salida" class="th-sortable">Peso Salida</th>
                   <th onclick="VentaListPage.ordenarPor('fecha')" data-columna="fecha" class="th-sortable">Fecha</th>
                   <th onclick="VentaListPage.ordenarPor('tipo')" data-columna="tipo" class="th-sortable">Tipo</th>
-                  <th>Acciones</th>
+                  <th style="width:100px">Acciones</th>
                 </tr>
               </thead>
               <tbody id="ventas-tbody">
-                <tr><td colspan="7" class="loading"><div class="spinner"></div>Cargando...</td></tr>
+                <tr><td colspan="7" class="text-center py-4 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
-
       `);
     } catch (e) {
       return MainLayout.render(`<div class="alert alert-danger">Error: ${e.message}</div>`);
     }
   },
 
-  afterRender() {
-    this.cargar();
-  },
+  afterRender() { this.cargar(); },
 
   cambiarModo() {
     this.modoFiltro = document.getElementById('ventas-filtro-modo').value;
@@ -106,7 +98,6 @@ const VentaListPage = {
 
   obtenerParamsFiltro() {
     if (this.modoFiltro === 'todo') return {};
-
     const params = {};
     if (this.modoFiltro === 'mes') {
       const mes = document.getElementById('ventas-filtro-mes')?.value;
@@ -160,7 +151,6 @@ const VentaListPage = {
       this.datos = res.data?.data || [];
       const totales = res.data?.totales || [];
 
-      // KPIs
       const container = document.getElementById('ventas-resumen');
       if (container) {
         const idxTotales = {};
@@ -170,25 +160,25 @@ const VentaListPage = {
         const sumaTotal = Venta.total + Transferencia.total;
         const sumaCant = Venta.cantidad + Transferencia.cantidad;
         container.innerHTML = `
-          <div class="card" style="cursor:pointer;${this.tipoActual === 'todo' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('ventas-filtro-tipo').value='todo';VentaListPage.cambiarTipo()">
-            <div class="card-body" style="padding:1rem">
-              <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Total General</h3>
-              <p style="margin:0;font-size:1.5rem;font-weight:700">${Formateador.moneda(sumaTotal)}</p>
-              <p style="margin:0;font-size:0.8rem;color:var(--muted)">${sumaCant} operaciones</p>
+          <div class="col-md-4">
+            <div class="card text-center py-3 ${this.tipoActual === 'todo' ? 'border-primary border-2' : ''}" style="cursor:pointer" onclick="document.getElementById('ventas-filtro-tipo').value='todo';VentaListPage.cambiarTipo()">
+              <div class="small text-secondary">Total General</div>
+              <div class="fs-4 fw-bold">${Formateador.moneda(sumaTotal)}</div>
+              <div class="small text-secondary">${sumaCant} operaciones</div>
             </div>
           </div>
-          <div class="card" style="cursor:pointer;${this.tipoActual === 'Venta' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('ventas-filtro-tipo').value='Venta';VentaListPage.cambiarTipo()">
-            <div class="card-body" style="padding:1rem">
-              <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Ventas</h3>
-              <p style="margin:0;font-size:1.5rem;font-weight:700">${Formateador.moneda(Venta.total)}</p>
-              <p style="margin:0;font-size:0.8rem;color:var(--muted)">${Venta.cantidad} animales</p>
+          <div class="col-md-4">
+            <div class="card text-center py-3 ${this.tipoActual === 'Venta' ? 'border-primary border-2' : ''}" style="cursor:pointer" onclick="document.getElementById('ventas-filtro-tipo').value='Venta';VentaListPage.cambiarTipo()">
+              <div class="small text-secondary">Ventas</div>
+              <div class="fs-4 fw-bold">${Formateador.moneda(Venta.total)}</div>
+              <div class="small text-secondary">${Venta.cantidad} animales</div>
             </div>
           </div>
-          <div class="card" style="cursor:pointer;${this.tipoActual === 'Transferencia' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('ventas-filtro-tipo').value='Transferencia';VentaListPage.cambiarTipo()">
-            <div class="card-body" style="padding:1rem">
-              <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Transferencias</h3>
-              <p style="margin:0;font-size:1.5rem;font-weight:700">${Formateador.moneda(Transferencia.total)}</p>
-              <p style="margin:0;font-size:0.8rem;color:var(--muted)">${Transferencia.cantidad} animales</p>
+          <div class="col-md-4">
+            <div class="card text-center py-3 ${this.tipoActual === 'Transferencia' ? 'border-primary border-2' : ''}" style="cursor:pointer" onclick="document.getElementById('ventas-filtro-tipo').value='Transferencia';VentaListPage.cambiarTipo()">
+              <div class="small text-secondary">Transferencias</div>
+              <div class="fs-4 fw-bold">${Formateador.moneda(Transferencia.total)}</div>
+              <div class="small text-secondary">${Transferencia.cantidad} animales</div>
             </div>
           </div>
         `;
@@ -196,7 +186,7 @@ const VentaListPage = {
 
       this.renderTabla();
     } catch (e) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="alert alert-danger">Error: ${e.message}</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-danger py-3 text-center">Error: ${e.message}</td></tr>`;
     }
   },
 
@@ -213,7 +203,7 @@ const VentaListPage = {
     }
 
     if (ventasList.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Sin ventas en este período</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-secondary">Sin ventas en este período</td></tr>';
       return;
     }
 
@@ -221,17 +211,18 @@ const VentaListPage = {
       <tr>
         <td>${v.animal_nombre}</td>
         <td>${v.comprador_nombre || 'Usuario interno'}</td>
-        <td><strong>${Formateador.moneda(v.precio)}</strong></td>
+        <td class="fw-bold">${Formateador.moneda(v.precio)}</td>
         <td>${v.peso_salida ? `${v.peso_salida} kg` : '-'}</td>
         <td>${DateUtil.formatear(v.fecha)}</td>
-        <td><span class="badge ${v.tipo === 'Venta' ? 'badge-verde' : 'badge-azul'}">${v.tipo}</span></td>
-        <td class="table-actions">
-          <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/ventas/${v.id}')">👁 Ver</button>
-          <button class="btn btn-sm btn-secondary" onclick="Router.navegar('/ventas/${v.id}/editar')">✏️ Editar</button>
+        <td><span class="badge ${v.tipo === 'Venta' ? 'bg-success' : 'bg-primary'}">${v.tipo}</span></td>
+        <td>
+          <div class="d-flex gap-1">
+            <button class="btn btn-outline-secondary btn-sm" onclick="Router.navegar('/ventas/${v.id}')" title="Ver"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-outline-primary btn-sm" onclick="Router.navegar('/ventas/${v.id}/editar')" title="Editar"><i class="fas fa-pen"></i></button>
+          </div>
         </td>
       </tr>
-      `).join('');
+    `).join('');
     SortUtil.actualizarEncabezados('ventas-tbody', this.columnaOrden, this.direccionOrden);
   },
-
 };

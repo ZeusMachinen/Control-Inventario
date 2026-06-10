@@ -1,6 +1,3 @@
-/**
- * Página de Dashboard — Resumen de KPIs y gráficos
- */
 const DashboardPage = {
   async render() {
     try {
@@ -9,33 +6,33 @@ const DashboardPage = {
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">📊 Dashboard</h1>
+          <h1 class="page-title"><i class="fas fa-chart-bar me-2"></i>Dashboard</h1>
         </div>
 
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-card-icon">🐄</div>
+            <div class="stat-card-icon"><i class="fas fa-paw"></i></div>
             <div class="stat-card-info">
               <h3>${Formateador.numero(r.total_animales || 0)}</h3>
               <p>Total Animales</p>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--azul-claro);color:var(--azul)">♂️</div>
+            <div class="stat-card-icon" style="background:var(--azul-claro);color:var(--azul)"><i class="fas fa-mars"></i></div>
             <div class="stat-card-info">
               <h3>${Formateador.numero(r.total_machos || 0)}</h3>
               <p>Machos</p>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-icon" style="background:#FCE4EC;color:#C2185B">♀️</div>
+            <div class="stat-card-icon" style="background:#FCE4EC;color:#C2185B"><i class="fas fa-venus"></i></div>
             <div class="stat-card-info">
               <h3>${Formateador.numero(r.total_hembras || 0)}</h3>
               <p>Hembras</p>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--naranja-claro);color:var(--naranja)">📦</div>
+            <div class="stat-card-icon" style="background:var(--naranja-claro);color:var(--naranja)"><i class="fas fa-box"></i></div>
             <div class="stat-card-info">
               <h3>${Formateador.numero(r.total_rebanos || 0)}</h3>
               <p>Rebaños</p>
@@ -45,11 +42,11 @@ const DashboardPage = {
 
         <div class="charts-grid">
           <div class="chart-card">
-            <h3>Distribución por Etapa</h3>
+            <h3><i class="fas fa-chart-pie me-2"></i>Distribución por Etapa</h3>
             <canvas id="chart-etapa"></canvas>
           </div>
           <div class="chart-card">
-            <h3>Distribución por Sexo</h3>
+            <h3><i class="fas fa-venus-mars me-2"></i>Distribución por Sexo</h3>
             <canvas id="chart-sexo"></canvas>
           </div>
         </div>
@@ -57,7 +54,7 @@ const DashboardPage = {
     } catch (error) {
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">📊 Dashboard</h1>
+          <h1 class="page-title"><i class="fas fa-chart-bar me-2"></i>Dashboard</h1>
         </div>
         <div class="stats-grid">
           ${['Total Animales', 'Machos', 'Hembras', 'Rebaños'].map(label => `
@@ -84,7 +81,6 @@ const DashboardPage = {
       const { data: pob } = await API.get('/estadisticas/poblacion');
       const poblacion = pob.data || {};
 
-      // Gráfico de etapas
       const ctx1 = document.getElementById('chart-etapa');
       if (ctx1 && poblacion.etapas) {
         new Chart(ctx1, {
@@ -105,7 +101,6 @@ const DashboardPage = {
         });
       }
 
-      // Gráfico de sexo
       const ctx2 = document.getElementById('chart-sexo');
       if (ctx2 && poblacion.sexo) {
         new Chart(ctx2, {

@@ -1,6 +1,3 @@
-/**
- * Página: Formulario de Venta (nueva / editar)
- */
 const VentaFormPage = {
   editandoId: null,
 
@@ -21,15 +18,15 @@ const VentaFormPage = {
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">${titulo}</h1>
-          <button class="btn btn-secondary" onclick="Router.navegar('/ventas')">Volver</button>
+          <h1 class="page-title"><i class="fas fa-sack-dollar me-2"></i>${titulo}</h1>
+          <button class="btn btn-outline-secondary" onclick="Router.navegar('/ventas')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
         <div class="card">
           <div class="card-body">
             <form id="venta-form" onsubmit="VentaFormPage.guardar(event)">
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Animal *</label>
                   <select class="form-select" id="venta-animal" required ${venta ? 'disabled' : ''}>
                     <option value="">Seleccione...</option>
@@ -39,7 +36,7 @@ const VentaFormPage = {
                   </select>
                   ${venta ? `<input type="hidden" id="venta-animal-hidden" value="${venta.animal_id}">` : ''}
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Tipo</label>
                   <select class="form-select" id="venta-tipo">
                     <option value="Venta" ${venta && venta.tipo === 'Venta' ? 'selected' : ''}>Venta</option>
@@ -48,38 +45,34 @@ const VentaFormPage = {
                 </div>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Precio *</label>
-                  <input type="number" step="1000" class="form-input" id="venta-precio" placeholder="0"
-                    value="${venta ? venta.precio : ''}" required>
+                  <input type="number" step="1000" class="form-control" id="venta-precio" placeholder="0" value="${venta ? venta.precio : ''}" required>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Fecha *</label>
-                  <input type="date" class="form-input" id="venta-fecha"
-                    value="${venta ? venta.fecha : new Date().toISOString().substring(0, 10)}" required>
+                  <input type="date" class="form-control" id="venta-fecha" value="${venta ? venta.fecha : new Date().toISOString().substring(0, 10)}" required>
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Comprador</label>
-                <input type="text" class="form-input" id="venta-comprador" placeholder="Nombre del comprador o usuario interno"
-                  value="${venta ? (venta.comprador_nombre || '') : ''}">
+                <input type="text" class="form-control" id="venta-comprador" placeholder="Nombre del comprador o usuario interno" value="${venta ? (venta.comprador_nombre || '') : ''}">
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Peso de Salida (kg)</label>
-                <input type="number" step="0.01" min="0" class="form-input" id="venta-peso-salida" placeholder="Ej: 460.00"
-                  value="${venta ? (venta.peso_salida || '') : ''}">
+                <input type="number" step="0.01" min="0" class="form-control" id="venta-peso-salida" placeholder="Ej: 460.00" value="${venta ? (venta.peso_salida || '') : ''}">
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Notas</label>
-                <textarea class="form-textarea" id="venta-notas" placeholder="Detalles de la venta...">${venta ? (venta.notas || '') : ''}</textarea>
+                <textarea class="form-control" id="venta-notas" rows="2" placeholder="Detalles de la venta...">${venta ? (venta.notas || '') : ''}</textarea>
               </div>
 
-              <div style="display:flex;gap:0.5rem;justify-content:flex-end">
-                <button type="button" class="btn btn-secondary" onclick="Router.navegar('/ventas')">Cancelar</button>
+              <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/ventas')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">${btnTexto}</button>
               </div>
             </form>
@@ -112,7 +105,7 @@ const VentaFormPage = {
       }
       Router.navegar('/ventas');
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al guardar');
+      Toast.error(err.response?.data?.error || 'Error al guardar');
     }
   },
 };

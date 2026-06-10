@@ -1,27 +1,21 @@
-/**
- * Página: Formulario de Diagnóstico de Celo
- * POST /api/reproduccion/celos
- */
 const DiagnosticoCeloFormPage = {
   async render() {
     try {
       const { data: animals } = await API.get('/animales', {
-        por_pagina: 1000,
-        sexo: 'Hembra',
-        edad_min: 15,
+        por_pagina: 1000, sexo: 'Hembra', edad_min: 15,
       });
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">Registrar Diagnóstico de Celo</h1>
-          <button class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Volver</button>
+          <h1 class="page-title"><i class="fas fa-search me-2"></i>Registrar Diagnóstico de Celo</h1>
+          <button class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
         <div class="card">
           <div class="card-body">
             <form id="celo-form" onsubmit="DiagnosticoCeloFormPage.guardar(event)">
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Animal (Hembra) *</label>
                   <select class="form-select" id="celo-animal" required>
                     <option value="">Seleccione...</option>
@@ -30,20 +24,18 @@ const DiagnosticoCeloFormPage = {
                     `).join('')}
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Fecha de Inicio *</label>
-                  <input type="date" class="form-input" id="celo-fecha"
-                    value="${new Date().toISOString().substring(0, 10)}" required>
+                  <input type="date" class="form-control" id="celo-fecha" value="${new Date().toISOString().substring(0, 10)}" required>
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Síntomas</label>
-                <input type="text" class="form-input" id="celo-sintomas"
-                  placeholder="Ej: Vulva hinchada, secreción clara">
+                <input type="text" class="form-control" id="celo-sintomas" placeholder="Ej: Vulva hinchada, secreción clara">
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Comportamiento</label>
                 <select class="form-select" id="celo-comportamiento">
                   <option value="">Seleccione...</option>
@@ -55,14 +47,13 @@ const DiagnosticoCeloFormPage = {
                 </select>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-textarea" id="celo-observaciones"
-                  placeholder="Detalles adicionales..."></textarea>
+                <textarea class="form-control" id="celo-observaciones" rows="2" placeholder="Detalles adicionales..."></textarea>
               </div>
 
-              <div style="display:flex;gap:0.5rem;justify-content:flex-end">
-                <button type="button" class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
+              <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Registrar</button>
               </div>
             </form>
@@ -88,7 +79,7 @@ const DiagnosticoCeloFormPage = {
       await API.post('/reproduccion/celos', payload);
       Router.navegar('/reproduccion');
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al guardar');
+      Toast.error(err.response?.data?.error || 'Error al guardar');
     }
   },
 };

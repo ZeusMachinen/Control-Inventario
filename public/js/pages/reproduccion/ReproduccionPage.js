@@ -19,62 +19,68 @@ const ReproduccionPage = {
   async render() {
     return MainLayout.render(`
       <div class="page-header">
-        <h1 class="page-title">🔄 Reproducción</h1>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/celos/nuevo')">+ Diagnóstico Celo</button>
-          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/servicios/nuevo')">+ Servicio</button>
-          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/diagnosticos/nuevo')">+ Diagnóstico Gestación</button>
-          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/partos/nuevo')">+ Parto</button>
+        <h1 class="page-title"><i class="fas fa-arrows-rotate me-2"></i>Reproducción</h1>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/celos/nuevo')"><i class="fas fa-plus me-1"></i>Diagnóstico Celo</button>
+          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/servicios/nuevo')"><i class="fas fa-plus me-1"></i>Servicio</button>
+          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/diagnosticos/nuevo')"><i class="fas fa-plus me-1"></i>Diagnóstico Gestación</button>
+          <button class="btn btn-primary" onclick="Router.navegar('/reproduccion/partos/nuevo')"><i class="fas fa-plus me-1"></i>Parto</button>
         </div>
       </div>
 
       <div class="filter-panel">
-        <div class="form-group">
+        <div class="mb-0">
           <label class="form-label">Buscar animal</label>
-          <input type="text" class="form-input" id="repro-search" placeholder="Nombre..." oninput="ReproduccionPage.aplicarFiltro()">
+          <input type="text" class="form-control form-control-sm" id="repro-search" placeholder="Nombre..." oninput="ReproduccionPage.aplicarFiltro()" style="min-width:160px">
         </div>
-        <div class="form-group">
+        <div class="mb-0">
           <label class="form-label">Período</label>
-          <select class="form-select" id="repro-filtro-modo" onchange="ReproduccionPage.cambiarModo()">
+          <select class="form-select form-select-sm" id="repro-filtro-modo" onchange="ReproduccionPage.cambiarModo()" style="min-width:160px">
             <option value="todo">Todo</option>
             <option value="mes">Mes</option>
             <option value="anio">Año</option>
           </select>
         </div>
-        <div class="form-group" id="repro-filtro-mes-group" style="display:none">
+        <div class="mb-0" id="repro-filtro-mes-group" style="display:none">
           <label class="form-label">Mes</label>
-          <input type="month" class="form-input" id="repro-filtro-mes" value="${this.mesActual}" onchange="ReproduccionPage.cargar()">
+          <input type="month" class="form-control form-control-sm" id="repro-filtro-mes" value="${this.mesActual}" onchange="ReproduccionPage.cargar()">
         </div>
-        <div class="form-group" id="repro-filtro-anio-group" style="display:none">
+        <div class="mb-0" id="repro-filtro-anio-group" style="display:none">
           <label class="form-label">Año</label>
-          <select class="form-select" id="repro-filtro-anio" onchange="ReproduccionPage.cargar()">
+          <select class="form-select form-select-sm" id="repro-filtro-anio" onchange="ReproduccionPage.cargar()">
             ${this.generarOpcionesAnio()}
           </select>
         </div>
-        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
-          <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer">
+        <div class="d-flex align-items-end pb-1">
+          <label class="d-flex align-items-center gap-1 small" style="cursor:pointer">
             <input type="checkbox" id="repro-toggle-inactivos" onchange="ReproduccionPage.toggleInactivos()">
             Mostrar inactivos
           </label>
         </div>
       </div>
 
-      <div class="stats-grid" style="margin-bottom:1rem" id="repro-stats">
-        <div class="stat-card"><div class="stat-card-info"><h3 id="repro-total-eventos">0</h3><p>Total Eventos</p></div></div>
-        <div class="stat-card"><div class="stat-card-info"><h3 id="repro-celos">0</h3><p>Diagnósticos Celo</p></div></div>
-        <div class="stat-card"><div class="stat-card-info"><h3 id="repro-servicios">0</h3><p>Servicios</p></div></div>
-        <div class="stat-card"><div class="stat-card-info"><h3 id="repro-partos">0</h3><p>Partos</p></div></div>
+      <div class="row g-3 mb-3" id="repro-stats">
+        <div class="col-md-3 col-6">
+          <div class="card text-center py-2"><div class="fs-4 fw-bold" id="repro-total-eventos">0</div><div class="small text-secondary">Total Eventos</div></div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card text-center py-2"><div class="fs-4 fw-bold" id="repro-celos">0</div><div class="small text-secondary">Diagnósticos Celo</div></div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card text-center py-2"><div class="fs-4 fw-bold" id="repro-servicios">0</div><div class="small text-secondary">Servicios</div></div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card text-center py-2"><div class="fs-4 fw-bold" id="repro-partos">0</div><div class="small text-secondary">Partos</div></div>
+        </div>
       </div>
 
       <div id="timeline-container">
-        <div class="card"><div class="card-body"><p class="empty-state"><div class="spinner"></div> Cargando...</p></div></div>
+        <div class="card"><div class="card-body"><p class="text-center text-secondary py-3"><span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span>Cargando...</p></div></div>
       </div>
     `);
   },
 
-  afterRender() {
-    this.cargar();
-  },
+  afterRender() { this.cargar(); },
 
   cambiarModo() {
     this.modoFiltro = document.getElementById('repro-filtro-modo').value;
@@ -101,10 +107,7 @@ const ReproduccionPage = {
       if (!mes) return { desde: null, hasta: null };
       const [y, m] = mes.split('-');
       const ultimoDia = new Date(parseInt(y), parseInt(m), 0).getDate();
-      return {
-        desde: mes + '-01',
-        hasta: mes + '-' + String(ultimoDia).padStart(2, '0'),
-      };
+      return { desde: mes + '-01', hasta: mes + '-' + String(ultimoDia).padStart(2, '0') };
     }
 
     if (this.modoFiltro === 'anio') {
@@ -208,46 +211,46 @@ const ReproduccionPage = {
       container.innerHTML = `
         <div class="card">
           <div class="card-body">
-            <p class="empty-state">No hay eventos reproductivos para este período o criterio de búsqueda.</p>
+            <p class="text-center text-secondary py-3">No hay eventos reproductivos para este período o criterio de búsqueda.</p>
           </div>
         </div>`;
       return;
     }
 
+    const iconMap = {
+      celo: '<i class="fas fa-search text-info"></i>',
+      servicio: '<i class="fas fa-handshake text-primary"></i>',
+      diagnostico: '<i class="fas fa-stethoscope text-success"></i>',
+      parto: '<i class="fas fa-baby text-warning"></i>',
+    };
+
     container.innerHTML = gruposFiltrados.map(grupo => {
       const isExpanded = this.expanded.has(grupo.animal_id);
       const ultimaFecha = grupo.eventos[grupo.eventos.length - 1]?.fecha;
       return `
-        <div class="card" style="margin-bottom:0.75rem">
-          <div class="card-header repro-card-header" onclick="ReproduccionPage.toggleAnimal(${grupo.animal_id})">
-            <div style="display:flex;align-items:center;gap:0.75rem;flex:1">
-              <span style="font-size:0.75rem;color:var(--gris-texto);transition:transform 0.2s">${isExpanded ? '▼' : '▶'}</span>
+        <div class="card mb-2">
+          <div class="card-header repro-card-header" onclick="ReproduccionPage.toggleAnimal(${grupo.animal_id})" style="cursor:pointer">
+            <div class="d-flex align-items-center gap-2">
+              <span class="small text-secondary" style="transition:transform 0.2s">${isExpanded ? '▼' : '▶'}</span>
               <strong>${grupo.animal_nombre}</strong>
-              <span class="badge badge-azul">${grupo.eventos.length} evento${grupo.eventos.length !== 1 ? 's' : ''}</span>
-              ${ultimaFecha ? `<span style="font-size:0.8rem;color:var(--gris-texto);margin-left:auto">Último: ${DateUtil.formatear(ultimaFecha)}</span>` : ''}
+              <span class="badge bg-primary">${grupo.eventos.length} evento${grupo.eventos.length !== 1 ? 's' : ''}</span>
+              ${ultimaFecha ? `<span class="small text-secondary ms-auto">Último: ${DateUtil.formatear(ultimaFecha)}</span>` : ''}
             </div>
           </div>
-          <div class="card-body repro-card-body" style="${isExpanded ? '' : 'display:none'}">
-            <div class="timeline">
-              ${grupo.eventos.map((ev, i) => `
-                <div class="timeline-item" style="display:flex;gap:0.75rem;padding:0.5rem 0;${i < grupo.eventos.length - 1 ? 'border-bottom:1px solid var(--gris-borde);' : ''}">
-                  <div style="min-width:100px;font-size:0.85rem;color:var(--gris-texto)">${DateUtil.formatear(ev.fecha)}</div>
-                  <div style="min-width:40px;text-align:center">
-                    ${ev.tipo === 'celo' ? '🔍' : ''}
-                    ${ev.tipo === 'servicio' ? '🤝' : ''}
-                    ${ev.tipo === 'diagnostico' ? '🩺' : ''}
-                    ${ev.tipo === 'parto' ? '🍼' : ''}
-                  </div>
-                  <div style="flex:1">
-                    <strong>${ev.label}</strong>
-                    ${ev.subtipo ? `<br><span style="font-size:0.85rem">${ev.subtipo}</span>` : ''}
-                    ${ev.resultado ? `<br><span class="badge ${ev.resultado === 'Positivo' ? 'badge-verde' : 'badge-naranja'}">${ev.resultado}</span>` : ''}
-                    ${ev.tipo === 'parto' && Array.isArray(ev.crias) && ev.crias.length > 0 ? `<br><span style="font-size:0.85rem">${ev.crias.map(c => c.nombre || 'Cría').join(', ')} (${ev.crias.length})</span>` : ''}
-                    ${ev.observaciones ? `<br><span style="font-size:0.8rem;color:var(--gris-texto)">${ev.observaciones}</span>` : ''}
-                  </div>
+          <div class="card-body py-2" style="${isExpanded ? '' : 'display:none'}">
+            ${grupo.eventos.map((ev, i) => `
+              <div class="d-flex gap-3 py-2 ${i < grupo.eventos.length - 1 ? 'border-bottom' : ''}">
+                <div class="small text-secondary" style="min-width:100px">${DateUtil.formatear(ev.fecha)}</div>
+                <div style="min-width:30px;text-align:center">${iconMap[ev.tipo] || ''}</div>
+                <div class="flex-grow-1">
+                  <strong>${ev.label}</strong>
+                  ${ev.subtipo ? `<br><span class="small">${ev.subtipo}</span>` : ''}
+                  ${ev.resultado ? `<br><span class="badge ${ev.resultado === 'Positivo' ? 'bg-success' : 'bg-warning'}">${ev.resultado}</span>` : ''}
+                  ${ev.tipo === 'parto' && Array.isArray(ev.crias) && ev.crias.length > 0 ? `<br><span class="small">${ev.crias.map(c => c.nombre || 'Cría').join(', ')} (${ev.crias.length})</span>` : ''}
+                  ${ev.observaciones ? `<br><span class="small text-secondary">${ev.observaciones}</span>` : ''}
                 </div>
-              `).join('')}
-            </div>
+              </div>
+            `).join('')}
           </div>
         </div>`;
     }).join('');

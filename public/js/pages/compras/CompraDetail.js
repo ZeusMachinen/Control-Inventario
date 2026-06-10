@@ -1,6 +1,3 @@
-/**
- * Página: Detalle de una compra (lote con sus animales)
- */
 const CompraDetailPage = {
   async render(params) {
     const id = params?.id;
@@ -12,57 +9,41 @@ const CompraDetailPage = {
 
       const animalesHtml = (compra.animales || []).map(a => `
         <tr>
-          <td><a href="#/animales/${a.id}" class="table-link">${a.nombre}</a></td>
+          <td><a href="#/animales/${a.id}" class="animal-link">${a.nombre}</a></td>
           <td>${a.identificacion || '-'}</td>
           <td>${a.sexo}</td>
           <td>${DateUtil.formatear(a.fecha_nacimiento)}</td>
-          <td>${a.etapa}</td>
+          <td><span class="badge bg-success">${a.etapa}</span></td>
           <td>${a.fecha_ingreso ? DateUtil.formatear(a.fecha_ingreso) : '-'}</td>
           <td>${a.peso_entrada ? `${a.peso_entrada} kg` : '-'}</td>
           <td>${a.precio_compra ? Formateador.moneda(a.precio_compra) : '-'}</td>
           <td>${a.rebano_nombre || '-'}</td>
         </tr>
-      `).join('') || '<tr><td colspan="9" class="empty-state">Sin animales registrados</td></tr>';
+      `).join('') || '<tr><td colspan="9" class="text-center py-4 text-secondary">Sin animales registrados</td></tr>';
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">📥 Compra #${compra.id}</h1>
-          <button class="btn btn-secondary" onclick="Router.navegar('/compras')">← Volver</button>
+          <h1 class="page-title"><i class="fas fa-cart-shopping me-2"></i>Compra #${compra.id}</h1>
+          <button class="btn btn-outline-secondary" onclick="Router.navegar('/compras')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
-        <div class="card" style="margin-bottom:1rem">
+        <div class="card mb-3">
           <div class="card-body">
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-label">Proveedor</span>
-                <span class="detail-value">${compra.proveedor}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Fecha de Compra</span>
-                <span class="detail-value">${DateUtil.formatear(compra.fecha_compra)}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Total Animales</span>
-                <span class="detail-value">${compra.total_animales}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Total Pagado</span>
-                <span class="detail-value"><strong>${Formateador.moneda(compra.total_costo)}</strong></span>
-              </div>
-              ${compra.notas ? `
-              <div class="detail-item" style="grid-column: 1 / -1">
-                <span class="detail-label">Notas</span>
-                <span class="detail-value">${compra.notas}</span>
-              </div>` : ''}
+            <div class="row g-2">
+              <div class="col-md-4"><strong class="small text-secondary d-block">Proveedor</strong>${compra.proveedor}</div>
+              <div class="col-md-4"><strong class="small text-secondary d-block">Fecha de Compra</strong>${DateUtil.formatear(compra.fecha_compra)}</div>
+              <div class="col-md-4"><strong class="small text-secondary d-block">Total Animales</strong>${compra.total_animales}</div>
+              <div class="col-md-4"><strong class="small text-secondary d-block">Total Pagado</strong><strong>${Formateador.moneda(compra.total_costo)}</strong></div>
+              ${compra.notas ? `<div class="col-12"><strong class="small text-secondary d-block">Notas</strong>${compra.notas}</div>` : ''}
             </div>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-header"><strong>Animales de esta compra (${compra.total_animales})</strong></div>
-          <div class="table-container">
-            <table>
-              <thead>
+          <div class="card-header"><strong><i class="fas fa-horse me-2"></i>Animales de esta compra (${compra.total_animales})</strong></div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
                 <tr>
                   <th>Nombre</th>
                   <th>Identificación</th>

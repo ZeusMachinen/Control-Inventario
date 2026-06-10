@@ -1,6 +1,6 @@
 const GastosPage = {
   tipoActual: 'mantenimiento',
-  modoFiltro: 'todo', // 'todo' | 'mes' | 'anio' | 'rango'
+  modoFiltro: 'todo',
   mesActual: new Date().toISOString().substring(0, 7),
   anioActual: new Date().getFullYear().toString(),
   desdeActual: '',
@@ -12,66 +12,66 @@ const GastosPage = {
   async render() {
     return MainLayout.render(`
       <div class="page-header">
-        <h1 class="page-title">Gastos</h1>
-        <button class="btn btn-primary" onclick="GastosPage.mostrarFormulario()">+ Nuevo Gasto</button>
+        <h1 class="page-title"><i class="fas fa-money-bill-wave me-2"></i>Gastos</h1>
+        <button class="btn btn-primary" onclick="GastosPage.mostrarFormulario()"><i class="fas fa-plus me-1"></i>Nuevo Gasto</button>
       </div>
 
       <div class="filter-panel">
-        <div class="form-group">
+        <div class="mb-0">
           <label class="form-label">Tipo</label>
-          <select class="form-select" id="gasto-filtro-tipo" onchange="GastosPage.cambiarFiltro()">
+          <select class="form-select form-select-sm" id="gasto-filtro-tipo" onchange="GastosPage.cambiarFiltro()" style="min-width:160px">
             <option value="todo">Todos</option>
             <option value="mantenimiento">Mantenimiento</option>
             <option value="medicamentos">Medicamentos</option>
             <option value="compras">Compras</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="mb-0">
           <label class="form-label">Período</label>
-          <select class="form-select" id="gasto-filtro-modo" onchange="GastosPage.cambiarModo()">
+          <select class="form-select form-select-sm" id="gasto-filtro-modo" onchange="GastosPage.cambiarModo()" style="min-width:160px">
             <option value="todo">Todo</option>
             <option value="mes">Mes</option>
             <option value="anio">Año</option>
             <option value="rango">Rango personalizado</option>
           </select>
         </div>
-        <div class="form-group" id="gasto-filtro-mes-group">
+        <div class="mb-0" id="gasto-filtro-mes-group">
           <label class="form-label">Mes</label>
-          <input type="month" class="form-input" id="gasto-filtro-mes" value="${this.mesActual}" onchange="GastosPage.cambiarFiltro()">
+          <input type="month" class="form-control form-control-sm" id="gasto-filtro-mes" value="${this.mesActual}" onchange="GastosPage.cambiarFiltro()">
         </div>
-        <div class="form-group" id="gasto-filtro-anio-group" style="display:none">
+        <div class="mb-0" id="gasto-filtro-anio-group" style="display:none">
           <label class="form-label">Año</label>
-          <select class="form-select" id="gasto-filtro-anio" onchange="GastosPage.cambiarFiltro()">
+          <select class="form-select form-select-sm" id="gasto-filtro-anio" onchange="GastosPage.cambiarFiltro()">
             ${GastosPage.generarOpcionesAnio()}
           </select>
         </div>
-        <div class="form-group" id="gasto-filtro-rango-group" style="display:none">
+        <div class="mb-0" id="gasto-filtro-rango-group" style="display:none">
           <label class="form-label">Desde</label>
-          <input type="date" class="form-input" id="gasto-filtro-desde" onchange="GastosPage.cambiarFiltro()">
+          <input type="date" class="form-control form-control-sm" id="gasto-filtro-desde" onchange="GastosPage.cambiarFiltro()">
         </div>
-        <div class="form-group" id="gasto-filtro-hasta-group" style="display:none">
+        <div class="mb-0" id="gasto-filtro-hasta-group" style="display:none">
           <label class="form-label">Hasta</label>
-          <input type="date" class="form-input" id="gasto-filtro-hasta" onchange="GastosPage.cambiarFiltro()">
+          <input type="date" class="form-control form-control-sm" id="gasto-filtro-hasta" onchange="GastosPage.cambiarFiltro()">
         </div>
       </div>
 
-      <div id="gastos-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem"></div>
+      <div id="gastos-resumen" class="row g-3 mb-3"></div>
 
       <div class="card">
-        <div class="table-container">
-          <table>
-              <thead>
-                <tr>
-                  <th onclick="GastosPage.ordenarPor('mes')" data-columna="mes" class="th-sortable">Fecha</th>
-                  <th onclick="GastosPage.ordenarPor('descripcion')" data-columna="descripcion" class="th-sortable">Descripción</th>
-                  <th onclick="GastosPage.ordenarPor('tipo')" data-columna="tipo" class="th-sortable">Tipo</th>
-                  <th onclick="GastosPage.ordenarPor('rebano_nombre')" data-columna="rebano_nombre" class="th-sortable">Rebaño</th>
-                  <th onclick="GastosPage.ordenarPor('monto')" data-columna="monto" class="th-sortable">Monto</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th onclick="GastosPage.ordenarPor('mes')" data-columna="mes" class="th-sortable">Fecha</th>
+                <th onclick="GastosPage.ordenarPor('descripcion')" data-columna="descripcion" class="th-sortable">Descripción</th>
+                <th onclick="GastosPage.ordenarPor('tipo')" data-columna="tipo" class="th-sortable">Tipo</th>
+                <th onclick="GastosPage.ordenarPor('rebano_nombre')" data-columna="rebano_nombre" class="th-sortable">Rebaño</th>
+                <th onclick="GastosPage.ordenarPor('monto')" data-columna="monto" class="th-sortable">Monto</th>
+                <th style="width:100px">Acciones</th>
+              </tr>
+            </thead>
             <tbody id="gastos-tbody">
-              <tr><td colspan="6" class="loading"><div class="spinner"></div>Cargando...</td></tr>
+              <tr><td colspan="6" class="text-center py-4 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -90,9 +90,7 @@ const GastosPage = {
     return opts;
   },
 
-  afterRender() {
-    this.cargar();
-  },
+  afterRender() { this.cargar(); },
 
   cambiarModo() {
     this.modoFiltro = document.getElementById('gasto-filtro-modo').value;
@@ -129,29 +127,28 @@ const GastosPage = {
       this.datos = data.data?.gastos || [];
       const totales = data.data?.totales || {};
 
-      // Resumen de totales
       const container = document.getElementById('gastos-resumen');
       const tipos = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' };
       const sumaTotal = Object.keys(tipos).reduce((s, k) => s + (parseFloat(totales[k]) || 0), 0);
       container.innerHTML = `
-        <div class="card" style="cursor:pointer;${this.tipoActual === 'todo' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('gasto-filtro-tipo').value='todo';GastosPage.cambiarFiltro()">
-          <div class="card-body" style="padding:1rem">
-            <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Total General</h3>
-            <p style="margin:0;font-size:1.5rem;font-weight:700">$${sumaTotal.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</p>
+        <div class="col-md-4">
+          <div class="card text-center py-3 ${this.tipoActual === 'todo' ? 'border-primary border-2' : ''}" style="cursor:pointer" onclick="document.getElementById('gasto-filtro-tipo').value='todo';GastosPage.cambiarFiltro()">
+            <div class="small text-secondary">Total General</div>
+            <div class="fs-4 fw-bold">$${sumaTotal.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
       ` + Object.entries(tipos).map(([k, v]) => `
-        <div class="card" style="cursor:pointer;${this.tipoActual === k ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('gasto-filtro-tipo').value='${k}';GastosPage.cambiarFiltro()">
-          <div class="card-body" style="padding:1rem">
-            <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">${v}</h3>
-            <p style="margin:0;font-size:1.5rem;font-weight:700">$${parseFloat(totales[k] || 0).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</p>
+        <div class="col-md-4">
+          <div class="card text-center py-3 ${this.tipoActual === k ? 'border-primary border-2' : ''}" style="cursor:pointer" onclick="document.getElementById('gasto-filtro-tipo').value='${k}';GastosPage.cambiarFiltro()">
+            <div class="small text-secondary">${v}</div>
+            <div class="fs-4 fw-bold">$${parseFloat(totales[k] || 0).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
       `).join('');
 
       this.renderTabla();
     } catch (e) {
-      document.getElementById('gastos-tbody').innerHTML = `<tr><td colspan="6" class="alert alert-danger">Error: ${e.message}</td></tr>`;
+      document.getElementById('gastos-tbody').innerHTML = `<tr><td colspan="6" class="text-danger py-3 text-center">Error: ${e.message}</td></tr>`;
     }
   },
 
@@ -190,24 +187,27 @@ const GastosPage = {
     }
 
     if (gastos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay gastos para este período</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-secondary">No hay gastos para este período</td></tr>';
       return;
     }
 
     const tipoLabels = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' };
+    const tipoBadge = { mantenimiento: 'bg-success', medicamentos: 'bg-warning', compras: 'bg-danger' };
     tbody.innerHTML = gastos.map(g => `
       <tr>
         <td>${new Date(g.mes + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long' })}</td>
         <td>${g.descripcion}</td>
-        <td><span class="badge badge-${g.tipo === 'medicamentos' ? 'naranja' : g.tipo === 'compras' ? 'rojo' : 'verde'}">${tipoLabels[g.tipo] || g.tipo}</span></td>
+        <td><span class="badge ${tipoBadge[g.tipo] || 'bg-secondary'}">${tipoLabels[g.tipo] || g.tipo}</span></td>
         <td>${g.rebano_nombre || '—'}</td>
-        <td><strong>$${parseFloat(g.monto).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</strong></td>
-        <td class="table-actions">
-          <button class="btn btn-sm btn-secondary" onclick="GastosPage.editar(${JSON.stringify(g).replace(/"/g, '&quot;')})">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="GastosPage.eliminar(${g.id}, '${g.descripcion}')">🗑️</button>
+        <td class="fw-bold">$${parseFloat(g.monto).toLocaleString('es-CO', { minimumFractionDigits: 2 })}</td>
+        <td>
+          <div class="d-flex gap-1">
+            <button class="btn btn-outline-primary btn-sm" onclick="GastosPage.editar(${JSON.stringify(g).replace(/"/g, '&quot;')})" title="Editar"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-outline-danger btn-sm" onclick="GastosPage.eliminar(${g.id}, '${g.descripcion}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+          </div>
         </td>
       </tr>
-      `).join('');
+    `).join('');
     SortUtil.actualizarEncabezados('gastos-tbody', this.columnaOrden, this.direccionOrden);
   },
 
@@ -218,47 +218,49 @@ const GastosPage = {
     const titulo = editando ? 'Editar Gasto' : 'Nuevo Gasto';
 
     document.getElementById('gasto-modal').innerHTML = `
-      <div class="modal-overlay" onclick="if(event.target===this)GastosPage.cerrarModal()">
-        <div class="modal">
-          <div class="modal-header">
-            <span class="modal-title">${titulo}</span>
-            <button class="modal-close" onclick="GastosPage.cerrarModal()">&times;</button>
-          </div>
-          <div class="modal-body">
-            <form id="gasto-form" onsubmit="GastosPage.guardar(event${editando ? `, ${gasto.id}` : ''})">
-              <div class="form-group">
-                <label class="form-label">Tipo *</label>
-                <select class="form-select" id="gasto-tipo" required>
-                  <option value="">Seleccione...</option>
-                  <option value="mantenimiento" ${gasto?.tipo === 'mantenimiento' ? 'selected' : ''}>Mantenimiento</option>
-                  <option value="medicamentos" ${gasto?.tipo === 'medicamentos' ? 'selected' : ''}>Medicamentos</option>
-                  <option value="compras" ${gasto?.tipo === 'compras' ? 'selected' : ''}>Compras</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Descripción *</label>
-                <input type="text" class="form-input" id="gasto-descripcion" value="${gasto?.descripcion || ''}" placeholder="Ej: Alimento concentrado" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Monto ($) *</label>
-                <input type="number" step="0.01" min="0" class="form-input" id="gasto-monto" value="${gasto?.monto || ''}" placeholder="Ej: 500000" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Mes *</label>
-                <input type="month" class="form-input" id="gasto-mes" value="${gasto ? (gasto.mes || '').substring(0, 7) : this.mesActual}" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Rebaño (opcional)</label>
-                <select class="form-select" id="gasto-rebano">
-                  <option value="">Ninguno</option>
-                  ${rebanosList.map(r => `<option value="${r.id}" ${gasto?.rebano_id == r.id ? 'selected' : ''}>${r.nombre}</option>`).join('')}
-                </select>
-              </div>
-              <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
-                <button type="button" class="btn btn-secondary" onclick="GastosPage.cerrarModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary">${editando ? 'Guardar' : 'Crear'}</button>
-              </div>
-            </form>
+      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)GastosPage.cerrarModal()">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">${titulo}</h5>
+              <button class="btn-close" onclick="GastosPage.cerrarModal()"></button>
+            </div>
+            <div class="modal-body">
+              <form id="gasto-form" onsubmit="GastosPage.guardar(event${editando ? `, ${gasto.id}` : ''})">
+                <div class="mb-3">
+                  <label class="form-label">Tipo *</label>
+                  <select class="form-select" id="gasto-tipo" required>
+                    <option value="">Seleccione...</option>
+                    <option value="mantenimiento" ${gasto?.tipo === 'mantenimiento' ? 'selected' : ''}>Mantenimiento</option>
+                    <option value="medicamentos" ${gasto?.tipo === 'medicamentos' ? 'selected' : ''}>Medicamentos</option>
+                    <option value="compras" ${gasto?.tipo === 'compras' ? 'selected' : ''}>Compras</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Descripción *</label>
+                  <input type="text" class="form-control" id="gasto-descripcion" value="${gasto?.descripcion || ''}" placeholder="Ej: Alimento concentrado" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Monto ($) *</label>
+                  <input type="number" step="0.01" min="0" class="form-control" id="gasto-monto" value="${gasto?.monto || ''}" placeholder="Ej: 500000" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Mes *</label>
+                  <input type="month" class="form-control" id="gasto-mes" value="${gasto ? (gasto.mes || '').substring(0, 7) : this.mesActual}" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Rebaño (opcional)</label>
+                  <select class="form-select" id="gasto-rebano">
+                    <option value="">Ninguno</option>
+                    ${rebanosList.map(r => `<option value="${r.id}" ${gasto?.rebano_id == r.id ? 'selected' : ''}>${r.nombre}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="d-flex gap-2 justify-content-end mt-3">
+                  <button type="button" class="btn btn-outline-secondary" onclick="GastosPage.cerrarModal()">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">${editando ? 'Guardar' : 'Crear'}</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -283,7 +285,7 @@ const GastosPage = {
       this.cerrarModal();
       this.cargar();
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al guardar');
+      Toast.error(err.response?.data?.error || 'Error al guardar');
     }
   },
 
@@ -292,16 +294,15 @@ const GastosPage = {
   },
 
   async eliminar(id, desc) {
-    if (!confirm(`¿Eliminar el gasto "${desc}"?`)) return;
+    if (!(await Confirm.show(`¿Eliminar el gasto "${desc}"?`))) return;
     try {
       await API.delete(`/gastos/${id}`);
       this.cargar();
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al eliminar');
+      Toast.error(err.response?.data?.error || 'Error al eliminar');
     }
   },
 
-  cerrarModal() {
-    document.getElementById('gasto-modal').innerHTML = '';
-  },
+  cerrarModal() { document.getElementById('gasto-modal').innerHTML = ''; },
 };
+

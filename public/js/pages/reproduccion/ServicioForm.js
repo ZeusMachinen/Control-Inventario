@@ -1,7 +1,3 @@
-/**
- * Página: Formulario de Servicio (Monta/IA/TE)
- * POST /api/reproduccion/servicios
- */
 const ServicioFormPage = {
   celosSinServicio: [],
 
@@ -15,23 +11,22 @@ const ServicioFormPage = {
       const animals = animalsRes.data.data || [];
       const reproductores = reproductoresRes.data.data || [];
 
-      // Fetch diagnosticos_celo sin servicio asociado
       try {
         const { data: celos } = await API.get('/reproduccion/celos');
         this.celosSinServicio = celos?.data || [];
-      } catch (_) { /* opcional */ }
+      } catch (_) {}
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">Registrar Servicio</h1>
-          <button class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Volver</button>
+          <h1 class="page-title"><i class="fas fa-handshake me-2"></i>Registrar Servicio</h1>
+          <button class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
         <div class="card">
           <div class="card-body">
             <form id="servicio-form" onsubmit="ServicioFormPage.guardar(event)">
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Animal (Hembra) *</label>
                   <select class="form-select" id="servicio-animal" required onchange="ServicioFormPage.filtrarCelos()">
                     <option value="">Seleccione...</option>
@@ -40,7 +35,7 @@ const ServicioFormPage = {
                     `).join('')}
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Tipo de Servicio *</label>
                   <select class="form-select" id="servicio-tipo" required>
                     <option value="Monta Natural">Monta Natural</option>
@@ -50,8 +45,8 @@ const ServicioFormPage = {
                 </div>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Reproductor (Macho)</label>
                   <select class="form-select" id="servicio-reproductor">
                     <option value="">Seleccione...</option>
@@ -60,36 +55,31 @@ const ServicioFormPage = {
                     `).join('')}
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Nombre del Reproductor</label>
-                  <input type="text" class="form-input" id="servicio-reproductor-nombre"
-                    placeholder="Nombre alternativo">
+                  <input type="text" class="form-control" id="servicio-reproductor-nombre" placeholder="Nombre alternativo">
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Diagnóstico de Celo asociado</label>
                 <select class="form-select" id="servicio-celo">
                   <option value="">Sin diagnóstico asociado</option>
                 </select>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label">Fecha del Servicio *</label>
-                  <input type="date" class="form-input" id="servicio-fecha"
-                    value="${new Date().toISOString().substring(0, 10)}" required>
-                </div>
+              <div class="mb-3">
+                <label class="form-label">Fecha del Servicio *</label>
+                <input type="date" class="form-control" id="servicio-fecha" value="${new Date().toISOString().substring(0, 10)}" required style="max-width:250px">
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-textarea" id="servicio-observaciones"
-                  placeholder="Detalles del servicio..."></textarea>
+                <textarea class="form-control" id="servicio-observaciones" rows="2" placeholder="Detalles del servicio..."></textarea>
               </div>
 
-              <div style="display:flex;gap:0.5rem;justify-content:flex-end">
-                <button type="button" class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
+              <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Registrar Servicio</button>
               </div>
             </form>
@@ -130,7 +120,7 @@ const ServicioFormPage = {
       await API.post('/reproduccion/servicios', payload);
       Router.navegar('/reproduccion');
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al guardar');
+      Toast.error(err.response?.data?.error || 'Error al guardar');
     }
   },
 };

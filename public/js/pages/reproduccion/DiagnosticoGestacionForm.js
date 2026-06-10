@@ -1,7 +1,3 @@
-/**
- * Página: Formulario de Diagnóstico de Gestación
- * POST /api/reproduccion/diagnosticos-gestacion
- */
 const DiagnosticoGestacionFormPage = {
   async render() {
     try {
@@ -15,47 +11,45 @@ const DiagnosticoGestacionFormPage = {
 
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title">Registrar Diagnóstico de Gestación</h1>
-          <button class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Volver</button>
+          <h1 class="page-title"><i class="fas fa-stethoscope me-2"></i>Registrar Diagnóstico de Gestación</h1>
+          <button class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
         <div class="card">
           <div class="card-body">
             <form id="dg-form" onsubmit="DiagnosticoGestacionFormPage.guardar(event)">
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Animal *</label>
-                  <select class="form-select" id="dg-animal" required
-                    onchange="DiagnosticoGestacionFormPage.cambioAnimal()">
+                  <select class="form-select" id="dg-animal" required onchange="DiagnosticoGestacionFormPage.cambioAnimal()">
                     <option value="">Seleccione...</option>
                     ${animals.map(a => `
                       <option value="${a.id}">${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
                     `).join('')}
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Fecha *</label>
-                  <input type="date" class="form-input" id="dg-fecha"
-                    value="${new Date().toISOString().substring(0, 10)}" required>
+                  <input type="date" class="form-control" id="dg-fecha" value="${new Date().toISOString().substring(0, 10)}" required>
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Servicio asociado</label>
                 <select class="form-select" id="dg-servicio">
                   <option value="">Seleccione un animal primero...</option>
                 </select>
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
+              <div class="row g-3">
+                <div class="col-md-6">
                   <label class="form-label">Método *</label>
                   <select class="form-select" id="dg-metodo" required>
                     <option value="Palpación">Palpación</option>
                     <option value="Ecografía">Ecografía</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="col-md-6">
                   <label class="form-label">Resultado *</label>
                   <select class="form-select" id="dg-resultado" required>
                     <option value="">Seleccione...</option>
@@ -65,14 +59,13 @@ const DiagnosticoGestacionFormPage = {
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-textarea" id="dg-observaciones"
-                  placeholder="Detalles del diagnóstico..."></textarea>
+                <textarea class="form-control" id="dg-observaciones" rows="2" placeholder="Detalles del diagnóstico..."></textarea>
               </div>
 
-              <div style="display:flex;gap:0.5rem;justify-content:flex-end">
-                <button type="button" class="btn btn-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
+              <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Registrar Diagnóstico</button>
               </div>
             </form>
@@ -88,18 +81,13 @@ const DiagnosticoGestacionFormPage = {
     const animalId = document.getElementById('dg-animal').value;
     const select = document.getElementById('dg-servicio');
 
-    // This will be populated if servicios were pre-fetched
-    // For now, show a message or fetch servicios for this animal
     if (!animalId) {
       select.innerHTML = '<option value="">Seleccione un animal primero...</option>';
       return;
     }
 
-    // Filter servicios for this animal from pre-fetched data
-    // The servicios were loaded in render, need to filter client-side
     select.innerHTML = '<option value="">Cargando...</option>';
 
-    // Re-fetch servicios filtered
     API.get('/reproduccion/servicios').then(({ data: res }) => {
       const servicios = res?.data || [];
       const filtrados = servicios.filter(s => String(s.animal_id) === animalId);
@@ -131,7 +119,7 @@ const DiagnosticoGestacionFormPage = {
       await API.post('/reproduccion/diagnosticos-gestacion', payload);
       Router.navegar('/reproduccion');
     } catch (err) {
-      alert(err.response?.data?.error || 'Error al guardar');
+      Toast.error(err.response?.data?.error || 'Error al guardar');
     }
   },
 };
