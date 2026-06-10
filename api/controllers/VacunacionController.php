@@ -240,16 +240,37 @@ class VacunacionController
     }
 
     /**
-     * Elimina una vacunación.
+     * Elimina una vacunación y su gasto asociado.
      * DELETE /api/vacunaciones/{id}
      */
     public function destroy(string $id): void
     {
         $uid = $this->usuarioId();
+
+        // Obtener vacunación con su gasto_id ANTES de eliminar
+        $vac = Database::queryOne(
+            'SELECT id, gasto_id FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
+            [':id' => (int)$id, ':uid' => $uid]
+        );
+        if (!$vac) Response::error('Vacunación no encontrada', 404);
+
+        // Eliminar vacunación (cascade a vacunacion_animales)
         Database::execute(
             'DELETE FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
+
+        // Eliminar gasto asociado si existe
+        if ($vac['gasto_id']) {
+            $gastoId = (int)$vac['gasto_id'];
+            require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
+            CostosSyncHelper::eliminarGasto($gastoId, $uid);
+            Database::execute(
+                'DELETE FROM gastos WHERE id = :id',
+                [':id' => $gastoId]
+            );
+        }
+
         Response::json(['mensaje' => 'Vacunación eliminada']);
     }
 
