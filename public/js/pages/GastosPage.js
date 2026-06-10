@@ -1,6 +1,6 @@
 const GastosPage = {
   tipoActual: 'mantenimiento',
-  modoFiltro: 'mes', // 'mes' | 'anio' | 'rango'
+  modoFiltro: 'todo', // 'todo' | 'mes' | 'anio' | 'rango'
   mesActual: new Date().toISOString().substring(0, 7),
   anioActual: new Date().getFullYear().toString(),
   desdeActual: '',
@@ -20,6 +20,7 @@ const GastosPage = {
         <div class="form-group">
           <label class="form-label">Tipo</label>
           <select class="form-select" id="gasto-filtro-tipo" onchange="GastosPage.cambiarFiltro()">
+            <option value="todo">Todos</option>
             <option value="mantenimiento">Mantenimiento</option>
             <option value="medicamentos">Medicamentos</option>
             <option value="compras">Compras</option>
@@ -28,6 +29,7 @@ const GastosPage = {
         <div class="form-group">
           <label class="form-label">Período</label>
           <select class="form-select" id="gasto-filtro-modo" onchange="GastosPage.cambiarModo()">
+            <option value="todo">Todo</option>
             <option value="mes">Mes</option>
             <option value="anio">Año</option>
             <option value="rango">Rango personalizado</option>
@@ -112,7 +114,7 @@ const GastosPage = {
 
   async cargar() {
     try {
-      const params = { tipo: this.tipoActual };
+      const params = this.tipoActual !== 'todo' ? { tipo: this.tipoActual } : {};
 
       if (this.modoFiltro === 'mes') {
         params.mes = this.mesActual;
@@ -129,7 +131,16 @@ const GastosPage = {
 
       // Resumen de totales
       const container = document.getElementById('gastos-resumen');
-      container.innerHTML = Object.entries({ mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' }).map(([k, v]) => `
+      const tipos = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' };
+      const sumaTotal = Object.keys(tipos).reduce((s, k) => s + (parseFloat(totales[k]) || 0), 0);
+      container.innerHTML = `
+        <div class="card" style="cursor:pointer;${this.tipoActual === 'todo' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('gasto-filtro-tipo').value='todo';GastosPage.cambiarFiltro()">
+          <div class="card-body" style="padding:1rem">
+            <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Total General</h3>
+            <p style="margin:0;font-size:1.5rem;font-weight:700">$${sumaTotal.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</p>
+          </div>
+        </div>
+      ` + Object.entries(tipos).map(([k, v]) => `
         <div class="card" style="cursor:pointer;${this.tipoActual === k ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('gasto-filtro-tipo').value='${k}';GastosPage.cambiarFiltro()">
           <div class="card-body" style="padding:1rem">
             <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">${v}</h3>

@@ -61,7 +61,7 @@ class RebanoController
         );
 
         $id = Database::lastInsertId();
-        $this->generarGastoPastaje((int)$id, $uid);
+        $this->generarHistorialPastaje((int)$id, $uid);
         $this->show($id);
     }
 
@@ -122,7 +122,7 @@ class RebanoController
             $params
         );
 
-        $this->generarGastoPastaje((int)$id, $uid);
+        $this->generarHistorialPastaje((int)$id, $uid);
         $this->show($id);
     }
 
@@ -454,38 +454,24 @@ class RebanoController
     }
 
     /**
-     * Crea o actualiza el gasto de pastaje mensual basado en costo_cabeza * cabezas_pastaje.
+     * Crea o actualiza el gasto de pastaje para un mes específico.
      */
-    private function generarGastoPastaje(int $rebanoId, int $uid): void
+    private function upsertGastoPastajeMes(int $rebanoId, int $uid, array $rebano, string $mes, int $cabezas): void
     {
-        $rebano = Database::queryOne(
-            'SELECT r.*,
-                    (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1 AND a.etapa != \'Ternero\') as cabezas
-             FROM rebanos r WHERE r.id = :id AND r.usuario_id = :uid',
-            [':id' => $rebanoId, ':uid' => $uid]
-        );
+        $monto = (float)$rebano['costo_cabeza'] * $cabezas;
 
-        if (!$rebano || !$rebano['dia_corte'] || !$rebano['costo_cabeza']) return;
-        if ((float)$rebano['costo_cabeza'] <= 0 || (int)$rebano['cabezas'] <= 0) return;
-
-        $monto = (float)$rebano['costo_cabeza'] * (int)$rebano['cabezas'];
-        $mes = date('Y-m-01'); // Mes actual
-
-        // Buscar si ya existe un gasto de pastaje para este rebaño en el mes actual
         $existente = Database::queryOne(
             "SELECT id FROM gastos WHERE rebano_id = :rid AND tipo = 'mantenimiento' AND mes = :mes AND usuario_id = :uid AND descripcion LIKE 'Pastaje - %'",
             [':rid' => $rebanoId, ':mes' => $mes, ':uid' => $uid]
         );
 
         if ($existente) {
-            // Actualizar monto del existente
             Database::execute(
                 'UPDATE gastos SET monto = :monto WHERE id = :id',
                 [':monto' => $monto, ':id' => $existente['id']]
             );
             CostosSyncHelper::sincronizarGasto((int)$existente['id'], $uid);
         } else {
-            // Crear nuevo gasto de pastaje
             Database::execute(
                 'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
                  VALUES (:tipo, :desc, :monto, :mes, :rid, :uid)',
@@ -499,6 +485,108 @@ class RebanoController
                 ]
             );
             CostosSyncHelper::sincronizarGasto((int)Database::lastInsertId(), $uid);
+        }
+    }
+
+    /**
+     * Obtiene las cabezas que pagan pastaje para un mes histórico.
+     * Prioriza conteo_mensual_rebano si existe.
+     * Si no hay datos históricos, calcula con conciencia de movimientos:
+     * un animal movido a este rebaño en el mes M no cuenta para meses anteriores a M
+     * (consistente con herdAlInicioMes de CostosController).
+     */
+    private function cabezasPastajeMes(int $rebanoId, int $uid, string $mes): int
+    {
+        $hist = Database::queryOne(
+            'SELECT cabezas FROM conteo_mensual_rebano
+             WHERE rebano_id = :rid AND usuario_id = :uid AND mes = :mes',
+            [':rid' => $rebanoId, ':uid' => $uid, ':mes' => $mes]
+        );
+        if ($hist) return (int)$hist['cabezas'];
+
+        // Fallback: contar animales activos, excluyendo los que llegaron por mudanza
+        // después de este mes (si el animal llegó durante o después de M, no paga
+        // pastaje en este rebaño para M — estaba en el origen al inicio del mes).
+        $result = Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a
+             WHERE a.rebano_id = :rid
+               AND a.usuario_id = :uid
+               AND a.activo = 1
+               AND a.etapa != 'Ternero'
+               AND a.fecha_nacimiento < :sig_mes
+               AND (
+                   NOT EXISTS (
+                       SELECT 1 FROM movimientos_rebano m
+                       WHERE m.animal_id = a.id
+                         AND m.rebano_destino_id = :rid2
+                   )
+                   OR
+                   (
+                       SELECT MAX(m2.created_at)
+                       FROM movimientos_rebano m2
+                       WHERE m2.animal_id = a.id
+                         AND m2.rebano_destino_id = :rid3
+                   ) < :mes2
+               )",
+            [
+                ':rid'     => $rebanoId,
+                ':rid2'    => $rebanoId,
+                ':rid3'    => $rebanoId,
+                ':uid'     => $uid,
+                ':mes'     => $mes,
+                ':mes2'    => $mes,
+                ':sig_mes' => (new \DateTime($mes))->modify('+1 month')->format('Y-m-d'),
+            ]
+        );
+        return (int)($result['total'] ?? 0);
+    }
+
+    /**
+     * Genera el historial completo de gastos de pastaje desde fecha_inicio hasta hoy.
+     */
+    private function generarHistorialPastaje(int $rebanoId, int $uid): void
+    {
+        $rebano = Database::queryOne(
+            'SELECT * FROM rebanos r WHERE r.id = :id AND r.usuario_id = :uid',
+            [':id' => $rebanoId, ':uid' => $uid]
+        );
+
+        if (!$rebano || !$rebano['dia_corte'] || !$rebano['costo_cabeza']) return;
+        if ((float)$rebano['costo_cabeza'] <= 0) return;
+
+        $fechaInicio = $rebano['fecha_inicio'] ?? date('Y-m-d', strtotime('-1 month'));
+        $inicio = new \DateTime($fechaInicio);
+        $inicio->modify('first day of next month');
+        $hoy = new \DateTime();
+
+        $current = clone $inicio;
+        while ($current <= $hoy) {
+            $mesStr = $current->format('Y-m-d');
+            $cabezas = $this->cabezasPastajeMes($rebanoId, $uid, $mesStr);
+            if ($cabezas > 0) {
+                $this->upsertGastoPastajeMes($rebanoId, $uid, $rebano, $mesStr, $cabezas);
+            }
+            $current->modify('+1 month');
+        }
+    }
+
+    /**
+     * Genera (o actualiza) el gasto de pastaje mensual para el mes actual.
+     * Mantenido para compatibilidad con el endpoint público generar-pastaje.
+     */
+    private function generarGastoPastaje(int $rebanoId, int $uid): void
+    {
+        $rebano = Database::queryOne(
+            'SELECT * FROM rebanos r WHERE r.id = :id AND r.usuario_id = :uid',
+            [':id' => $rebanoId, ':uid' => $uid]
+        );
+        if (!$rebano || !$rebano['dia_corte'] || !$rebano['costo_cabeza']) return;
+        if ((float)$rebano['costo_cabeza'] <= 0) return;
+
+        $mes = date('Y-m-01');
+        $cabezas = $this->cabezasPastajeMes($rebanoId, $uid, $mes);
+        if ($cabezas > 0) {
+            $this->upsertGastoPastajeMes($rebanoId, $uid, $rebano, $mes, $cabezas);
         }
     }
 }

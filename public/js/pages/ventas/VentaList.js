@@ -3,6 +3,7 @@
  */
 const VentaListPage = {
   modoFiltro: 'todo',
+  tipoActual: 'todo',
   mesActual: new Date().toISOString().substring(0, 7),
   anioActual: new Date().getFullYear().toString(),
   columnaOrden: null,
@@ -28,6 +29,14 @@ const VentaListPage = {
 
         <div class="filter-panel">
           <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="ventas-filtro-tipo" onchange="VentaListPage.cambiarTipo()">
+              <option value="todo">Todas</option>
+              <option value="Venta">Ventas</option>
+              <option value="Transferencia">Transferencias</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">Período</label>
             <select class="form-select" id="ventas-filtro-modo" onchange="VentaListPage.cambiarModo()">
               <option value="todo">Todo</option>
@@ -46,6 +55,9 @@ const VentaListPage = {
             </select>
           </div>
         </div>
+
+        <!-- KPIs -->
+        <div id="ventas-resumen" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem"></div>
 
         <!-- Ventas realizadas -->
         <div class="card" style="margin-bottom:1rem">
@@ -84,6 +96,11 @@ const VentaListPage = {
     this.modoFiltro = document.getElementById('ventas-filtro-modo').value;
     document.getElementById('ventas-filtro-mes-group').style.display = this.modoFiltro === 'mes' ? '' : 'none';
     document.getElementById('ventas-filtro-anio-group').style.display = this.modoFiltro === 'anio' ? '' : 'none';
+    this.cargar();
+  },
+
+  cambiarTipo() {
+    this.tipoActual = document.getElementById('ventas-filtro-tipo').value;
     this.cargar();
   },
 
@@ -138,8 +155,45 @@ const VentaListPage = {
 
     try {
       const params = this.obtenerParamsFiltro();
-      const { data: ventas } = await API.get('/ventas', params);
-      this.datos = ventas.data || [];
+      if (this.tipoActual !== 'todo') params.tipo = this.tipoActual;
+      const { data: res } = await API.get('/ventas', params);
+      this.datos = res.data?.data || [];
+      const totales = res.data?.totales || [];
+
+      // KPIs
+      const container = document.getElementById('ventas-resumen');
+      if (container) {
+        const idxTotales = {};
+        totales.forEach(t => { idxTotales[t.tipo] = { cantidad: parseInt(t.cantidad), total: parseFloat(t.total) || 0 }; });
+        const Venta = idxTotales['Venta'] || { cantidad: 0, total: 0 };
+        const Transferencia = idxTotales['Transferencia'] || { cantidad: 0, total: 0 };
+        const sumaTotal = Venta.total + Transferencia.total;
+        const sumaCant = Venta.cantidad + Transferencia.cantidad;
+        container.innerHTML = `
+          <div class="card" style="cursor:pointer;${this.tipoActual === 'todo' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('ventas-filtro-tipo').value='todo';VentaListPage.cambiarTipo()">
+            <div class="card-body" style="padding:1rem">
+              <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Total General</h3>
+              <p style="margin:0;font-size:1.5rem;font-weight:700">${Formateador.moneda(sumaTotal)}</p>
+              <p style="margin:0;font-size:0.8rem;color:var(--muted)">${sumaCant} operaciones</p>
+            </div>
+          </div>
+          <div class="card" style="cursor:pointer;${this.tipoActual === 'Venta' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('ventas-filtro-tipo').value='Venta';VentaListPage.cambiarTipo()">
+            <div class="card-body" style="padding:1rem">
+              <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Ventas</h3>
+              <p style="margin:0;font-size:1.5rem;font-weight:700">${Formateador.moneda(Venta.total)}</p>
+              <p style="margin:0;font-size:0.8rem;color:var(--muted)">${Venta.cantidad} animales</p>
+            </div>
+          </div>
+          <div class="card" style="cursor:pointer;${this.tipoActual === 'Transferencia' ? 'border:2px solid var(--primary);' : ''}" onclick="document.getElementById('ventas-filtro-tipo').value='Transferencia';VentaListPage.cambiarTipo()">
+            <div class="card-body" style="padding:1rem">
+              <h3 style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--muted)">Transferencias</h3>
+              <p style="margin:0;font-size:1.5rem;font-weight:700">${Formateador.moneda(Transferencia.total)}</p>
+              <p style="margin:0;font-size:0.8rem;color:var(--muted)">${Transferencia.cantidad} animales</p>
+            </div>
+          </div>
+        `;
+      }
+
       this.renderTabla();
     } catch (e) {
       if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="alert alert-danger">Error: ${e.message}</td></tr>`;

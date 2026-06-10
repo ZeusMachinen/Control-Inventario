@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/Validator.php';
 require_once __DIR__ . '/../helpers/CalculadorEdad.php';
+require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
 
 class CompraController
 {
@@ -194,7 +195,31 @@ class CompraController
                 [':total' => $totalCompra, ':id' => $compraId]
             );
 
+            // ── Crear gasto de compra ──
+            $gastoId = null;
+            if ($totalCompra > 0) {
+                $mes = (new \DateTime($datos['fecha_compra']))->format('Y-m-01');
+                Database::execute(
+                    'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
+                     VALUES (:tipo, :desc, :monto, :mes, :rid, :uid)',
+                    [
+                        ':tipo'  => 'compras',
+                        ':desc'  => "Compra de " . count($animales) . " animales - {$datos['proveedor']}",
+                        ':monto' => $totalCompra,
+                        ':mes'   => $mes,
+                        ':rid'   => (int)$datos['rebano_id'],
+                        ':uid'   => $uid,
+                    ]
+                );
+                $gastoId = (int)Database::lastInsertId();
+            }
+
             $pdo->commit();
+
+            // ── Sincronizar gasto a costos_mensuales ──
+            if ($gastoId) {
+                CostosSyncHelper::sincronizarGasto($gastoId, $uid);
+            }
 
             // Responder con la compra creada
             $this->show((string)$compraId);

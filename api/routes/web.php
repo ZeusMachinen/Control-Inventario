@@ -94,7 +94,7 @@ return [
     'PUT|/api/reproduccion/partos/{id}'              => ['ReproduccionController', 'updateParto',            true],
     'DELETE|/api/reproduccion/partos/{id}'           => ['ReproduccionController', 'destroyParto',           true],
     // Timeline
-    'GET|/api/reproduccion/timeline/{animal_id}'     => ['ReproduccionController', 'timeline',               true],
+    'GET|/api/reproduccion/timeline/{animalId}'      => ['ReproduccionController', 'timeline',               true],
 
     // ─── Estadísticas ──────────────────────────────────────
     'GET|/api/estadisticas/resumen'       => ['EstadisticaController', 'resumen',          true],

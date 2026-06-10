@@ -32,6 +32,12 @@ class VentaController
             $params[':fhasta'] = $fechaHasta;
         }
 
+        $tipo = $_GET['tipo'] ?? null;
+        if ($tipo) {
+            $where .= ' AND v.tipo = :tipo';
+            $params[':tipo'] = $tipo;
+        }
+
         $ventas = Database::query(
             'SELECT v.*, a.nombre as animal_nombre,
                     u.nombre as vendedor_nombre
@@ -42,7 +48,21 @@ class VentaController
              ORDER BY v.fecha DESC',
             $params
         );
-        Response::json($ventas);
+
+        // Totales por tipo con los mismos filtros
+        $totales = Database::query(
+            'SELECT v.tipo, COUNT(*) as cantidad, SUM(v.precio) as total
+             FROM ventas v
+             JOIN animales a ON a.id = v.animal_id
+             WHERE ' . $where . '
+             GROUP BY v.tipo',
+            $params
+        );
+
+        Response::json([
+            'data'    => $ventas,
+            'totales' => $totales,
+        ]);
     }
 
     /**
