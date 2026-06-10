@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/Validator.php';
+require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
 
 class RebanoController
 {
@@ -49,16 +50,18 @@ class RebanoController
         }
 
         Database::execute(
-            'INSERT INTO rebanos (nombre, costo_cabeza, fecha_inicio, usuario_id) VALUES (:nombre, :costo, :fecha, :uid)',
+            'INSERT INTO rebanos (nombre, costo_cabeza, dia_corte, fecha_inicio, usuario_id) VALUES (:nombre, :costo, :dia_corte, :fecha, :uid)',
             [
-                ':nombre' => $datos['nombre'],
-                ':costo'  => $datos['costo_cabeza'] ?? null,
-                ':fecha'  => $datos['fecha_inicio'] ?? null,
-                ':uid'    => $uid,
+                ':nombre'    => $datos['nombre'],
+                ':costo'     => $datos['costo_cabeza'] ?? null,
+                ':dia_corte' => $datos['dia_corte'] ?? null,
+                ':fecha'     => $datos['fecha_inicio'] ?? null,
+                ':uid'       => $uid,
             ]
         );
 
         $id = Database::lastInsertId();
+        $this->generarGastoPastaje((int)$id, $uid);
         $this->show($id);
     }
 
@@ -101,6 +104,11 @@ class RebanoController
             $campos[] = 'costo_cabeza = :costo';
             $params[':costo'] = $datos['costo_cabeza'];
         }
+        // dia_corte solo si la columna existe
+        if (array_key_exists('dia_corte', $datos)) {
+            $campos[] = 'dia_corte = :dia_corte';
+            $params[':dia_corte'] = $datos['dia_corte'] ?: null;
+        }
         // fecha_inicio solo si la columna existe
         if (array_key_exists('fecha_inicio', $datos)) {
             $cols = Database::query("SHOW COLUMNS FROM rebanos LIKE 'fecha_inicio'");
@@ -114,6 +122,7 @@ class RebanoController
             $params
         );
 
+        $this->generarGastoPastaje((int)$id, $uid);
         $this->show($id);
     }
 
@@ -422,5 +431,74 @@ class RebanoController
             'kilos_producidos' => (float)$kilos,
             'ingresos_generados' => (float)$ingresos,
         ]);
+    }
+
+    /**
+     * Genera (o actualiza) el gasto de pastaje mensual para un rebaño.
+     * POST /api/rebanos/{id}/generar-pastaje
+     */
+    public function generarPastaje(string $id): void
+    {
+        $uid = $this->usuarioId();
+        $this->generarGastoPastaje((int)$id, $uid);
+
+        $mensaje = Database::queryOne(
+            "SELECT COUNT(*) as total FROM gastos WHERE rebano_id = :rid AND tipo = 'mantenimiento' AND usuario_id = :uid AND descripcion LIKE 'Pastaje - %' AND mes = :mes",
+            [':rid' => (int)$id, ':uid' => $uid, ':mes' => date('Y-m-01')]
+        );
+
+        Response::json([
+            'mensaje' => 'Gasto de pastaje generado correctamente',
+            'total_mes_actual' => (int)($mensaje['total'] ?? 0),
+        ]);
+    }
+
+    /**
+     * Crea o actualiza el gasto de pastaje mensual basado en costo_cabeza * cabezas_pastaje.
+     */
+    private function generarGastoPastaje(int $rebanoId, int $uid): void
+    {
+        $rebano = Database::queryOne(
+            'SELECT r.*,
+                    (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1 AND a.etapa != \'Ternero\') as cabezas
+             FROM rebanos r WHERE r.id = :id AND r.usuario_id = :uid',
+            [':id' => $rebanoId, ':uid' => $uid]
+        );
+
+        if (!$rebano || !$rebano['dia_corte'] || !$rebano['costo_cabeza']) return;
+        if ((float)$rebano['costo_cabeza'] <= 0 || (int)$rebano['cabezas'] <= 0) return;
+
+        $monto = (float)$rebano['costo_cabeza'] * (int)$rebano['cabezas'];
+        $mes = date('Y-m-01'); // Mes actual
+
+        // Buscar si ya existe un gasto de pastaje para este rebaño en el mes actual
+        $existente = Database::queryOne(
+            "SELECT id FROM gastos WHERE rebano_id = :rid AND tipo = 'mantenimiento' AND mes = :mes AND usuario_id = :uid AND descripcion LIKE 'Pastaje - %'",
+            [':rid' => $rebanoId, ':mes' => $mes, ':uid' => $uid]
+        );
+
+        if ($existente) {
+            // Actualizar monto del existente
+            Database::execute(
+                'UPDATE gastos SET monto = :monto WHERE id = :id',
+                [':monto' => $monto, ':id' => $existente['id']]
+            );
+            CostosSyncHelper::sincronizarGasto((int)$existente['id'], $uid);
+        } else {
+            // Crear nuevo gasto de pastaje
+            Database::execute(
+                'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
+                 VALUES (:tipo, :desc, :monto, :mes, :rid, :uid)',
+                [
+                    ':tipo'  => 'mantenimiento',
+                    ':desc'  => "Pastaje - {$rebano['nombre']}",
+                    ':monto' => $monto,
+                    ':mes'   => $mes,
+                    ':rid'   => $rebanoId,
+                    ':uid'   => $uid,
+                ]
+            );
+            CostosSyncHelper::sincronizarGasto((int)Database::lastInsertId(), $uid);
+        }
     }
 }

@@ -208,6 +208,20 @@ tbody tr:last-child td {
   color: var(--verde-principal);
 }
 
+/* ─── Collapsible Repro Cards ─────────────────────────── */
+.repro-card-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.repro-card-header:hover {
+  background: var(--gris-fondo);
+}
+.repro-card-body {
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
 /* ─── Formularios ────────────────────────────────────── */
 .form-group {
   margin-bottom: var(--spacing-md);

@@ -47,7 +47,7 @@
     '/rebanos/:id/costos':           (p) => CostosRebanoPage.afterRender(),
     '/vacunacion':                   () => VacunacionListPage.afterRender(),
     '/medicamentos':                 () => MedicamentoListPage.afterRender(),
-    // ReproduccionPage carga datos en render(), no necesita afterRender
+    '/reproduccion':                 () => ReproduccionPage.afterRender(),
     '/estadisticas':                 () => DashboardStatsPage.afterRender(),
     '/historial':                    () => HistorialPage.afterRender(),
     '/gastos':                       () => GastosPage.afterRender(),

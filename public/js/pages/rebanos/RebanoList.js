@@ -178,7 +178,7 @@ const RebanoListPage = {
           <td>${costo ? '$' + total : '—'}</td>
           <td class="table-actions">
             <button class="btn btn-sm btn-outline" onclick="Router.navegar('/rebanos/${r.id}')">🐮 Ver</button>
-            ${r.activo ? `<button class="btn btn-sm btn-secondary" onclick="RebanoListPage.editar(${r.id}, '${r.nombre}', ${r.costo_cabeza || ''}, '${r.fecha_inicio || ''}')">✏️ Editar</button>
+            ${r.activo ? `<button class="btn btn-sm btn-secondary" onclick="RebanoListPage.editar(${r.id}, '${r.nombre}', ${r.costo_cabeza || ''}, '${r.fecha_inicio || ''}', ${r.dia_corte || ''})">✏️ Editar</button>
             <button class="btn btn-sm btn-danger" onclick="RebanoListPage.eliminar(${r.id}, '${r.nombre}', ${r.total_animales || 0})">Inactivar</button>` : ''}
           </td>
         </tr>
@@ -259,6 +259,11 @@ const RebanoListPage = {
                 <label class="form-label">Costo por Cabeza ($)</label>
                 <input type="number" step="0.01" min="0" class="form-input" id="rebano-costo" placeholder="Ej: 1500.00">
               </div>
+              <div class="form-group">
+                <label class="form-label">Día de corte (pastaje)</label>
+                <input type="number" min="1" max="28" class="form-input" id="rebano-dia-corte" placeholder="Ej: 15" style="max-width:100px">
+                <small style="color:var(--texto-secundario);font-size:0.8rem">Día del mes en que te cobran el pastaje. Al guardar, se genera automáticamente el gasto en Gastos.</small>
+              </div>
               <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
                 <button type="button" class="btn btn-secondary" onclick="RebanoListPage.cerrarModal()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Crear</button>
@@ -275,8 +280,9 @@ const RebanoListPage = {
     const nombre = document.getElementById('rebano-nombre').value;
     const costo = document.getElementById('rebano-costo').value;
     const fechaInicio = document.getElementById('rebano-fecha-inicio').value;
+    const diaCorte = document.getElementById('rebano-dia-corte').value;
     try {
-      await API.post('/rebanos', { nombre, costo_cabeza: costo || null, fecha_inicio: fechaInicio || null });
+      await API.post('/rebanos', { nombre, costo_cabeza: costo || null, fecha_inicio: fechaInicio || null, dia_corte: diaCorte || null });
       this.cerrarModal();
       this.cargarKpis();
       this.cargar();
@@ -285,7 +291,12 @@ const RebanoListPage = {
     }
   },
 
-  async editar(id, nombreActual, costoActual, fechaInicioActual) {
+  async editar(id, nombreActual, costoActual, fechaInicioActual, diaCorteActual) {
+    // Si se llamó desde el onclick sin diaCorte, obtenerlo de los datos
+    if (diaCorteActual === undefined) {
+      const r = this.datos.find(d => d.id === id);
+      diaCorteActual = r ? r.dia_corte : '';
+    }
     document.getElementById('rebano-modal').innerHTML = `
       <div class="modal-overlay" onclick="if(event.target===this)RebanoListPage.cerrarModal()">
         <div class="modal">
@@ -307,6 +318,11 @@ const RebanoListPage = {
                 <label class="form-label">Costo por Cabeza ($)</label>
                 <input type="number" step="0.01" min="0" class="form-input" id="rebano-costo" value="${costoActual || ''}" placeholder="Ej: 1500.00">
               </div>
+              <div class="form-group">
+                <label class="form-label">Día de corte (pastaje)</label>
+                <input type="number" min="1" max="28" class="form-input" id="rebano-dia-corte" value="${diaCorteActual || ''}" placeholder="Ej: 15" style="max-width:100px">
+                <small style="color:var(--texto-secundario);font-size:0.8rem">Día del mes en que te cobran el pastaje. Al guardar, se actualiza el gasto en Gastos.</small>
+              </div>
               <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
                 <button type="button" class="btn btn-secondary" onclick="RebanoListPage.cerrarModal()">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Guardar</button>
@@ -323,11 +339,13 @@ const RebanoListPage = {
     const nombre = document.getElementById('rebano-nombre').value;
     const costo = document.getElementById('rebano-costo').value;
     const fechaInicio = document.getElementById('rebano-fecha-inicio').value;
+    const diaCorte = document.getElementById('rebano-dia-corte').value;
     try {
       await API.put(`/rebanos/${id}`, {
         nombre,
         costo_cabeza: costo || null,
         fecha_inicio: fechaInicio || null,
+        dia_corte: diaCorte || null,
       });
       this.cerrarModal();
       this.cargar();

@@ -40,6 +40,8 @@ const RebanoDetailPage = {
           <span style="font-size:0.9rem;color:var(--texto-secundario)">📅 Inicio: ${fechaInicio}</span>
           <span class="badge ${r.activo ? 'badge-verde' : 'badge-rojo'}">${r.activo ? 'Activo' : 'Inactivo'}</span>
           ${this.costoPorCabeza ? `<span style="font-size:0.9rem;color:var(--texto-secundario)">💰 Costo/cabeza: $${this.costoPorCabeza.toFixed(2)}</span>` : ''}
+          ${r.dia_corte ? `<span style="font-size:0.9rem;color:var(--texto-secundario)">✂️ Corte: día ${r.dia_corte}</span>` : ''}
+          ${r.dia_corte && this.costoPorCabeza ? `<button class="btn btn-sm btn-outline" onclick="RebanoDetailPage.generarPastaje(${r.id}, this)">💵 Generar gasto pastaje</button>` : ''}
         </div>
 
         <!-- ─── Filtro de período ─────────────────────── -->
@@ -215,6 +217,20 @@ const RebanoDetailPage = {
     }
 
     return params;
+  },
+
+  // ─── Gasto de pastaje ───────────────────────────────
+
+  async generarPastaje(id, btnEl) {
+    try {
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '⏳ Generando...'; }
+      await API.post(`/rebanos/${id}/generar-pastaje`);
+      alert('✅ Gasto de pastaje generado/actualizado. Revisá la sección Gastos.');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Error al generar gasto de pastaje');
+    } finally {
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = '💵 Generar gasto pastaje'; }
+    }
   },
 
   // ─── KPIs ────────────────────────────────────────────

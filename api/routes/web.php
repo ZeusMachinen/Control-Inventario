@@ -37,7 +37,8 @@ return [
     'GET|/api/rebanos/{id}/conteo'    => ['RebanoController', 'conteo',         true],
     'POST|/api/rebanos/mover-multiples' => ['RebanoController', 'moverMultiples', true],
     'GET|/api/rebanos/{id}/movimientos' => ['RebanoController', 'movimientos',   true],
-    'GET|/api/rebanos/{id}/estadisticas' => ['RebanoController', 'estadisticas',  true],
+    'GET|/api/rebanos/{id}/estadisticas'  => ['RebanoController', 'estadisticas',  true],
+    'POST|/api/rebanos/{id}/generar-pastaje' => ['RebanoController', 'generarPastaje', true],
 
     // ─── Filtros Guardados ───────────────────────────────
     'GET|/api/filtros'           => ['FiltroController', 'index',       true],

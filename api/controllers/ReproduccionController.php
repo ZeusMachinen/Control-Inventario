@@ -54,14 +54,14 @@ class ReproduccionController
     public function indexCelo(): void
     {
         $uid = $this->usuarioId();
-        $celos = Database::query(
-            'SELECT dc.*, a.nombre as animal_nombre
-             FROM diagnosticos_celo dc
-             JOIN animales a ON a.id = dc.animal_id
-             WHERE dc.usuario_id = :uid
-             ORDER BY dc.fecha_inicio DESC',
-            [':uid' => $uid]
-        );
+        $incluirInactivos = !empty($_GET['inactivos']);
+        $sql = 'SELECT dc.*, a.nombre as animal_nombre
+                FROM diagnosticos_celo dc
+                JOIN animales a ON a.id = dc.animal_id
+                WHERE dc.usuario_id = :uid';
+        if (!$incluirInactivos) $sql .= ' AND a.activo = 1';
+        $sql .= ' ORDER BY dc.fecha_inicio DESC';
+        $celos = Database::query($sql, [':uid' => $uid]);
         Response::json($celos);
     }
 
@@ -201,18 +201,18 @@ class ReproduccionController
     public function indexServicio(): void
     {
         $uid = $this->usuarioId();
-        $servicios = Database::query(
-            'SELECT s.*, a.nombre as animal_nombre,
-                    dc.fecha_inicio as celo_fecha_inicio,
-                    r.nombre as reproductor_nombre_animal
-             FROM servicios s
-             JOIN animales a ON a.id = s.animal_id
-             LEFT JOIN diagnosticos_celo dc ON dc.id = s.diagnostico_celo_id
-             LEFT JOIN animales r ON r.id = s.reproductor_id
-             WHERE s.usuario_id = :uid
-             ORDER BY s.fecha DESC',
-            [':uid' => $uid]
-        );
+        $incluirInactivos = !empty($_GET['inactivos']);
+        $sql = 'SELECT s.*, a.nombre as animal_nombre,
+                       dc.fecha_inicio as celo_fecha_inicio,
+                       r.nombre as reproductor_nombre_animal
+                FROM servicios s
+                JOIN animales a ON a.id = s.animal_id
+                LEFT JOIN diagnosticos_celo dc ON dc.id = s.diagnostico_celo_id
+                LEFT JOIN animales r ON r.id = s.reproductor_id
+                WHERE s.usuario_id = :uid';
+        if (!$incluirInactivos) $sql .= ' AND a.activo = 1';
+        $sql .= ' ORDER BY s.fecha DESC';
+        $servicios = Database::query($sql, [':uid' => $uid]);
         Response::json($servicios);
     }
 
@@ -373,15 +373,15 @@ class ReproduccionController
     public function indexDiagnosticoGestacion(): void
     {
         $uid = $this->usuarioId();
-        $diagnosticos = Database::query(
-            'SELECT dg.*, a.nombre as animal_nombre, s.fecha as servicio_fecha, s.tipo as servicio_tipo
-             FROM diagnosticos_gestacion dg
-             JOIN animales a ON a.id = dg.animal_id
-             LEFT JOIN servicios s ON s.id = dg.servicio_id
-             WHERE dg.usuario_id = :uid
-             ORDER BY dg.fecha DESC',
-            [':uid' => $uid]
-        );
+        $incluirInactivos = !empty($_GET['inactivos']);
+        $sql = 'SELECT dg.*, a.nombre as animal_nombre, s.fecha as servicio_fecha, s.tipo as servicio_tipo
+                FROM diagnosticos_gestacion dg
+                JOIN animales a ON a.id = dg.animal_id
+                LEFT JOIN servicios s ON s.id = dg.servicio_id
+                WHERE dg.usuario_id = :uid';
+        if (!$incluirInactivos) $sql .= ' AND a.activo = 1';
+        $sql .= ' ORDER BY dg.fecha DESC';
+        $diagnosticos = Database::query($sql, [':uid' => $uid]);
         Response::json($diagnosticos);
     }
 
@@ -544,14 +544,14 @@ class ReproduccionController
     public function indexParto(): void
     {
         $uid = $this->usuarioId();
-        $partos = Database::query(
-            'SELECT p.*, a.nombre as animal_nombre
-             FROM partos p
-             JOIN animales a ON a.id = p.animal_id
-             WHERE p.usuario_id = :uid
-             ORDER BY p.fecha DESC',
-            [':uid' => $uid]
-        );
+        $incluirInactivos = !empty($_GET['inactivos']);
+        $sql = 'SELECT p.*, a.nombre as animal_nombre
+                FROM partos p
+                JOIN animales a ON a.id = p.animal_id
+                WHERE p.usuario_id = :uid';
+        if (!$incluirInactivos) $sql .= ' AND a.activo = 1';
+        $sql .= ' ORDER BY p.fecha DESC';
+        $partos = Database::query($sql, [':uid' => $uid]);
         Response::json($partos);
     }
 
