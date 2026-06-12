@@ -95,6 +95,11 @@
 
   // ─── Inicializar ─────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
+    // Sincronizar icono del toggle dark mode
+    if (typeof DarkMode !== 'undefined') {
+      DarkMode.init();
+    }
+
     // Si no hay hash, redirigir según auth
     if (!window.location.hash) {
       const usuario = localStorage.getItem('usuario');

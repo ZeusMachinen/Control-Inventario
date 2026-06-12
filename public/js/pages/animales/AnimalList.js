@@ -38,6 +38,9 @@ const AnimalListPage = {
             <button class="btn btn-outline-danger d-none" id="btn-vender-multiples" onclick="AnimalListPage.mostrarVenderModal()">
               <i class="fas fa-dollar-sign"></i> Vender (<span id="vender-seleccionados-count">0</span>)
             </button>
+            <button class="btn btn-outline-danger d-none" id="btn-eliminar-multiples" onclick="AnimalListPage.mostrarEliminarModal()">
+              <i class="fas fa-trash"></i> Eliminar (<span id="eliminar-seleccionados-count">0</span>)
+            </button>
           </div>
         </div>
 
@@ -153,6 +156,12 @@ const AnimalListPage = {
     if (btnSell && spanSell) {
       btnSell.classList.toggle('d-none', count === 0);
       spanSell.textContent = count;
+    }
+    const btnDelete = document.getElementById('btn-eliminar-multiples');
+    const spanDelete = document.getElementById('eliminar-seleccionados-count');
+    if (btnDelete && spanDelete) {
+      btnDelete.classList.toggle('d-none', count === 0);
+      spanDelete.textContent = count;
     }
   },
 
@@ -371,15 +380,9 @@ const AnimalListPage = {
               <button class="btn btn-outline-secondary btn-sm" onclick="Router.navegar('/animales/${a.id}')" title="Ver detalle">
                 <i class="fas fa-eye"></i>
               </button>
-              <button class="btn btn-outline-success btn-sm" onclick="Router.navegar('/animales/${a.id}/arbol')" title="Árbol genealógico">
-                <i class="fas fa-tree"></i>
-              </button>
+              ${a.estado_general === 'Activo' ? `
               <button class="btn btn-outline-info btn-sm" onclick="AnimalListPage.moverIndividual(${a.id})" title="Mover a otro rebaño">
                 <i class="fas fa-arrows-alt"></i>
-              </button>
-              ${a.estado_general === 'Activo' ? `
-              <button class="btn btn-outline-danger btn-sm" onclick="AnimalListPage.eliminarAnimal(${a.id})" title="Eliminar animal">
-                <i class="fas fa-times"></i>
               </button>` : ''}
             </div>
           </td>
@@ -443,6 +446,67 @@ const AnimalListPage = {
       this.cargarAnimales();
     } catch (err) {
       Toast.error(err.response?.data?.error || 'Error al eliminar animal');
+    }
+  },
+
+  /**
+   * Muestra modal de confirmación para eliminar múltiples animales.
+   */
+  mostrarEliminarModal() {
+    const count = this.seleccionados.size;
+    const ids = Array.from(this.seleccionados);
+    document.getElementById('animal-eliminar-modal')?.remove();
+
+    const div = document.createElement('div');
+    div.id = 'animal-eliminar-modal';
+    div.className = 'modal fade show d-block';
+    div.setAttribute('tabindex', '-1');
+    div.style.background = 'rgba(0,0,0,0.5)';
+    div.onclick = function (e) {
+      if (e.target === this) div.remove();
+    };
+    div.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-trash text-danger me-2"></i>Eliminar ${count} animal(es)</h5>
+            <button class="btn-close" onclick="this.closest('.modal.fade').remove()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-warning mb-0">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              Se van a marcar como <strong>inactivos</strong> ${count} animal(es).
+              <br><small>Esta acción no se puede deshacer fácilmente.</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" onclick="this.closest('.modal.fade').remove()">Cancelar</button>
+            <button type="button" class="btn btn-danger" onclick="AnimalListPage.ejecutarEliminar()">
+              <i class="fas fa-trash"></i> Eliminar ${count} animal(es)
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+  },
+
+  /**
+   * Ejecuta la eliminación en bloque vía API.
+   */
+  async ejecutarEliminar() {
+    const ids = Array.from(this.seleccionados);
+    if (ids.length === 0) return;
+
+    try {
+      await API.post('/animales/eliminar-multiples', { animal_ids: ids });
+      document.getElementById('animal-eliminar-modal')?.remove();
+      this.seleccionados = new Set();
+      this.actualizarBotonMove();
+      this.cargarAnimales();
+      Toast.success(`${ids.length} animales eliminados`);
+    } catch (err) {
+      Toast.error(err.response?.data?.error || 'Error al eliminar animales');
     }
   },
 

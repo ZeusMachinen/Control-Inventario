@@ -14,10 +14,21 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
+  <!-- Anti-flash: aplicar dark mode antes de renderizar -->
+  <script>
+    (function() {
+      var prefs = localStorage.getItem('dark-mode-preference');
+      if (prefs === 'true') {
+        document.documentElement.className = 'dark-mode';
+      }
+    })();
+  </script>
+
   <!-- Estilos del proyecto -->
   <link rel="stylesheet" href="css/reset.css">
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/dark-mode.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/responsive.css">
@@ -69,6 +80,7 @@
   <script src="js/pages/rebanos/CostosRebanoPage.js" defer></script>
   <script src="js/pages/HistorialPage.js" defer></script>
   <script src="js/pages/GastosPage.js" defer></script>
+  <script src="js/utils/dark-mode.js" defer></script>
   <script src="js/app.js" defer></script>
 </body>
 </html>

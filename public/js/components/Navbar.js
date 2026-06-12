@@ -18,7 +18,10 @@ const Navbar = {
             </span>
             <span class="navbar-title fw-semibold fs-5" id="navbar-title">Dashboard</span>
           </div>
-          <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-link text-secondary p-1" id="dark-mode-toggle" onclick="DarkMode.toggle()" title="${document.documentElement.classList.contains('dark-mode') ? 'Modo claro' : 'Modo oscuro'}" style="font-size:1.15rem;text-decoration:none">
+              <i class="fas ${document.documentElement.classList.contains('dark-mode') ? 'fa-sun' : 'fa-moon'}"></i>
+            </button>
             <div class="d-flex align-items-center gap-2 text-secondary small">
               <i class="fas fa-user"></i>
               <span>${this.escapeHtml(usuario.nombre || 'Usuario')}</span>
