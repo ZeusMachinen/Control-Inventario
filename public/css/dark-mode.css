@@ -1,0 +1,493 @@
+/* ============================================================
+   Dark Mode — Tema azul profundo (Platzi-style)
+   Se activa con clase .dark-mode en <html>
+   ============================================================ */
+
+html.dark-mode {
+  /* ─── Fondo principal ─────────────────────────────── */
+  --gris-fondo:      #0a0f1d;
+  --gris-borde:      #1e2a3d;
+  --gris-texto:      #8b95a5;
+  --gris-input:      #141926;
+
+  /* ─── Texto ────────────────────────────────────────── */
+  --texto-principal: #e4e8ee;
+  --texto-secundario:#8b95a5;
+
+  /* ─── Blancos / Superficies ────────────────────────── */
+  --blanco:          #141926;
+  --verde-bg:        rgba(46, 125, 50, 0.12);
+
+  /* ─── Sombras (más sutiles en fondo oscuro) ────────── */
+  --shadow-sm:       0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md:       0 4px 6px rgba(0,0,0,0.35);
+  --shadow-lg:       0 10px 25px rgba(0,0,0,0.4);
+
+  /* ─── Bootstrap overrides ──────────────────────────── */
+  --bs-body-bg: #0a0f1d;
+  --bs-body-color: #e4e8ee;
+  --bs-body-color-rgb: 228, 232, 238;
+  --bs-secondary-color: #8b95a5;
+  --bs-border-color: #1e2a3d;
+
+  --bs-table-bg: #141926;
+  --bs-table-hover-bg: rgba(255,255,255,0.04);
+  --bs-table-striped-bg: rgba(255,255,255,0.02);
+  --bs-table-color: #e4e8ee;
+}
+
+/* ════════════════════════════════════════════════════════════
+   OVERRIDES GLOBALES
+   ════════════════════════════════════════════════════════════ */
+
+html.dark-mode body {
+  background: var(--gris-fondo);
+  color: var(--texto-principal);
+}
+
+html.dark-mode a {
+  color: #4CAF50;
+}
+html.dark-mode a:hover {
+  color: #66BB6A;
+}
+
+/* ─── Sidebar (se mantiene verde, más texto blanco) ──── */
+html.dark-mode .sidebar {
+  background: linear-gradient(180deg, #1B5E20 0%, #2E7D32 100%);
+}
+
+html.dark-mode .sidebar-link {
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 500;
+}
+
+html.dark-mode .sidebar-link:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html.dark-mode .sidebar-link.active {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+html.dark-mode .sidebar-section-title {
+  color: rgba(255, 255, 255, 0.8) !important;
+  opacity: 1;
+  font-weight: 600;
+}
+
+html.dark-mode .sidebar-logo {
+  color: #ffffff;
+}
+
+html.dark-mode .sidebar-logo .fw-bold {
+  color: #ffffff;
+}
+
+html.dark-mode .sidebar-footer .btn {
+  color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+html.dark-mode .sidebar-footer .btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ─── Navbar ──────────────────────────────────────────── */
+html.dark-mode .navbar {
+  background: #141926 !important;
+  border-bottom-color: #1e2a3d !important;
+}
+
+html.dark-mode .navbar-title,
+html.dark-mode .menu-toggle {
+  color: #e4e8ee !important;
+}
+
+html.dark-mode .navbar .text-secondary {
+  color: #8b95a5 !important;
+}
+
+/* ─── Cards ───────────────────────────────────────────── */
+html.dark-mode .card {
+  background: #141926;
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .card-header {
+  background: #1a2332;
+  border-bottom-color: #1e2a3d;
+  color: #e4e8ee;
+}
+
+html.dark-mode .card-footer {
+  background: #1a2332;
+  border-top-color: #1e2a3d;
+}
+
+/* ─── Table ───────────────────────────────────────────── */
+html.dark-mode .table {
+  --bs-table-bg: #141926;
+  --bs-table-color: #e4e8ee;
+  --bs-table-striped-bg: rgba(255,255,255,0.02);
+  --bs-table-hover-bg: rgba(255,255,255,0.04);
+}
+
+html.dark-mode .table-light,
+html.dark-mode .table > thead.table-light,
+html.dark-mode .table > :not(caption) > * > * {
+  background: #1a2332;
+  color: #e4e8ee;
+  border-bottom-color: #1e2a3d;
+}
+
+html.dark-mode .table-hover tbody tr:hover {
+  --bs-table-hover-bg: rgba(255,255,255,0.04);
+}
+
+html.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > * {
+  background: rgba(255,255,255,0.02);
+}
+
+/* ─── Filters / Filter Panel ──────────────────────────── */
+html.dark-mode .filter-panel {
+  background: #141926;
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .filter-panel .form-label {
+  color: #8b95a5;
+}
+
+/* ─── Stat Cards ──────────────────────────────────────── */
+html.dark-mode .stat-card {
+  background: #141926;
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .stat-card-info p {
+  color: #8b95a5;
+}
+
+/* ─── Page Title ──────────────────────────────────────── */
+html.dark-mode .page-title {
+  color: #e4e8ee;
+}
+
+html.dark-mode .text-secondary {
+  color: #8b95a5 !important;
+}
+
+/* ─── Modals ──────────────────────────────────────────── */
+html.dark-mode .modal-content {
+  background: #141926;
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .modal-header {
+  background: #1a2332;
+  border-bottom-color: #1e2a3d;
+  color: #e4e8ee;
+}
+
+html.dark-mode .modal-footer {
+  background: #1a2332;
+  border-top-color: #1e2a3d;
+}
+
+html.dark-mode .modal-title {
+  color: #e4e8ee;
+}
+
+html.dark-mode .btn-close {
+  filter: invert(0.8);
+}
+
+/* ─── Forms ───────────────────────────────────────────── */
+html.dark-mode .form-control,
+html.dark-mode .form-select {
+  background: #0a0f1d;
+  border-color: #1e2a3d;
+  color: #e4e8ee;
+}
+
+html.dark-mode .form-control:focus,
+html.dark-mode .form-select:focus {
+  background: #0a0f1d;
+  border-color: #2E7D32;
+  color: #e4e8ee;
+  box-shadow: 0 0 0 0.2rem rgba(46, 125, 50, 0.25);
+}
+
+html.dark-mode .form-control::placeholder {
+  color: #5a6577;
+}
+
+html.dark-mode .form-label {
+  color: #8b95a5;
+}
+
+html.dark-mode .form-text {
+  color: #5a6577 !important;
+}
+
+/* ─── Input Groups ────────────────────────────────────── */
+html.dark-mode .input-group-text {
+  background: #0a0f1d;
+  border-color: #1e2a3d;
+  color: #8b95a5;
+}
+
+html.dark-mode .input-group .form-control {
+  border-left: none;
+}
+
+/* ─── Pagination custom ───────────────────────────────── */
+html.dark-mode .pagination-custom button {
+  background: #141926;
+  border-color: #1e2a3d;
+  color: #e4e8ee;
+}
+
+html.dark-mode .pagination-custom button:hover:not(:disabled) {
+  background: rgba(46, 125, 50, 0.15);
+  border-color: #2E7D32;
+}
+
+html.dark-mode .pagination-custom button.active {
+  background: #2E7D32;
+  color: #fff;
+  border-color: #2E7D32;
+}
+
+/* ─── Badges / Labels ─────────────────────────────────── */
+html.dark-mode .badge-sexo-macho {
+  background: rgba(25, 118, 210, 0.15) !important;
+  color: #64B5F6 !important;
+}
+
+html.dark-mode .badge-sexo-hembra {
+  background: rgba(194, 24, 91, 0.15) !important;
+  color: #F06292 !important;
+}
+
+html.dark-mode .badge.bg-primary {
+  background-color: #2E7D32 !important;
+}
+
+html.dark-mode .badge.bg-warning {
+  background-color: #F57C00 !important;
+  color: #fff !important;
+}
+
+html.dark-mode .badge.bg-info {
+  background-color: #1565C0 !important;
+}
+
+/* ─── Alerts ──────────────────────────────────────────── */
+html.dark-mode .alert-success {
+  background: rgba(46, 125, 50, 0.15);
+  border-color: rgba(46, 125, 50, 0.3);
+  color: #81C784;
+}
+
+html.dark-mode .alert-danger {
+  background: rgba(211, 47, 47, 0.15);
+  border-color: rgba(211, 47, 47, 0.3);
+  color: #EF9A9A;
+}
+
+html.dark-mode .alert-warning {
+  background: rgba(245, 124, 0, 0.15);
+  border-color: rgba(245, 124, 0, 0.3);
+  color: #FFB74D;
+}
+
+html.dark-mode .alert-info {
+  background: rgba(25, 118, 210, 0.15);
+  border-color: rgba(25, 118, 210, 0.3);
+  color: #64B5F6;
+}
+
+/* ─── Chart Cards ─────────────────────────────────────── */
+html.dark-mode .chart-card {
+  background: #141926;
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .chart-card h3 {
+  color: #8b95a5;
+}
+
+/* ─── Repro Cards ─────────────────────────────────────── */
+html.dark-mode .repro-card-header:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+/* ─── Detail / Info ───────────────────────────────────── */
+html.dark-mode .detail-label {
+  color: #5a6577;
+}
+
+html.dark-mode .detail-value {
+  color: #e4e8ee;
+}
+
+/* ─── Photo uploader ──────────────────────────────────── */
+html.dark-mode .photo-uploader {
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .photo-uploader:hover {
+  border-color: #2E7D32;
+  background: rgba(46, 125, 50, 0.1);
+}
+
+html.dark-mode .photo-uploader-placeholder {
+  color: #5a6577;
+}
+
+/* ─── Toast ───────────────────────────────────────────── */
+html.dark-mode .toast {
+  background: #1a2332;
+  color: #e4e8ee;
+}
+
+html.dark-mode .toast-header {
+  background: #1a2332;
+  color: #e4e8ee;
+}
+
+/* ─── Auth Page ───────────────────────────────────────── */
+html.dark-mode .auth-card {
+  background: #141926;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+
+html.dark-mode .auth-tabs {
+  background: #0a0f1d;
+}
+
+html.dark-mode .auth-tab {
+  color: #8b95a5;
+}
+
+html.dark-mode .auth-tab:hover {
+  color: #e4e8ee;
+}
+
+html.dark-mode .auth-tab.active {
+  background: #1a2332;
+  color: #4CAF50;
+}
+
+/* ─── Dropdowns (Bootstrap) ──────────────────────────── */
+html.dark-mode .dropdown-menu {
+  background: #1a2332;
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .dropdown-item {
+  color: #e4e8ee;
+}
+
+html.dark-mode .dropdown-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+
+html.dark-mode .dropdown-divider {
+  border-color: #1e2a3d;
+}
+
+/* ─── List Groups ─────────────────────────────────────── */
+html.dark-mode .list-group-item {
+  background: #141926;
+  border-color: #1e2a3d;
+  color: #e4e8ee;
+}
+
+html.dark-mode .list-group-item:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* ─── Nav Tabs ────────────────────────────────────────── */
+html.dark-mode .nav-tabs .nav-link {
+  color: #8b95a5;
+  border-color: transparent;
+}
+
+html.dark-mode .nav-tabs .nav-link:hover {
+  color: #e4e8ee;
+  border-color: #1e2a3d;
+}
+
+html.dark-mode .nav-tabs .nav-link.active {
+  color: #4CAF50;
+  background: #141926;
+  border-color: #1e2a3d;
+  border-bottom-color: #141926;
+}
+
+html.dark-mode .nav-tabs {
+  border-bottom-color: #1e2a3d;
+}
+
+/* ─── Pagination (Bootstrap) ──────────────────────────── */
+html.dark-mode .page-link {
+  background: #141926;
+  border-color: #1e2a3d;
+  color: #e4e8ee;
+}
+
+html.dark-mode .page-link:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+
+html.dark-mode .page-item.active .page-link {
+  background: #2E7D32;
+  border-color: #2E7D32;
+}
+
+html.dark-mode .page-item.disabled .page-link {
+  background: #0a0f1d;
+  color: #5a6577;
+}
+
+/* ─── Progress Bars ───────────────────────────────────── */
+html.dark-mode .progress {
+  background: #0a0f1d;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────── */
+html.dark-mode ::-webkit-scrollbar-track {
+  background: #0a0f1d;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb {
+  background: #1e2a3d;
+  border-radius: 4px;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #2d3a4d;
+}
+
+/* ─── Text colors ─────────────────────────────────────── */
+html.dark-mode .text-muted,
+html.dark-mode .text-secondary {
+  color: #8b95a5 !important;
+}
+
+html.dark-mode .text-dark {
+  color: #e4e8ee !important;
+}
+
+html.dark-mode .text-body {
+  color: #e4e8ee !important;
+}

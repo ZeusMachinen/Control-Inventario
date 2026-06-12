@@ -26,6 +26,7 @@ return [
     'GET|/api/animales/{id}/hijos'       => ['AnimalController', 'hijos',       true],
     'POST|/api/animales/{id}/baja'       => ['AnimalController', 'baja',        true],
     'GET|/api/animales/{id}/arbol-genealogico' => ['AnimalController', 'arbolGenealogico', true],
+    'POST|/api/animales/eliminar-multiples'    => ['AnimalController', 'destroyMultiple',  true],
 
     // ─── Rebaños ──────────────────────────────────────────
     'GET|/api/rebanos'                => ['RebanoController', 'index',           true],

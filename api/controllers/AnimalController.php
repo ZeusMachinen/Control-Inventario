@@ -277,6 +277,43 @@ class AnimalController
     }
 
     /**
+     * Elimina (soft delete) múltiples animales en bloque.
+     * POST /api/animales/eliminar-multiples
+     */
+    public function destroyMultiple(): void
+    {
+        $uid = $this->usuarioId();
+        $datos = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        $ids = $datos['animal_ids'] ?? [];
+        if (empty($ids) || !is_array($ids)) {
+            Response::error('Debe enviar al menos un animal', 422);
+        }
+
+        // Sanitizar
+        $ids = array_map('intval', $ids);
+        $ids = array_unique($ids);
+
+        // Build placeholders seguros
+        $placeholders = [];
+        $params = [':uid' => $uid];
+        foreach ($ids as $i => $id) {
+            $key = ":id{$i}";
+            $placeholders[] = $key;
+            $params[$key] = $id;
+        }
+        $placeholdersStr = implode(',', $placeholders);
+
+        Database::execute(
+            "UPDATE animales SET activo = 0, estado_general = 'Muerto'
+             WHERE id IN ({$placeholdersStr}) AND usuario_id = :uid",
+            $params
+        );
+
+        Response::json(['mensaje' => count($ids) . ' animales eliminados']);
+    }
+
+    /**
      * Da de baja un animal (Vendido/Muerto).
      * POST /api/animales/{id}/baja
      */
