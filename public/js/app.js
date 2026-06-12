@@ -10,6 +10,7 @@
   Router.registrar('/animales',     () => AnimalListPage.render());
   Router.registrar('/animales/nuevo', () => AnimalFormPage.render({}));
   Router.registrar('/animales/:id', (p) => AnimalDetailPage.render(p));
+  Router.registrar('/animales/:id/arbol', (p) => AnimalArbolPage.render(p));
   Router.registrar('/animales/:id/editar', (p) => AnimalFormPage.render(p));
   Router.registrar('/rebanos',      () => RebanoListPage.render());
   Router.registrar('/rebanos/:id',  (p) => RebanoDetailPage.render(p));
@@ -17,11 +18,15 @@
   Router.registrar('/vacunacion/nuevo', () => VacunacionFormPage.render({}));
   Router.registrar('/vacunacion/:id/editar', (p) => VacunacionFormPage.render(p));
   Router.registrar('/medicamentos', () => MedicamentoListPage.render());
-  Router.registrar('/reproduccion',                () => ReproduccionPage.render());
-  Router.registrar('/reproduccion/celos/nuevo',    () => DiagnosticoCeloFormPage.render());
-  Router.registrar('/reproduccion/servicios/nuevo', () => ServicioFormPage.render());
-  Router.registrar('/reproduccion/diagnosticos/nuevo', () => DiagnosticoGestacionFormPage.render());
-  Router.registrar('/reproduccion/partos/nuevo',   () => PartoFormPage.render());
+  Router.registrar('/reproduccion',                          () => ReproduccionPage.render());
+  Router.registrar('/reproduccion/celos/nuevo',              () => DiagnosticoCeloFormPage.render({}));
+  Router.registrar('/reproduccion/celos/:id/editar',          (p) => DiagnosticoCeloFormPage.render(p));
+  Router.registrar('/reproduccion/servicios/nuevo',           () => ServicioFormPage.render({}));
+  Router.registrar('/reproduccion/servicios/:id/editar',      (p) => ServicioFormPage.render(p));
+  Router.registrar('/reproduccion/diagnosticos/nuevo',        () => DiagnosticoGestacionFormPage.render({}));
+  Router.registrar('/reproduccion/diagnosticos/:id/editar',   (p) => DiagnosticoGestacionFormPage.render(p));
+  Router.registrar('/reproduccion/partos/nuevo',              () => PartoFormPage.render({}));
+  Router.registrar('/reproduccion/partos/:id/editar',         (p) => PartoFormPage.render(p));
   Router.registrar('/estadisticas', () => DashboardStatsPage.render());
   Router.registrar('/compras',         () => CompraListPage.render());
   Router.registrar('/compras/nuevo',   () => CompraFormPage.render());
@@ -49,7 +54,11 @@
     '/vacunacion/nuevo':             () => VacunacionFormPage.afterRender(),
     '/vacunacion/:id/editar':        (p) => VacunacionFormPage.afterRender(),
     '/medicamentos':                 () => MedicamentoListPage.afterRender(),
-    '/reproduccion':                 () => ReproduccionPage.afterRender(),
+    '/reproduccion':                          () => ReproduccionPage.afterRender(),
+    '/reproduccion/celos/:id/editar':          (p) => DiagnosticoCeloFormPage.afterRender?.(),
+    '/reproduccion/servicios/:id/editar':      (p) => ServicioFormPage.afterRender?.(),
+    '/reproduccion/diagnosticos/:id/editar':   (p) => DiagnosticoGestacionFormPage.afterRender?.(),
+    '/reproduccion/partos/:id/editar':         (p) => PartoFormPage.afterRender?.(),
     '/estadisticas':                 () => DashboardStatsPage.afterRender(),
     '/historial':                    () => HistorialPage.afterRender(),
     '/gastos':                       () => GastosPage.afterRender(),
@@ -92,13 +101,24 @@
       window.location.hash = usuario ? '#/estadisticas' : '#/login';
     }
 
-    // Cerrar sidebar al hacer clic fuera en mobile
+    // Cerrar sidebar al hacer clic fuera (mobile: overlay, desktop: solo si está colapsado)
     document.addEventListener('click', (e) => {
       const sidebar = document.getElementById('sidebar');
-      if (window.innerWidth <= 768 && sidebar?.classList.contains('open')) {
-        if (!sidebar.contains(e.target) && !e.target.classList.contains('menu-toggle')) {
+      if (!sidebar) return;
+      const esToggle = e.target.closest('.menu-toggle');
+      if (window.innerWidth <= 768 && sidebar.classList.contains('open') && !esToggle) {
+        if (!sidebar.contains(e.target)) {
           sidebar.classList.remove('open');
         }
+      }
+    });
+
+    // En mobile: cerrar sidebar al tocar un link de navegación
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth > 768) return;
+      const link = e.target.closest('.sidebar-link');
+      if (link) {
+        document.getElementById('sidebar')?.classList.remove('open');
       }
     });
 

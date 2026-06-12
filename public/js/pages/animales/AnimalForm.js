@@ -85,14 +85,25 @@ const AnimalFormPage = {
                   <input type="text" class="form-control" id="animal-etapa" value="${animal.etapa || '—'}" readonly style="background:#f5f5f5;font-weight:600">
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <label class="form-label">Peso de Entrada (kg)</label>
-                  <input type="number" step="0.01" min="0" class="form-control" id="animal-peso-entrada" value="${animal.peso_entrada || ''}" placeholder="Ej: 450.50">
+                  <input type="number" step="0.01" min="0" class="form-control" id="animal-peso-entrada" value="${animal.peso_entrada || ''}" placeholder="Ej: 450.50" oninput="AnimalFormPage.calcularDesdePeso()">
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
+                  <label class="form-label">Precio Final ($) <small class="text-secondary">opcional</small></label>
+                  <input type="number" step="0.01" min="0" class="form-control" id="animal-precio-final" value="${animal.precio_final || ''}" placeholder="Ej: 1500000" oninput="AnimalFormPage.calcularDesdePrecioFinal()">
+                </div>
+
+                <div class="col-md-4">
                   <label class="form-label">Precio por kg ($)</label>
-                  <input type="number" step="0.01" min="0" class="form-control" id="animal-precio-kg" value="${animal.precio_kg || ''}" placeholder="Ej: 3.20">
+                  <input type="number" step="0.01" min="0" class="form-control" id="animal-precio-kg" value="${animal.precio_kg || ''}" placeholder="Ej: 3.20" oninput="AnimalFormPage.calcularDesdePrecioKg()">
+                  <small class="text-secondary" id="animal-precio-kg-hint" style="display:none">
+                    <i class="fas fa-calculator me-1"></i>Calculado desde peso y precio final
+                  </small>
+                  <small class="text-secondary" id="animal-precio-final-hint" style="display:none">
+                    <i class="fas fa-calculator me-1"></i>Calculado desde peso y precio/kg
+                  </small>
                 </div>
 
                 <div class="col-md-6 d-none" id="animal-estado-group">
@@ -187,9 +198,86 @@ const AnimalFormPage = {
     document.getElementById('animal-etapa').value = DateUtil.determinarEtapa(totalMeses);
   },
 
+  /* ─── Cálculos automáticos de precio ──────────────────────
+   * Lógica bidireccional entre peso_entrada, precio_final y precio_kg:
+   *
+   *   peso × precio/kg = precio final
+   *   peso / precio final → precio/kg
+   *
+   * Si dos campos están completos, se calcula el tercero.
+   * El campo que el usuario edita NO se sobreescribe.
+   * ─────────────────────────────────────────────────────── */
+
+  calcularDesdePeso() {
+    const peso = parseFloat(document.getElementById('animal-peso-entrada').value);
+    const precioKg = parseFloat(document.getElementById('animal-precio-kg').value);
+    const precioFinal = parseFloat(document.getElementById('animal-precio-final').value);
+
+    // peso + precio/kg → precio final
+    if (peso > 0 && precioKg > 0) {
+      document.getElementById('animal-precio-final').value = (peso * precioKg).toFixed(2);
+      document.getElementById('animal-precio-final-hint').style.display = 'block';
+      return;
+    }
+
+    // peso + precio final → precio/kg
+    if (peso > 0 && precioFinal > 0) {
+      document.getElementById('animal-precio-kg').value = (precioFinal / peso).toFixed(2);
+      document.getElementById('animal-precio-kg-hint').style.display = 'block';
+      document.getElementById('animal-precio-final-hint').style.display = 'none';
+      return;
+    }
+
+    // No hay suficientes datos — limpiar hints
+    document.getElementById('animal-precio-kg-hint').style.display = 'none';
+    document.getElementById('animal-precio-final-hint').style.display = 'none';
+  },
+
+  calcularDesdePrecioFinal() {
+    const peso = parseFloat(document.getElementById('animal-peso-entrada').value);
+    const precioFinal = parseFloat(document.getElementById('animal-precio-final').value);
+
+    if (peso > 0 && precioFinal > 0) {
+      document.getElementById('animal-precio-kg').value = (precioFinal / peso).toFixed(2);
+      document.getElementById('animal-precio-kg-hint').style.display = 'block';
+      document.getElementById('animal-precio-final-hint').style.display = 'none';
+    } else {
+      document.getElementById('animal-precio-kg-hint').style.display = 'none';
+    }
+  },
+
+  calcularDesdePrecioKg() {
+    const peso = parseFloat(document.getElementById('animal-peso-entrada').value);
+    const precioKg = parseFloat(document.getElementById('animal-precio-kg').value);
+
+    if (peso > 0 && precioKg > 0) {
+      document.getElementById('animal-precio-final').value = (peso * precioKg).toFixed(2);
+      document.getElementById('animal-precio-final-hint').style.display = 'block';
+    }
+    // Si el usuario tocó precio/kg, ocultamos el hint de que fue calculado
+    document.getElementById('animal-precio-kg-hint').style.display = 'none';
+  },
+
   afterRender() {
     this.calcularEtapaPorFecha();
     this.cambioSexo();
+
+    // Inicializar cálculos de precios desde los datos existentes
+    const peso = document.getElementById('animal-peso-entrada').value;
+    const precioKg = document.getElementById('animal-precio-kg').value;
+    const precioFinal = document.getElementById('animal-precio-final').value;
+
+    if (peso && precioFinal && !precioKg) {
+      // precio/kg se calcula desde peso + precio final
+      this.calcularDesdePrecioFinal();
+    } else if (peso && precioKg && !precioFinal) {
+      // precio final se calcula desde peso + precio/kg
+      this.calcularDesdePrecioKg();
+    } else if (peso && precioFinal && precioKg) {
+      // Ambos presentes — ocultar hints (fueron ingresados manualmente)
+      document.getElementById('animal-precio-kg-hint').style.display = 'none';
+      document.getElementById('animal-precio-final-hint').style.display = 'none';
+    }
   },
 
   async guardar(e) {
@@ -220,6 +308,9 @@ const AnimalFormPage = {
 
     const precioKg = document.getElementById('animal-precio-kg').value;
     if (precioKg) formData.append('precio_kg', precioKg);
+
+    const precioFinal = document.getElementById('animal-precio-final').value;
+    if (precioFinal) formData.append('precio_final', precioFinal);
 
     const estadoGroup = document.getElementById('animal-estado-group');
     if (!estadoGroup.classList.contains('d-none')) {

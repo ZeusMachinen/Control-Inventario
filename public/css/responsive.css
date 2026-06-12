@@ -4,22 +4,6 @@
 
 /* ─── ≤ 768px (tablet y mobile) ────────────────────────── */
 @media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .menu-toggle {
-    display: block;
-  }
-
-  .main-content {
-    margin-left: 0;
-  }
-
   .page-content {
     padding: var(--spacing-md);
   }

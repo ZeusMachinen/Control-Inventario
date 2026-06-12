@@ -17,11 +17,28 @@ class CompraController
 
     /**
      * Lista compras (lotes) del usuario.
-     * GET /api/compras
+     * GET /api/compras?search=&fecha_desde=&fecha_hasta=
      */
     public function index(): void
     {
         $uid = $this->usuarioId();
+
+        $where = 'c.usuario_id = :uid';
+        $params = [':uid' => $uid];
+
+        $search = $_GET['search'] ?? null;
+        if ($search) {
+            $where .= ' AND c.proveedor LIKE :search';
+            $params[':search'] = "%{$search}%";
+        }
+
+        $fechaDesde = $_GET['fecha_desde'] ?? null;
+        $fechaHasta = $_GET['fecha_hasta'] ?? null;
+        if ($fechaDesde && $fechaHasta) {
+            $where .= ' AND c.fecha_compra BETWEEN :fdesde AND :fhasta';
+            $params[':fdesde'] = $fechaDesde;
+            $params[':fhasta'] = $fechaHasta;
+        }
 
         $compras = Database::query(
             'SELECT c.*,
@@ -29,13 +46,33 @@ class CompraController
                     COALESCE(SUM(a.precio_compra), 0) as total_costo
              FROM compras c
              LEFT JOIN animales a ON a.compra_id = c.id
-             WHERE c.usuario_id = :uid
+             WHERE ' . $where . '
              GROUP BY c.id
              ORDER BY c.fecha_compra DESC, c.created_at DESC',
-            [':uid' => $uid]
+            $params
         );
 
-        Response::json($compras);
+        // Totales
+        $totales = Database::queryOne(
+            'SELECT COUNT(*) as cantidad,
+                    COALESCE(SUM(sub.animal_count), 0) as total_animales,
+                    COALESCE(SUM(sub.costo_total), 0) as total_costo
+             FROM (
+                 SELECT c.id,
+                        COUNT(a.id) as animal_count,
+                        COALESCE(SUM(a.precio_compra), 0) as costo_total
+                 FROM compras c
+                 LEFT JOIN animales a ON a.compra_id = c.id
+                 WHERE ' . $where . '
+                 GROUP BY c.id
+             ) sub',
+            $params
+        );
+
+        Response::json([
+            'data'    => $compras,
+            'totales' => $totales,
+        ]);
     }
 
     /**

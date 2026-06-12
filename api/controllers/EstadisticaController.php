@@ -266,12 +266,38 @@ class EstadisticaController
             [':uid' => $uid, ':uid2' => $uid]
         )['total'];
 
+        // ─── Gastos operativos desagregados ───
+        $gastosPorTipo = Database::query(
+            'SELECT tipo, SUM(monto) as total FROM gastos
+             WHERE usuario_id = :uid AND YEAR(mes) = YEAR(CURDATE())
+             GROUP BY tipo',
+            [':uid' => $uid]
+        );
+        $costos = [];
+        foreach ($gastosPorTipo as $g) {
+            $costos[$g['tipo']] = (float)$g['total'];
+        }
+
+        // Vacunación: costo veterinario desagregado (viene de la tabla vacunaciones)
+        $costoVeterinarioVacunas = Database::queryOne(
+            'SELECT COALESCE(SUM(costo_veterinario), 0) as total FROM vacunaciones
+             WHERE usuario_id = :uid AND YEAR(fecha) = YEAR(CURDATE()) AND costo_veterinario > 0',
+            [':uid' => $uid]
+        )['total'];
+
+        // Total de costos operativos
+        $totalCostos = array_sum($costos);
+
         Response::json([
             'ingresos_anuales'  => (float)$ingresos,
             'gastos_anuales'    => (float)$gastos,
             'ganancia_neta'     => $gananciaNeta,
             'total_ventas'      => (int)$totalVentas,
             'companias_activas' => (int)$companias,
+            // Costos operativos desagregados
+            'costos'            => $costos,
+            'total_costos'      => $totalCostos,
+            'costo_veterinario_vacunas' => (float)$costoVeterinarioVacunas,
         ]);
     }
 }

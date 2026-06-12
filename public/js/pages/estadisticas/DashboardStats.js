@@ -80,6 +80,44 @@ const DashboardStatsPage = {
               <p>Ganancia Neta</p>
             </div>
           </div>
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-card-icon" style="background:#F3E5F5;color:#7B1FA2"><i class="fas fa-chart-pie"></i></div>
+            <div class="stat-card-info">
+              <h3>${Formateador.moneda(c.total_costos || 0)}</h3>
+              <p>Total Gastos Operativos</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-card-icon" style="background:#E8F5E9;color:#2E7D32"><i class="fas fa-tools"></i></div>
+            <div class="stat-card-info">
+              <h3>${Formateador.moneda(c.costos?.mantenimiento || 0)}</h3>
+              <p>Mantenimiento</p>
+            </div>
+          </div>
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-card-icon" style="background:#FFF3E0;color:#E65100"><i class="fas fa-pills"></i></div>
+            <div class="stat-card-info">
+              <h3>${Formateador.moneda(c.costos?.medicamentos || 0)}</h3>
+              <p>Medicamentos</p>
+            </div>
+          </div>
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-card-icon" style="background:#E3F2FD;color:#1565C0"><i class="fas fa-stethoscope"></i></div>
+            <div class="stat-card-info">
+              <h3>${Formateador.moneda(c.costos?.veterinarios || 0)}</h3>
+              <p>Veterinarios</p>
+            </div>
+          </div>
+          <div class="stat-card" style="cursor:default">
+            <div class="stat-card-icon" style="background:#FFEBEE;color:#C62828"><i class="fas fa-shopping-cart"></i></div>
+            <div class="stat-card-info">
+              <h3>${Formateador.moneda(c.costos?.compras || 0)}</h3>
+              <p>Compras</p>
+            </div>
+          </div>
         </div>
 
         <div class="charts-grid">
@@ -88,6 +126,7 @@ const DashboardStatsPage = {
             { id: 'chart-etapas-detalle', title: 'Distribución por Etapa' },
             { id: 'chart-estados', title: 'Estado Reproductivo (Hembras)' },
             { id: 'chart-comercial', title: 'KPIs Comerciales' },
+            { id: 'chart-costos', title: 'Costos Operativos del Año' },
           ].map(ch => `
             <div class="chart-card">
               <h3><i class="fas fa-chart-pie me-2"></i>${ch.title}</h3>
@@ -171,22 +210,82 @@ const DashboardStatsPage = {
 
       const ctx4 = document.getElementById('chart-comercial');
       if (ctx4) {
+        const totalCostos = c.total_costos || 0;
         this.graficos.push(new Chart(ctx4, {
           type: 'bar',
           data: {
-            labels: ['Ingresos', 'Gastos', 'Ganancia Neta'],
+            labels: ['Ingresos', 'Gastos (compras animales)', 'Ganancia Neta', 'Costos Operativos'],
             datasets: [{
               label: 'COP',
-              data: [c.ingresos_anuales || 0, c.gastos_anuales || 0, c.ganancia_neta || 0],
-              backgroundColor: ['#66BB6A', '#EF5350', '#42A5F5'],
+              data: [c.ingresos_anuales || 0, c.gastos_anuales || 0, c.ganancia_neta || 0, totalCostos],
+              backgroundColor: ['#66BB6A', '#EF5350', '#42A5F5', '#AB47BC'],
             }],
           },
           options: {
             responsive: true,
-            plugins: { legend: { display: false } },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx => `$${Number(ctx.raw).toLocaleString('es-CO')}`,
+                },
+              },
+            },
             scales: { y: { beginAtZero: true } },
           },
         }));
+      }
+
+      // ─── Gráfico de costos operativos desagregados ───
+      const ctx5 = document.getElementById('chart-costos');
+      if (ctx5) {
+        const costos = c.costos || {};
+        const costosLabels = {
+          mantenimiento: 'Mantenimiento',
+          medicamentos: 'Medicamentos',
+          veterinarios: 'Veterinarios',
+          compras: 'Compras',
+        };
+        const costosColores = {
+          mantenimiento: '#2E7D32',
+          medicamentos: '#E65100',
+          veterinarios: '#1565C0',
+          compras: '#C62828',
+        };
+
+        // Mostrar solo los tipos que tienen gastos
+        const tiposConDatos = Object.keys(costosLabels).filter(k => (costos[k] || 0) > 0);
+        const etiquetas = tiposConDatos.map(k => costosLabels[k]);
+        const valores = tiposConDatos.map(k => costos[k] || 0);
+        const colores = tiposConDatos.map(k => costosColores[k]);
+
+        if (valores.length > 0) {
+          this.graficos.push(new Chart(ctx5, {
+            type: 'doughnut',
+            data: {
+              labels: etiquetas,
+              datasets: [{
+                data: valores,
+                backgroundColor: colores,
+              }],
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                  callbacks: {
+                    label: ctx => {
+                      const total = valores.reduce((a, b) => a + b, 0);
+                      const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                      return `$${Number(ctx.raw).toLocaleString('es-CO')} (${pct}%)`;
+                    },
+                  },
+                },
+              },
+            },
+          }));
+        }
       }
     } catch (e) {
       console.warn('Error cargando gráficos:', e.message);

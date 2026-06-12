@@ -27,6 +27,9 @@ const AnimalDetailPage = {
                 <i class="fas fa-trash"></i> Dar de Baja
               </button>
             ` : estadoBadge}
+            <button class="btn btn-outline-success" onclick="Router.navegar('/animales/${a.id}/arbol')" title="Árbol genealógico">
+              <i class="fas fa-tree"></i> Árbol
+            </button>
             <button class="btn btn-outline-secondary" onclick="Router.navegar('/animales')">
               <i class="fas fa-arrow-left"></i> Volver
             </button>
@@ -48,6 +51,7 @@ const AnimalDetailPage = {
                   <div class="col-sm-6"><strong>Estado Reproductivo:</strong> ${a.estado_reproductivo ? `<span class="badge bg-warning">${a.estado_reproductivo}</span>` : '-'}</div>
                   <div class="col-sm-6"><strong>Peso Entrada:</strong> ${a.peso_entrada ? `${a.peso_entrada} kg` : '-'}</div>
                   <div class="col-sm-6"><strong>Precio/kg:</strong> ${a.precio_kg ? `$${a.precio_kg}` : '-'}</div>
+                  <div class="col-sm-6"><strong>Precio Final:</strong> ${a.precio_final ? `$${Number(a.precio_final).toLocaleString('es-CO')}` : '-'}</div>
                   <div class="col-sm-6"><strong>Madre:</strong> ${a.madre_nombre ? `<a href="#/animales/${a.madre_id}">${a.madre_nombre}</a>` : '-'}</div>
                   <div class="col-sm-6"><strong>Padre:</strong> ${a.padre_nombre ? `<a href="#/animales/${a.padre_id}">${a.padre_nombre}</a>` : '-'}</div>
                 </div>
@@ -101,7 +105,7 @@ const AnimalDetailPage = {
       const hijosDiv = document.getElementById('seccion-hijos');
       const hijos = resHijos.data || [];
       if (hijos.length === 0) {
-        hijosDiv.innerHTML = '<p class="text-center py-3 text-secondary">Esta vaca no tiene hijos registrados</p>';
+        hijosDiv.innerHTML = '<p class="text-center py-3 text-secondary">Sin hijos registrados</p>';
       } else {
         hijosDiv.innerHTML = `<div class="d-grid gap-2" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${hijos.map(h => `
           <a href="#/animales/${h.id}" class="card text-decoration-none" style="color:var(--texto-principal);transition:box-shadow var(--transition)">
@@ -192,7 +196,7 @@ const AnimalDetailPage = {
     const div = document.createElement('div');
     div.id = 'baja-modal';
     div.innerHTML = `
-      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)this.remove()">
+      <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)this.remove()">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
@@ -292,4 +296,5 @@ const AnimalDetailPage = {
       Toast.error(err.response?.data?.error || 'Error al dar de baja');
     }
   },
+
 };

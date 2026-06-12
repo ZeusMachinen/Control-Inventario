@@ -1,16 +1,31 @@
 const PartoFormPage = {
+  editandoId: null,
   contadorCrias: 0,
 
-  async render() {
+  async render(params) {
+    this.editandoId = params?.id ? parseInt(params.id) : null;
     try {
       const { data: animals } = await API.get('/animales', {
         por_pagina: 1000, sexo: 'Hembra', edad_min: 15,
       });
       const animalsList = animals.data || [];
 
+      let editData = null;
+      if (this.editandoId) {
+        const { data: res } = await API.get(`/reproduccion/partos/${this.editandoId}`);
+        editData = res.data || {};
+        if (editData.crias && typeof editData.crias === 'string') {
+          editData.crias = JSON.parse(editData.crias);
+        }
+      }
+
+      const titulo = this.editandoId ? 'Editar Parto' : 'Registrar Parto';
+      const btnTexto = this.editandoId ? 'Guardar Cambios' : 'Registrar Parto';
+      const fecha = editData?.fecha ? DateUtil.formatoInput(editData.fecha) : new Date().toISOString().substring(0, 10);
+
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title"><i class="fas fa-baby me-2"></i>Registrar Parto</h1>
+          <h1 class="page-title"><i class="fas fa-baby me-2"></i>${titulo}</h1>
           <button class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
@@ -23,19 +38,19 @@ const PartoFormPage = {
                   <select class="form-select" id="parto-animal" required>
                     <option value="">Seleccione...</option>
                     ${animalsList.map(a => `
-                      <option value="${a.id}">${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
+                      <option value="${a.id}" ${editData?.animal_id == a.id ? 'selected' : ''}>${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
                     `).join('')}
                   </select>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Fecha del Parto *</label>
-                  <input type="date" class="form-control" id="parto-fecha" value="${new Date().toISOString().substring(0, 10)}" required>
+                  <input type="date" class="form-control" id="parto-fecha" value="${fecha}" required>
                 </div>
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-control" id="parto-observaciones" rows="2" placeholder="Complicaciones, atención recibida, estado de la madre..."></textarea>
+                <textarea class="form-control" id="parto-observaciones" rows="2" placeholder="Complicaciones, atención recibida, estado de la madre...">${editData?.observaciones || ''}</textarea>
               </div>
 
               <div class="mb-3">
@@ -50,7 +65,7 @@ const PartoFormPage = {
 
               <div class="d-flex gap-2 justify-content-end">
                 <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Registrar Parto</button>
+                <button type="submit" class="btn btn-primary">${btnTexto}</button>
               </div>
             </form>
           </div>
@@ -59,6 +74,28 @@ const PartoFormPage = {
     } catch (e) {
       return MainLayout.render(`<div class="alert alert-danger">Error: ${e.message}</div>`);
     }
+  },
+
+  afterRender() {
+    if (this.editandoId) {
+      setTimeout(() => {
+        // Cargar las crías desde editData (las guardamos al inicio)
+        this.cargarCriasExistente();
+      }, 100);
+    }
+  },
+
+  cargarCriasExistente() {
+    // Recuperar editData de las promise del render — recargamos del API
+    if (!this.editandoId) return;
+    API.get(`/reproduccion/partos/${this.editandoId}`).then(({ data: res }) => {
+      const editData = res.data || {};
+      let crias = editData.crias || [];
+      if (typeof crias === 'string') crias = JSON.parse(crias);
+      if (Array.isArray(crias) && crias.length > 0) {
+        crias.forEach(c => this.agregarCria(c.nombre || '', c.sexo || 'Macho', c.peso || ''));
+      }
+    }).catch(() => {});
   },
 
   agregarCria(nombre, sexo, peso) {
@@ -126,7 +163,12 @@ const PartoFormPage = {
     };
 
     try {
-      await API.post('/reproduccion/partos', payload);
+      if (this.editandoId) {
+        await API.put(`/reproduccion/partos/${this.editandoId}`, payload);
+        Toast.success('Parto actualizado');
+      } else {
+        await API.post('/reproduccion/partos', payload);
+      }
       Router.navegar('/reproduccion');
     } catch (err) {
       Toast.error(err.response?.data?.error || 'Error al guardar');

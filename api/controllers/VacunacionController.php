@@ -15,12 +15,13 @@ class VacunacionController
     }
 
     /**
-     * Calcula el monto del gasto automático asociado a una vacunación.
+     * Calcula los montos del gasto automático asociado a una vacunación,
+     * separando el costo del medicamento del costo veterinario.
      *
      * @param array $datos Datos del request (medicamento, animales, etc.)
      * @param int   $vacunacionId ID de la vacunación ya insertada
      * @param int   $uid ID del usuario
-     * @return array ['monto' => float, 'descripcion' => string, 'count' => int, 'precio_unitario' => float]
+     * @return array ['monto_medicamento' => float, 'monto_veterinario' => float, 'descripcion' => string, 'count' => int, 'precio_unitario' => float]
      */
     private function calcularMontoGasto(array $datos, int $vacunacionId, int $uid): array
     {
@@ -41,24 +42,70 @@ class VacunacionController
         }
 
         $costoVet = (float)($datos['costo_veterinario'] ?? 0);
-        $monto = ($precio * $count) + $costoVet;
+        $montoMed = $precio * $count;
         $descripcion = "Vacunación - {$medNombre} ({$count} animales)";
 
         return [
-            'monto' => $monto,
-            'descripcion' => $descripcion,
-            'count' => $count,
-            'precio_unitario' => $precio,
+            'monto_medicamento'  => $montoMed,
+            'monto_veterinario' => $costoVet,
+            'descripcion'        => $descripcion,
+            'count'              => $count,
+            'precio_unitario'    => $precio,
         ];
     }
 
     /**
+     * Crea un gasto en la tabla gastos y devuelve su ID.
+     */
+    private function crearGasto(string $tipo, string $descripcion, float $monto, string $mes, ?int $rebanoId, int $uid): int
+    {
+        Database::execute(
+            'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
+             VALUES (:tipo, :desc, :monto, :mes, :rebano, :uid)',
+            [
+                ':tipo'   => $tipo,
+                ':desc'   => $descripcion,
+                ':monto'  => $monto,
+                ':mes'    => $mes,
+                ':rebano' => $rebanoId,
+                ':uid'    => $uid,
+            ]
+        );
+        $gastoId = Database::lastInsertId();
+
+        if ($rebanoId) {
+            CostosSyncHelper::sincronizarGasto((int)$gastoId, $uid);
+        }
+
+        return (int)$gastoId;
+    }
+
+    /**
      * Lista eventos de vacunación.
-     * GET /api/vacunaciones
+     * GET /api/vacunaciones?search=&fecha_desde=&fecha_hasta=
      */
     public function index(): void
     {
         $uid = $this->usuarioId();
+
+        $where = 'v.usuario_id = :uid';
+        $params = [':uid' => $uid];
+
+        $search = $_GET['search'] ?? null;
+        if ($search) {
+            $where .= ' AND (m.nombre LIKE :search OR v.observaciones LIKE :search2)';
+            $params[':search'] = "%{$search}%";
+            $params[':search2'] = "%{$search}%";
+        }
+
+        $fechaDesde = $_GET['fecha_desde'] ?? null;
+        $fechaHasta = $_GET['fecha_hasta'] ?? null;
+        if ($fechaDesde && $fechaHasta) {
+            $where .= ' AND v.fecha BETWEEN :fdesde AND :fhasta';
+            $params[':fdesde'] = $fechaDesde;
+            $params[':fhasta'] = $fechaHasta;
+        }
+
         $vacunaciones = Database::query(
             'SELECT v.*, m.nombre as medicamento_nombre, r.nombre as rebano_nombre,
                     g.monto as gasto_monto,
@@ -67,11 +114,27 @@ class VacunacionController
              JOIN medicamentos m ON m.id = v.medicamento_id
              LEFT JOIN gastos g ON g.id = v.gasto_id
              LEFT JOIN rebanos r ON r.id = v.rebano_id
-             WHERE v.usuario_id = :uid
+             WHERE ' . $where . '
              ORDER BY v.fecha DESC',
-            [':uid' => $uid]
+            $params
         );
-        Response::json($vacunaciones);
+
+        // Totales
+        $totales = Database::queryOne(
+            'SELECT COUNT(*) as cantidad,
+                    COALESCE(SUM(v.costo_veterinario), 0) as total_veterinario,
+                    COALESCE(SUM(g.monto), 0) as total_medicamento
+             FROM vacunaciones v
+             JOIN medicamentos m ON m.id = v.medicamento_id
+             LEFT JOIN gastos g ON g.id = v.gasto_id
+             WHERE ' . $where,
+            $params
+        );
+
+        Response::json([
+            'data'    => $vacunaciones,
+            'totales' => $totales,
+        ]);
     }
 
     /**
@@ -143,31 +206,49 @@ class VacunacionController
         $mes = date('Y-m-01', strtotime($datos['fecha']));
         $rebanoId = !empty($datos['rebano_id']) ? (int)$datos['rebano_id'] : null;
 
-        Database::execute(
-            'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
-             VALUES (:tipo, :desc, :monto, :mes, :rebano, :uid)',
-            [
-                ':tipo'   => 'medicamentos',
-                ':desc'   => $gasto['descripcion'],
-                ':monto'  => $gasto['monto'],
-                ':mes'    => $mes,
-                ':rebano' => $rebanoId,
-                ':uid'    => $uid,
-            ]
-        );
-
-        $gastoId = Database::lastInsertId();
-
-        // Sincronizar a costos_mensuales si el gasto tiene rebano_id
-        if ($rebanoId) {
-            CostosSyncHelper::sincronizarGasto((int)$gastoId, $uid);
+        // 1. Gasto de medicamentos — siempre se crea si hay animales vacunados
+        $gastoMedId = null;
+        if ($gasto['count'] > 0) {
+            $gastoMedId = $this->crearGasto(
+                'medicamentos',
+                $gasto['descripcion'],
+                $gasto['monto_medicamento'],
+                $mes,
+                $rebanoId,
+                $uid
+            );
         }
 
-        // Vincular gasto a vacunación
-        Database::execute(
-            'UPDATE vacunaciones SET gasto_id = :gasto WHERE id = :id',
-            [':gasto' => $gastoId, ':id' => $vacunacionId]
-        );
+        // 2. Gasto veterinario separado (solo costo_veterinario)
+        $gastoVetId = null;
+        if ($gasto['monto_veterinario'] > 0) {
+            $gastoVetId = $this->crearGasto(
+                'veterinarios',
+                "Honorarios veterinarios - {$gasto['descripcion']}",
+                $gasto['monto_veterinario'],
+                $mes,
+                $rebanoId,
+                $uid
+            );
+        }
+
+        // Vincular gastos a vacunación
+        if ($gastoMedId || $gastoVetId) {
+            $updateParts = [];
+            $updateParams = [':id' => $vacunacionId];
+            if ($gastoMedId) {
+                $updateParts[] = 'gasto_id = :gasto';
+                $updateParams[':gasto'] = $gastoMedId;
+            }
+            if ($gastoVetId) {
+                $updateParts[] = 'gasto_veterinario_id = :gasto_vet';
+                $updateParams[':gasto_vet'] = $gastoVetId;
+            }
+            Database::execute(
+                'UPDATE vacunaciones SET ' . implode(', ', $updateParts) . ' WHERE id = :id',
+                $updateParams
+            );
+        }
         // === FIN GASTO AUTOMÁTICO ===
 
         $this->show($vacunacionId);
@@ -210,7 +291,7 @@ class VacunacionController
         $datos = json_decode(file_get_contents('php://input'), true) ?? [];
 
         $existente = Database::queryOne(
-            'SELECT id, gasto_id, fecha, medicamento_id, costo_veterinario, rebano_id
+            'SELECT id, gasto_id, gasto_veterinario_id, fecha, medicamento_id, costo_veterinario, rebano_id
              FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
@@ -266,43 +347,71 @@ class VacunacionController
             $mes = date('Y-m-01', strtotime($datos['fecha'] ?? $existente['fecha']));
             $rebanoId = !empty($datos['rebano_id']) ? (int)$datos['rebano_id'] : null;
 
+            // 1. Gasto de medicamentos
             if ($existente['gasto_id']) {
-                // Actualizar gasto existente
-                Database::execute(
-                    'UPDATE gastos SET monto = :monto, descripcion = :desc, mes = :mes, rebano_id = :rebano WHERE id = :id',
-                    [
-                        ':monto' => $gasto['monto'],
-                        ':desc' => $gasto['descripcion'],
-                        ':mes' => $mes,
-                        ':rebano' => $rebanoId,
-                        ':id' => $existente['gasto_id'],
-                    ]
-                );
-                if ($rebanoId) {
-                    CostosSyncHelper::sincronizarGasto((int)$existente['gasto_id'], $uid);
+                if ($gasto['monto_medicamento'] > 0) {
+                    Database::execute(
+                        'UPDATE gastos SET monto = :monto, descripcion = :desc, mes = :mes, rebano_id = :rebano WHERE id = :id',
+                        [
+                            ':monto' => $gasto['monto_medicamento'],
+                            ':desc' => $gasto['descripcion'],
+                            ':mes' => $mes,
+                            ':rebano' => $rebanoId,
+                            ':id' => $existente['gasto_id'],
+                        ]
+                    );
+                    if ($rebanoId) {
+                        CostosSyncHelper::sincronizarGasto((int)$existente['gasto_id'], $uid);
+                    }
+                } else {
+                    // Si ya no hay monto de medicamento, eliminar gasto y desvincular
+                    CostosSyncHelper::eliminarGasto((int)$existente['gasto_id'], $uid);
+                    Database::execute('DELETE FROM gastos WHERE id = :id', [':id' => $existente['gasto_id']]);
+                    Database::execute('UPDATE vacunaciones SET gasto_id = NULL WHERE id = :id', [':id' => (int)$id]);
                 }
-            } else {
-                // Crear nuevo gasto
-                Database::execute(
-                    'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
-                     VALUES (:tipo, :desc, :monto, :mes, :rebano, :uid)',
-                    [
-                        ':tipo' => 'medicamentos',
-                        ':desc' => $gasto['descripcion'],
-                        ':monto' => $gasto['monto'],
-                        ':mes' => $mes,
-                        ':rebano' => $rebanoId,
-                        ':uid' => $uid,
-                    ]
-                );
-                $gastoId = Database::lastInsertId();
-                if ($rebanoId) {
-                    CostosSyncHelper::sincronizarGasto((int)$gastoId, $uid);
-                }
+            } elseif ($gasto['monto_medicamento'] > 0) {
+                $gastoMedId = $this->crearGasto('medicamentos', $gasto['descripcion'], $gasto['monto_medicamento'], $mes, $rebanoId, $uid);
                 Database::execute(
                     'UPDATE vacunaciones SET gasto_id = :gasto WHERE id = :id',
-                    [':gasto' => $gastoId, ':id' => (int)$id]
+                    [':gasto' => $gastoMedId, ':id' => (int)$id]
                 );
+            }
+
+            // 2. Gasto veterinario separado
+            if ($gasto['monto_veterinario'] > 0) {
+                if ($existente['gasto_veterinario_id']) {
+                    Database::execute(
+                        'UPDATE gastos SET monto = :monto, descripcion = :desc, mes = :mes, rebano_id = :rebano WHERE id = :id',
+                        [
+                            ':monto' => $gasto['monto_veterinario'],
+                            ':desc' => "Honorarios veterinarios - {$gasto['descripcion']}",
+                            ':mes' => $mes,
+                            ':rebano' => $rebanoId,
+                            ':id' => $existente['gasto_veterinario_id'],
+                        ]
+                    );
+                    if ($rebanoId) {
+                        CostosSyncHelper::sincronizarGasto((int)$existente['gasto_veterinario_id'], $uid);
+                    }
+                } else {
+                    $gastoVetId = $this->crearGasto(
+                        'veterinarios',
+                        "Honorarios veterinarios - {$gasto['descripcion']}",
+                        $gasto['monto_veterinario'],
+                        $mes,
+                        $rebanoId,
+                        $uid
+                    );
+                    Database::execute(
+                        'UPDATE vacunaciones SET gasto_veterinario_id = :gasto_vet WHERE id = :id',
+                        [':gasto_vet' => $gastoVetId, ':id' => (int)$id]
+                    );
+                }
+            } elseif ($existente['gasto_veterinario_id']) {
+                // Ya no hay costo veterinario, eliminar gasto
+                CostosSyncHelper::eliminarGasto((int)$existente['gasto_veterinario_id'], $uid);
+                Database::execute('DELETE FROM gastos WHERE id = :id', [':id' => $existente['gasto_veterinario_id']]);
+                Database::execute('UPDATE vacunaciones SET gasto_veterinario_id = NULL WHERE id = :id', [':id' => (int)$id]);
             }
         }
         // === FIN GASTO AUTOMÁTICO ===
@@ -318,28 +427,32 @@ class VacunacionController
     {
         $uid = $this->usuarioId();
 
-        // Obtener vacunación con su gasto_id ANTES de eliminar
+        // Obtener vacunación con sus gastos ANTES de eliminar
         $vac = Database::queryOne(
-            'SELECT id, gasto_id FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
+            'SELECT id, gasto_id, gasto_veterinario_id FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
         if (!$vac) Response::error('Vacunación no encontrada', 404);
+
+        // Eliminar gasto veterinario si existe
+        if ($vac['gasto_veterinario_id']) {
+            $gastoVetId = (int)$vac['gasto_veterinario_id'];
+            CostosSyncHelper::eliminarGasto($gastoVetId, $uid);
+            Database::execute('DELETE FROM gastos WHERE id = :id', [':id' => $gastoVetId]);
+        }
+
+        // Eliminar gasto de medicamentos si existe
+        if ($vac['gasto_id']) {
+            $gastoId = (int)$vac['gasto_id'];
+            CostosSyncHelper::eliminarGasto($gastoId, $uid);
+            Database::execute('DELETE FROM gastos WHERE id = :id', [':id' => $gastoId]);
+        }
 
         // Eliminar vacunación (cascade a vacunacion_animales)
         Database::execute(
             'DELETE FROM vacunaciones WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
-
-        // Eliminar gasto asociado si existe
-        if ($vac['gasto_id']) {
-            $gastoId = (int)$vac['gasto_id'];
-            CostosSyncHelper::eliminarGasto($gastoId, $uid);
-            Database::execute(
-                'DELETE FROM gastos WHERE id = :id',
-                [':id' => $gastoId]
-            );
-        }
 
         Response::json(['mensaje' => 'Vacunación eliminada']);
     }

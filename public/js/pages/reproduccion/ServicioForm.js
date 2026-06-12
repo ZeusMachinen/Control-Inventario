@@ -1,7 +1,9 @@
 const ServicioFormPage = {
+  editandoId: null,
   celosSinServicio: [],
 
-  async render() {
+  async render(params) {
+    this.editandoId = params?.id ? parseInt(params.id) : null;
     try {
       const [animalsRes, reproductoresRes] = await Promise.all([
         API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 15 }),
@@ -16,9 +18,19 @@ const ServicioFormPage = {
         this.celosSinServicio = celos?.data || [];
       } catch (_) {}
 
+      let editData = null;
+      if (this.editandoId) {
+        const { data: res } = await API.get(`/reproduccion/servicios/${this.editandoId}`);
+        editData = res.data || {};
+      }
+
+      const titulo = this.editandoId ? 'Editar Servicio' : 'Registrar Servicio';
+      const btnTexto = this.editandoId ? 'Guardar Cambios' : 'Registrar Servicio';
+      const fecha = editData?.fecha ? DateUtil.formatoInput(editData.fecha) : new Date().toISOString().substring(0, 10);
+
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title"><i class="fas fa-handshake me-2"></i>Registrar Servicio</h1>
+          <h1 class="page-title"><i class="fas fa-handshake me-2"></i>${titulo}</h1>
           <button class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
@@ -31,16 +43,16 @@ const ServicioFormPage = {
                   <select class="form-select" id="servicio-animal" required onchange="ServicioFormPage.filtrarCelos()">
                     <option value="">Seleccione...</option>
                     ${animals.map(a => `
-                      <option value="${a.id}">${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
+                      <option value="${a.id}" ${editData?.animal_id == a.id ? 'selected' : ''}>${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
                     `).join('')}
                   </select>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Tipo de Servicio *</label>
                   <select class="form-select" id="servicio-tipo" required>
-                    <option value="Monta Natural">Monta Natural</option>
-                    <option value="Inseminación Artificial">Inseminación Artificial</option>
-                    <option value="Transferencia de Embriones">Transferencia de Embriones</option>
+                    <option value="Monta Natural" ${editData?.tipo === 'Monta Natural' ? 'selected' : ''}>Monta Natural</option>
+                    <option value="Inseminación Artificial" ${editData?.tipo === 'Inseminación Artificial' ? 'selected' : ''}>Inseminación Artificial</option>
+                    <option value="Transferencia de Embriones" ${editData?.tipo === 'Transferencia de Embriones' ? 'selected' : ''}>Transferencia de Embriones</option>
                   </select>
                 </div>
               </div>
@@ -51,13 +63,13 @@ const ServicioFormPage = {
                   <select class="form-select" id="servicio-reproductor">
                     <option value="">Seleccione...</option>
                     ${reproductores.map(r => `
-                      <option value="${r.id}">${r.nombre}</option>
+                      <option value="${r.id}" ${editData?.reproductor_id == r.id ? 'selected' : ''}>${r.nombre}</option>
                     `).join('')}
                   </select>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Nombre del Reproductor</label>
-                  <input type="text" class="form-control" id="servicio-reproductor-nombre" placeholder="Nombre alternativo">
+                  <input type="text" class="form-control" id="servicio-reproductor-nombre" placeholder="Nombre alternativo" value="${editData?.reproductor_nombre || ''}">
                 </div>
               </div>
 
@@ -70,17 +82,17 @@ const ServicioFormPage = {
 
               <div class="mb-3">
                 <label class="form-label">Fecha del Servicio *</label>
-                <input type="date" class="form-control" id="servicio-fecha" value="${new Date().toISOString().substring(0, 10)}" required style="max-width:250px">
+                <input type="date" class="form-control" id="servicio-fecha" value="${fecha}" required style="max-width:250px">
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-control" id="servicio-observaciones" rows="2" placeholder="Detalles del servicio..."></textarea>
+                <textarea class="form-control" id="servicio-observaciones" rows="2" placeholder="Detalles del servicio...">${editData?.observaciones || ''}</textarea>
               </div>
 
               <div class="d-flex gap-2 justify-content-end">
                 <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Registrar Servicio</button>
+                <button type="submit" class="btn btn-primary">${btnTexto}</button>
               </div>
             </form>
           </div>
@@ -88,6 +100,12 @@ const ServicioFormPage = {
       `);
     } catch (e) {
       return MainLayout.render(`<div class="alert alert-danger">Error: ${e.message}</div>`);
+    }
+  },
+
+  afterRender() {
+    if (this.editandoId) {
+      this.filtrarCelos();
     }
   },
 
@@ -117,7 +135,12 @@ const ServicioFormPage = {
     };
 
     try {
-      await API.post('/reproduccion/servicios', payload);
+      if (this.editandoId) {
+        await API.put(`/reproduccion/servicios/${this.editandoId}`, payload);
+        Toast.success('Servicio actualizado');
+      } else {
+        await API.post('/reproduccion/servicios', payload);
+      }
       Router.navegar('/reproduccion');
     } catch (err) {
       Toast.error(err.response?.data?.error || 'Error al guardar');

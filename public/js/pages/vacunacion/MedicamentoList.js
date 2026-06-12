@@ -10,6 +10,15 @@ const MedicamentoListPage = {
         <button class="btn btn-primary" onclick="MedicamentoListPage.mostrarFormulario()"><i class="fas fa-plus me-1"></i>Nuevo Medicamento</button>
       </div>
 
+      <div class="filter-panel">
+        <div class="form-group">
+          <label class="form-label">Buscar</label>
+          <input type="text" class="form-control form-control-sm" id="med-search" placeholder="Nombre..." oninput="MedicamentoListPage.cargar()">
+        </div>
+      </div>
+
+      <div id="med-resumen" class="row g-3 mb-3"></div>
+
       <div class="card">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
@@ -60,8 +69,42 @@ const MedicamentoListPage = {
 
   async cargar() {
     try {
-      const { data } = await API.get('/medicamentos');
-      this.datos = data.data || [];
+      const params = {};
+      const search = document.getElementById('med-search')?.value.trim();
+      if (search) params.search = search;
+
+      const { data: res } = await API.get('/medicamentos', params);
+      this.datos = res.data?.data || [];
+      const totales = res.data?.totales || {};
+
+      // Renderizar resumen
+      const container = document.getElementById('med-resumen');
+      if (container) {
+        container.innerHTML = `
+          <div class="col-md-4">
+            <div class="card text-center py-3 border-primary border-2">
+              <div class="small text-secondary">Valor Total Inventario</div>
+              <div class="fs-4 fw-bold">${Formateador.moneda(totales.total_valor || 0)}</div>
+              <div class="small text-secondary">${totales.cantidad || 0} medicamentos</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card text-center py-3">
+              <div class="small text-secondary">Stock Total</div>
+              <div class="fs-4 fw-bold">${parseInt(totales.total_stock) || 0}</div>
+              <div class="small text-secondary">unidades en inventario</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card text-center py-3">
+              <div class="small text-secondary">Precio Promedio</div>
+              <div class="fs-4 fw-bold">${totales.cantidad > 0 && totales.total_stock > 0 ? Formateador.moneda(totales.total_valor / totales.total_stock) : '$0'}</div>
+              <div class="small text-secondary">por unidad</div>
+            </div>
+          </div>
+        `;
+      }
+
       this.renderTabla();
     } catch (e) {
       document.getElementById('med-tbody').innerHTML = `<tr><td colspan="6" class="text-danger py-3 text-center">Error: ${e.message}</td></tr>`;
@@ -114,7 +157,7 @@ const MedicamentoListPage = {
 
   modalHtml(titulo, id) {
     return `
-      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)MedicamentoListPage.cerrarModal()">
+      <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)MedicamentoListPage.cerrarModal()">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">

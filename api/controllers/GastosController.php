@@ -72,7 +72,7 @@ class GastosController
 
         $validador = new Validator();
         if (!$validador->validar($datos, [
-            'tipo' => 'requerido|enum:mantenimiento,medicamentos,compras',
+            'tipo' => 'requerido|enum:mantenimiento,medicamentos,compras,veterinarios',
             'descripcion' => 'requerido|max:255',
             'monto' => 'requerido|numerico',
             'mes' => 'requerido',

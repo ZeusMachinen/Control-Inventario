@@ -1,5 +1,8 @@
 const DiagnosticoGestacionFormPage = {
-  async render() {
+  editandoId: null,
+
+  async render(params) {
+    this.editandoId = params?.id ? parseInt(params.id) : null;
     try {
       const [animalsRes, serviciosRes] = await Promise.all([
         API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 15 }),
@@ -9,9 +12,23 @@ const DiagnosticoGestacionFormPage = {
       const animals = animalsRes.data.data || [];
       const servicios = serviciosRes.data?.data || [];
 
+      let editData = null;
+      if (this.editandoId) {
+        const { data: res } = await API.get(`/reproduccion/diagnosticos-gestacion/${this.editandoId}`);
+        editData = res.data || {};
+      }
+
+      const titulo = this.editandoId ? 'Editar Diagnóstico de Gestación' : 'Registrar Diagnóstico de Gestación';
+      const btnTexto = this.editandoId ? 'Guardar Cambios' : 'Registrar Diagnóstico';
+      const fecha = editData?.fecha ? DateUtil.formatoInput(editData.fecha) : new Date().toISOString().substring(0, 10);
+      const editAnimalId = editData?.animal_id || '';
+
+      // Filtrar servicios del animal seleccionado para editar
+      const serviciosAnimal = editAnimalId ? servicios.filter(s => String(s.animal_id) === String(editAnimalId)) : [];
+
       return MainLayout.render(`
         <div class="page-header">
-          <h1 class="page-title"><i class="fas fa-stethoscope me-2"></i>Registrar Diagnóstico de Gestación</h1>
+          <h1 class="page-title"><i class="fas fa-stethoscope me-2"></i>${titulo}</h1>
           <button class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')"><i class="fas fa-arrow-left me-1"></i>Volver</button>
         </div>
 
@@ -24,20 +41,23 @@ const DiagnosticoGestacionFormPage = {
                   <select class="form-select" id="dg-animal" required onchange="DiagnosticoGestacionFormPage.cambioAnimal()">
                     <option value="">Seleccione...</option>
                     ${animals.map(a => `
-                      <option value="${a.id}">${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
+                      <option value="${a.id}" ${a.id == editAnimalId ? 'selected' : ''}>${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
                     `).join('')}
                   </select>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Fecha *</label>
-                  <input type="date" class="form-control" id="dg-fecha" value="${new Date().toISOString().substring(0, 10)}" required>
+                  <input type="date" class="form-control" id="dg-fecha" value="${fecha}" required>
                 </div>
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Servicio asociado</label>
                 <select class="form-select" id="dg-servicio">
-                  <option value="">Seleccione un animal primero...</option>
+                  <option value="">${editAnimalId ? 'Sin servicio asociado' : 'Seleccione un animal primero...'}</option>
+                  ${serviciosAnimal.map(s => `
+                    <option value="${s.id}" ${editData?.servicio_id == s.id ? 'selected' : ''}>#${s.id} — ${s.tipo} — ${DateUtil.formatear(s.fecha)}</option>
+                  `).join('')}
                 </select>
               </div>
 
@@ -45,28 +65,28 @@ const DiagnosticoGestacionFormPage = {
                 <div class="col-md-6">
                   <label class="form-label">Método *</label>
                   <select class="form-select" id="dg-metodo" required>
-                    <option value="Palpación">Palpación</option>
-                    <option value="Ecografía">Ecografía</option>
+                    <option value="Palpación" ${editData?.metodo === 'Palpación' ? 'selected' : ''}>Palpación</option>
+                    <option value="Ecografía" ${editData?.metodo === 'Ecografía' ? 'selected' : ''}>Ecografía</option>
                   </select>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Resultado *</label>
                   <select class="form-select" id="dg-resultado" required>
                     <option value="">Seleccione...</option>
-                    <option value="Positivo">Positivo — Preñada</option>
-                    <option value="Negativo">Negativo — Vacía</option>
+                    <option value="Positivo" ${editData?.resultado === 'Positivo' ? 'selected' : ''}>Positivo — Preñada</option>
+                    <option value="Negativo" ${editData?.resultado === 'Negativo' ? 'selected' : ''}>Negativo — Vacía</option>
                   </select>
                 </div>
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Observaciones</label>
-                <textarea class="form-control" id="dg-observaciones" rows="2" placeholder="Detalles del diagnóstico..."></textarea>
+                <textarea class="form-control" id="dg-observaciones" rows="2" placeholder="Detalles del diagnóstico...">${editData?.observaciones || ''}</textarea>
               </div>
 
               <div class="d-flex gap-2 justify-content-end">
                 <button type="button" class="btn btn-outline-secondary" onclick="Router.navegar('/reproduccion')">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Registrar Diagnóstico</button>
+                <button type="submit" class="btn btn-primary">${btnTexto}</button>
               </div>
             </form>
           </div>
@@ -116,7 +136,12 @@ const DiagnosticoGestacionFormPage = {
     };
 
     try {
-      await API.post('/reproduccion/diagnosticos-gestacion', payload);
+      if (this.editandoId) {
+        await API.put(`/reproduccion/diagnosticos-gestacion/${this.editandoId}`, payload);
+        Toast.success('Diagnóstico de gestación actualizado');
+      } else {
+        await API.post('/reproduccion/diagnosticos-gestacion', payload);
+      }
       Router.navegar('/reproduccion');
     } catch (err) {
       Toast.error(err.response?.data?.error || 'Error al guardar');

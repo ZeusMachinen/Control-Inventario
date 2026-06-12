@@ -50,7 +50,7 @@ const Confirm = {
       const modalId = 'confirm-modal-' + Date.now();
       const backdrop = document.createElement('div');
       backdrop.innerHTML = `
-        <div class="modal fade d-block" tabindex="-1" id="${modalId}" style="background:rgba(0,0,0,0.5)">
+        <div class="modal fade show d-block" tabindex="-1" id="${modalId}" style="background:rgba(0,0,0,0.5)">
           <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content">
               <div class="modal-header">

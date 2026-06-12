@@ -23,6 +23,7 @@ const GastosPage = {
             <option value="todo">Todos</option>
             <option value="mantenimiento">Mantenimiento</option>
             <option value="medicamentos">Medicamentos</option>
+            <option value="veterinarios">Veterinarios</option>
             <option value="compras">Compras</option>
           </select>
         </div>
@@ -128,7 +129,7 @@ const GastosPage = {
       const totales = data.data?.totales || {};
 
       const container = document.getElementById('gastos-resumen');
-      const tipos = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' };
+      const tipos = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', veterinarios: 'Veterinarios', compras: 'Compras' };
       const sumaTotal = Object.keys(tipos).reduce((s, k) => s + (parseFloat(totales[k]) || 0), 0);
       container.innerHTML = `
         <div class="col-md-4">
@@ -191,8 +192,8 @@ const GastosPage = {
       return;
     }
 
-    const tipoLabels = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', compras: 'Compras' };
-    const tipoBadge = { mantenimiento: 'bg-success', medicamentos: 'bg-warning', compras: 'bg-danger' };
+    const tipoLabels = { mantenimiento: 'Mantenimiento', medicamentos: 'Medicamentos', veterinarios: 'Veterinarios', compras: 'Compras' };
+    const tipoBadge = { mantenimiento: 'bg-success', medicamentos: 'bg-warning', veterinarios: 'bg-info', compras: 'bg-danger' };
     tbody.innerHTML = gastos.map(g => `
       <tr>
         <td>${new Date(g.mes + 'T00:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long' })}</td>
@@ -218,7 +219,7 @@ const GastosPage = {
     const titulo = editando ? 'Editar Gasto' : 'Nuevo Gasto';
 
     document.getElementById('gasto-modal').innerHTML = `
-      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)GastosPage.cerrarModal()">
+      <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)GastosPage.cerrarModal()">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
@@ -233,6 +234,7 @@ const GastosPage = {
                     <option value="">Seleccione...</option>
                     <option value="mantenimiento" ${gasto?.tipo === 'mantenimiento' ? 'selected' : ''}>Mantenimiento</option>
                     <option value="medicamentos" ${gasto?.tipo === 'medicamentos' ? 'selected' : ''}>Medicamentos</option>
+                    <option value="veterinarios" ${gasto?.tipo === 'veterinarios' ? 'selected' : ''}>Veterinarios</option>
                     <option value="compras" ${gasto?.tipo === 'compras' ? 'selected' : ''}>Compras</option>
                   </select>
                 </div>

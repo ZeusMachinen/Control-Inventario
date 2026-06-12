@@ -12,6 +12,10 @@ const Navbar = {
             <button class="menu-toggle btn btn-link text-decoration-none p-1" onclick="Sidebar.toggle()" aria-label="Menú">
               <i class="fas fa-bars fs-5" style="color:var(--texto-principal)"></i>
             </button>
+            <span class="navbar-brand d-none d-sm-inline-flex align-items-center gap-2 me-3 pe-3 border-end small">
+              <i class="fas fa-cow text-success"></i>
+              <span class="fw-semibold text-secondary">Control Ganadero</span>
+            </span>
             <span class="navbar-title fw-semibold fs-5" id="navbar-title">Dashboard</span>
           </div>
           <div class="d-flex align-items-center gap-3">

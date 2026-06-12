@@ -25,6 +25,7 @@ return [
     'GET|/api/animales/{id}/movimientos' => ['AnimalController', 'movimientos', true],
     'GET|/api/animales/{id}/hijos'       => ['AnimalController', 'hijos',       true],
     'POST|/api/animales/{id}/baja'       => ['AnimalController', 'baja',        true],
+    'GET|/api/animales/{id}/arbol-genealogico' => ['AnimalController', 'arbolGenealogico', true],
 
     // ─── Rebaños ──────────────────────────────────────────
     'GET|/api/rebanos'                => ['RebanoController', 'index',           true],
@@ -139,4 +140,9 @@ return [
     // ─── Archivos / Subidas ────────────────────────────
     'POST|/api/upload/foto'     => ['UploadController', 'subir',       true],
     'GET|/api/uploads/{tipo}/{archivo}' => ['UploadController', 'servir', false],
+
+    // ─── Exportación / Importación ─────────────────────
+    'GET|/api/exportar/animales'  => ['ExportController', 'exportarAnimales',  true],
+    'GET|/api/exportar/todo'      => ['ExportController', 'exportarTodo',      true],
+    'POST|/api/importar/animales' => ['ExportController', 'importarAnimales',  true],
 ];

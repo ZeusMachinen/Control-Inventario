@@ -20,11 +20,11 @@ class AuthController
 
         $validador = new Validator();
         if (!$validador->validar($datos, [
-            'nombre'  => 'requerido|min:3|max:150',
-            'email'   => 'requerido|email|max:255',
+            'nombre'   => 'requerido|min:3|max:150',
+            'email'    => 'requerido|email|max:255',
             'password' => 'requerido|min:6|max:255|alfanumerico',
         ])) {
-            Response::error('Datos inválidos', 422, $validador->errores());
+            Response::error('Corrige los campos marcados', 422, $validador->errores());
         }
 
         // Verificar email único
@@ -34,7 +34,9 @@ class AuthController
         );
 
         if ($existente) {
-            Response::error('El email ya está registrado', 409);
+            Response::error('El email ya está registrado', 409, [
+                'email' => ['Este correo ya tiene una cuenta. Probá con otro o iniciá sesión.'],
+            ]);
         }
 
         $hash = password_hash($datos['password'], PASSWORD_BCRYPT);
@@ -71,8 +73,13 @@ class AuthController
     {
         $datos = json_decode(file_get_contents('php://input'), true) ?? [];
 
-        if (empty($datos['email']) || empty($datos['password'])) {
-            Response::error('Email y contraseña son obligatorios', 422);
+        // Validación con el validador general
+        $validador = new Validator();
+        if (!$validador->validar($datos, [
+            'email'    => 'requerido|email',
+            'password' => 'requerido',
+        ])) {
+            Response::error('Corrige los campos marcados', 422, $validador->errores());
         }
 
         $usuario = Database::queryOne(
@@ -81,7 +88,10 @@ class AuthController
         );
 
         if (!$usuario || !password_verify($datos['password'], $usuario['password'])) {
-            Response::error('Credenciales inválidas', 401);
+            Response::error('El email o la contraseña no son correctos', 401, [
+                'email' => ['Revisá que el email esté escrito correctamente'],
+                'password' => ['La contraseña ingresada no es válida'],
+            ]);
         }
 
         $tokens = $this->generarTokens((int)$usuario['id']);

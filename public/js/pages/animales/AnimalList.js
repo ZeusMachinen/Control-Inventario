@@ -28,7 +28,7 @@ const AnimalListPage = {
       return MainLayout.render(`
         <div class="page-header">
           <h1 class="page-title">Animales ${defaultRebano ? '(' + (rebanosList.find(r => r.id == defaultRebano)?.nombre || '') + ')' : ''}</h1>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-primary" onclick="Router.navegar('/animales/nuevo')">
               <i class="fas fa-plus"></i> Nuevo Animal
             </button>
@@ -94,12 +94,13 @@ const AnimalListPage = {
                   <th onclick="AnimalListPage.ordenarPor('etapa')" data-columna="etapa" class="th-sortable">Etapa</th>
                   <th onclick="AnimalListPage.ordenarPor('peso_entrada')" data-columna="peso_entrada" class="th-sortable">Peso Entrada</th>
                   <th onclick="AnimalListPage.ordenarPor('precio_kg')" data-columna="precio_kg" class="th-sortable">Precio/kg</th>
+                  <th onclick="AnimalListPage.ordenarPor('precio_final')" data-columna="precio_final" class="th-sortable">Precio Final</th>
                   <th onclick="AnimalListPage.ordenarPor('estado_reproductivo')" data-columna="estado_reproductivo" class="th-sortable">Estado</th>
                   <th style="width:130px">Acciones</th>
                 </tr>
               </thead>
               <tbody id="animales-tbody">
-                <tr><td colspan="10" class="text-center py-5 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>
+                <tr><td colspan="11" class="text-center py-5 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>
               </tbody>
             </table>
           </div>
@@ -156,87 +157,95 @@ const AnimalListPage = {
   },
 
   async mostrarMoverModal() {
-    const { data: rebanos } = await API.get('/rebanos');
-    const rebanosList = rebanos.data || [];
-    document.getElementById('animal-move-modal').innerHTML = `
-      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)document.getElementById('animal-move-modal').innerHTML=''">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title"><i class="fas fa-arrows-alt me-2"></i>Mover ${this.seleccionados.size} animal(es)</h5>
-              <button class="btn-close" onclick="document.getElementById('animal-move-modal').innerHTML=''"></button>
-            </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label">Rebaño Destino *</label>
-                <select class="form-select" id="move-rebano-destino" required>
-                  <option value="">Seleccione...</option>
-                  ${rebanosList.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('')}
-                </select>
+    try {
+      const { data: rebanos } = await API.get('/rebanos');
+      const rebanosList = rebanos.data || [];
+      document.getElementById('animal-move-modal').innerHTML = `
+        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)document.getElementById('animal-move-modal').innerHTML=''">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-arrows-alt me-2"></i>Mover ${this.seleccionados.size} animal(es)</h5>
+                <button class="btn-close" onclick="document.getElementById('animal-move-modal').innerHTML=''"></button>
               </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('animal-move-modal').innerHTML=''">Cancelar</button>
-              <button type="button" class="btn btn-primary" onclick="AnimalListPage.ejecutarMove()">Mover</button>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Rebaño Destino *</label>
+                  <select class="form-select" id="move-rebano-destino" required>
+                    <option value="">Seleccione...</option>
+                    ${rebanosList.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('animal-move-modal').innerHTML=''">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="AnimalListPage.ejecutarMove()">Mover</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
+    } catch (err) {
+      Toast.error(err.response?.data?.error || 'Error al cargar rebaños para mover');
+    }
   },
 
   async mostrarVenderModal() {
-    const seleccionados = Array.from(this.seleccionados);
-    const hoy = new Date().toISOString().substring(0, 10);
-    document.getElementById('animal-sell-modal').innerHTML = `
-      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)document.getElementById('animal-sell-modal').innerHTML=''">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title"><i class="fas fa-dollar-sign me-2"></i>Vender ${seleccionados.length} animal(es)</h5>
-              <button class="btn-close" onclick="document.getElementById('animal-sell-modal').innerHTML=''"></button>
-            </div>
-            <div class="modal-body">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <label class="form-label">Precio unitario *</label>
-                  <input type="number" step="1" min="0" class="form-control" id="sell-precio" placeholder="0" required>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Fecha *</label>
-                  <input type="date" class="form-control" id="sell-fecha" value="${hoy}" required>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Comprador</label>
-                  <input type="text" class="form-control" id="sell-comprador" placeholder="Nombre del comprador">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Tipo</label>
-                  <select class="form-select" id="sell-tipo">
-                    <option value="Venta">Venta</option>
-                    <option value="Transferencia">Transferencia</option>
-                  </select>
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Peso Total del Lote (kg) <small class="text-secondary">opcional — si lo ponés, se distribuye según peso de entrada</small></label>
-                  <input type="number" step="0.01" min="0" class="form-control" id="sell-peso" placeholder="Ej: suma de todos los animales">
-                </div>
-                <div class="col-12">
-                  <label class="form-label">Notas</label>
-                  <textarea class="form-control" id="sell-notas" placeholder="Detalles de la venta..." rows="2"></textarea>
+    try {
+      const seleccionados = Array.from(this.seleccionados);
+      const hoy = new Date().toISOString().substring(0, 10);
+      document.getElementById('animal-sell-modal').innerHTML = `
+        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)document.getElementById('animal-sell-modal').innerHTML=''">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-dollar-sign me-2"></i>Vender ${seleccionados.length} animal(es)</h5>
+                <button class="btn-close" onclick="document.getElementById('animal-sell-modal').innerHTML=''"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Precio unitario *</label>
+                    <input type="number" step="1" min="0" class="form-control" id="sell-precio" placeholder="0" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Fecha *</label>
+                    <input type="date" class="form-control" id="sell-fecha" value="${hoy}" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Comprador</label>
+                    <input type="text" class="form-control" id="sell-comprador" placeholder="Nombre del comprador">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" id="sell-tipo">
+                      <option value="Venta">Venta</option>
+                      <option value="Transferencia">Transferencia</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Peso Total del Lote (kg) <small class="text-secondary">opcional — si lo ponés, se distribuye según peso de entrada</small></label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="sell-peso" placeholder="Ej: suma de todos los animales">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Notas</label>
+                    <textarea class="form-control" id="sell-notas" placeholder="Detalles de la venta..." rows="2"></textarea>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('animal-sell-modal').innerHTML=''">Cancelar</button>
-              <button type="button" class="btn btn-danger" onclick="AnimalListPage.ejecutarVenta()">
-                <i class="fas fa-dollar-sign"></i> Vender ${seleccionados.length} animal(es)
-              </button>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('animal-sell-modal').innerHTML=''">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="AnimalListPage.ejecutarVenta()">
+                  <i class="fas fa-dollar-sign"></i> Vender ${seleccionados.length} animal(es)
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
+    } catch (err) {
+      Toast.error(err.response?.data?.error || 'Error al abrir ventana de venta');
+    }
   },
 
   async ejecutarVenta() {
@@ -295,6 +304,7 @@ const AnimalListPage = {
       etapa: item.etapa,
       peso_entrada: parseFloat(item.peso_entrada) || 0,
       precio_kg: parseFloat(item.precio_kg) || 0,
+      precio_final: parseFloat(item.precio_final) || 0,
       estado_reproductivo: item.estado_reproductivo,
     };
     return map[columna];
@@ -313,7 +323,7 @@ const AnimalListPage = {
 
   async cargarAnimales() {
     const tbody = document.getElementById('animales-tbody');
-    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>';
 
     try {
       const params = { pagina: this.paginaActual, ...this.filtros };
@@ -323,7 +333,7 @@ const AnimalListPage = {
       this.porPagina = data.por_pagina || 20;
       this.renderTabla();
     } catch (error) {
-      tbody.innerHTML = `<tr><td colspan="10" class="text-danger py-3 text-center">Error: ${error.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" class="text-danger py-3 text-center">Error: ${error.message}</td></tr>`;
     }
   },
 
@@ -340,7 +350,7 @@ const AnimalListPage = {
     }
 
     if (animales.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-secondary">No hay animales registrados</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-secondary">No hay animales registrados</td></tr>';
       return;
     }
 
@@ -354,15 +364,23 @@ const AnimalListPage = {
           <td><span class="badge bg-primary">${a.etapa}</span></td>
           <td>${a.peso_entrada ? `${a.peso_entrada} kg` : '-'}</td>
           <td>${a.precio_kg ? `$${a.precio_kg}` : '-'}</td>
+          <td>${a.precio_final ? `$${Number(a.precio_final).toLocaleString('es-CO')}` : '-'}</td>
           <td>${a.estado_reproductivo ? `<span class="badge ${a.estado_reproductivo === 'Prenada' ? 'bg-warning' : 'bg-info'}">${a.estado_reproductivo}</span>` : '-'}</td>
           <td>
             <div class="d-flex gap-1">
               <button class="btn btn-outline-secondary btn-sm" onclick="Router.navegar('/animales/${a.id}')" title="Ver detalle">
                 <i class="fas fa-eye"></i>
               </button>
+              <button class="btn btn-outline-success btn-sm" onclick="Router.navegar('/animales/${a.id}/arbol')" title="Árbol genealógico">
+                <i class="fas fa-tree"></i>
+              </button>
               <button class="btn btn-outline-info btn-sm" onclick="AnimalListPage.moverIndividual(${a.id})" title="Mover a otro rebaño">
                 <i class="fas fa-arrows-alt"></i>
               </button>
+              ${a.estado_general === 'Activo' ? `
+              <button class="btn btn-outline-danger btn-sm" onclick="AnimalListPage.eliminarAnimal(${a.id})" title="Eliminar animal">
+                <i class="fas fa-times"></i>
+              </button>` : ''}
             </div>
           </td>
         </tr>
@@ -409,6 +427,129 @@ const AnimalListPage = {
   moverIndividual(id) {
     this.seleccionados = new Set([id]);
     this.mostrarMoverModal();
+  },
+
+  // ─── Eliminar ─────────────────────────────────────────
+
+  /**
+   * Elimina (soft delete) un animal con confirmación.
+   */
+  async eliminarAnimal(id) {
+    if (!confirm('¿Eliminar este animal? Se marcará como inactivo.')) return;
+
+    try {
+      await API.delete(`/animales/${id}`);
+      Toast.success('Animal eliminado');
+      this.cargarAnimales();
+    } catch (err) {
+      Toast.error(err.response?.data?.error || 'Error al eliminar animal');
+    }
+  },
+
+  // ─── Exportar / Importar ───────────────────────────────
+
+  /**
+   * Descarga JSON con todos los animales y datos relacionados.
+   */
+  async exportarCSV() {
+    try {
+      await API.download('/exportar/animales', 'animales_export.json');
+      Toast.success('Exportación iniciada');
+    } catch (err) {
+      Toast.error(err.message || 'Error al exportar animales');
+    }
+  },
+
+  /**
+   * Muestra el modal para importar animales desde JSON.
+   */
+  mostrarImportarModal() {
+    const idModal = 'animal-import-modal';
+    document.getElementById(idModal)?.remove();
+
+    const div = document.createElement('div');
+    div.id = idModal;
+    div.className = 'modal fade show d-block';
+    div.setAttribute('tabindex', '-1');
+    div.style.background = 'rgba(0,0,0,0.5)';
+    div.onclick = function (e) {
+      if (e.target === this) div.remove();
+    };
+    div.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>Importar Animales</h5>
+            <button class="btn-close" onclick="this.closest('.modal.fade').remove()"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-secondary small mb-3">
+              Seleccioná un archivo <strong>JSON</strong> con el campo <code>animales</code>.
+              Cada animal necesita <code>nombre</code>, <code>sexo</code> (Macho/Hembra),
+              <code>fecha_nacimiento</code> y <code>rebano_nombre</code> o <code>rebano_id</code>.
+            </p>
+            <div class="mb-3">
+              <label class="form-label">Archivo JSON</label>
+              <input type="file" class="form-control" id="import-file" accept=".json,application/json">
+            </div>
+            <div id="import-result" class="d-none"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" onclick="this.closest('.modal.fade').remove()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="AnimalListPage.ejecutarImportacion()">
+              <i class="fas fa-upload"></i> Importar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+  },
+
+  /**
+   * Lee el archivo seleccionado y envía la importación.
+   */
+  async ejecutarImportacion() {
+    const fileInput = document.getElementById('import-file');
+    const resultDiv = document.getElementById('import-result');
+    const file = fileInput?.files?.[0];
+
+    if (!file) {
+      Toast.warning('Seleccioná un archivo JSON');
+      return;
+    }
+
+    try {
+      const texto = await file.text();
+      const datos = JSON.parse(texto);
+
+      if (!datos.animales || !Array.isArray(datos.animales)) {
+        Toast.error('El JSON debe contener un array en el campo "animales"');
+        return;
+      }
+
+      const { data } = await API.post('/importar/animales', datos);
+      const r = data.data || data;
+
+      resultDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+      resultDiv.className = 'alert ' + (r.errores?.length ? 'alert-warning' : 'alert-success');
+      resultDiv.innerHTML = `<strong>${r.mensaje}</strong>`;
+      if (r.errores?.length) {
+        resultDiv.innerHTML += '<ul class="mb-0 mt-1 small">' +
+          r.errores.map(e => `<li>${e}</li>`).join('') + '</ul>';
+      }
+
+      if (r.importados > 0) {
+        // Si estamos en la página de animales, recargar la lista
+        if (document.getElementById('animales-tbody')) {
+          this.cargarAnimales();
+        }
+      }
+    } catch (err) {
+      resultDiv.classList.remove('d-none');
+      resultDiv.className = 'alert alert-danger';
+      resultDiv.textContent = err.response?.data?.error || err.message || 'Error al importar';
+    }
   },
 };
 

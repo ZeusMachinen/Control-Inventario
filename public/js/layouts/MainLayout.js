@@ -10,7 +10,7 @@ const MainLayout = {
     return `
       <div class="app-shell d-flex vh-100">
         ${Sidebar.render()}
-        <div class="main-content flex-grow-1 d-flex flex-column" style="margin-left:260px">
+        <div class="main-content flex-grow-1 d-flex flex-column">
           ${Navbar.render()}
           <main class="page-content flex-grow-1 p-4 overflow-auto">
             ${contenidoHtml}

@@ -122,9 +122,21 @@ class AnimalController
         $edad = CalculadorEdad::calcular($datos['fecha_nacimiento']);
         $etapaCalculada = CalculadorEdad::determinarEtapa($edad['total_meses']);
 
+        // Precio final y cálculo automático de precio/kg
+        $precioFinal = isset($datos['precio_final']) ? (float)$datos['precio_final'] : null;
+        $precioKg = isset($datos['precio_kg']) ? (float)$datos['precio_kg'] : null;
+
+        // Si no mandaron precio_kg pero sí precio_final y peso_entrada, calcularlo
+        if ($precioKg === null && $precioFinal !== null && !empty($datos['peso_entrada'])) {
+            $peso = (float)$datos['peso_entrada'];
+            if ($peso > 0) {
+                $precioKg = round($precioFinal / $peso, 2);
+            }
+        }
+
         Database::execute(
-            'INSERT INTO animales (nombre, identificacion, sexo, fecha_nacimiento, rebano_id, madre_id, padre_id, etapa, estado_reproductivo, peso_entrada, precio_kg, usuario_id)
-             VALUES (:nombre, :identificacion, :sexo, :fecha, :rebano, :madre, :padre, :etapa, :estado, :peso_entrada, :precio_kg, :uid)',
+            'INSERT INTO animales (nombre, identificacion, sexo, fecha_nacimiento, rebano_id, madre_id, padre_id, etapa, estado_reproductivo, peso_entrada, precio_kg, precio_final, usuario_id)
+             VALUES (:nombre, :identificacion, :sexo, :fecha, :rebano, :madre, :padre, :etapa, :estado, :peso_entrada, :precio_kg, :precio_final, :uid)',
             [
                 ':nombre'           => $datos['nombre'],
                 ':identificacion'   => $datos['identificacion'] ?? null,
@@ -136,7 +148,8 @@ class AnimalController
                 ':etapa'            => $etapaCalculada,
                 ':estado'           => $estado,
                 ':peso_entrada'     => isset($datos['peso_entrada']) ? (float)$datos['peso_entrada'] : null,
-                ':precio_kg'        => isset($datos['precio_kg']) ? (float)$datos['precio_kg'] : null,
+                ':precio_kg'        => $precioKg,
+                ':precio_final'     => $precioFinal,
                 ':uid'              => $uid,
             ]
         );
@@ -200,7 +213,15 @@ class AnimalController
             $params[':etapa'] = CalculadorEdad::determinarEtapa($edad['total_meses']);
         }
 
-        foreach (['nombre', 'identificacion', 'sexo', 'fecha_nacimiento', 'rebano_id', 'madre_id', 'padre_id', 'estado_reproductivo', 'foto', 'peso_entrada', 'precio_kg'] as $campo) {
+        // Auto-calcular precio_kg si mandaron precio_final + peso_entrada y no precio_kg explícito
+        if (!isset($datos['precio_kg']) && isset($datos['precio_final']) && !empty($datos['peso_entrada'])) {
+            $peso = (float)$datos['peso_entrada'];
+            if ($peso > 0) {
+                $datos['precio_kg'] = round((float)$datos['precio_final'] / $peso, 2);
+            }
+        }
+
+        foreach (['nombre', 'identificacion', 'sexo', 'fecha_nacimiento', 'rebano_id', 'madre_id', 'padre_id', 'estado_reproductivo', 'foto', 'peso_entrada', 'precio_kg', 'precio_final'] as $campo) {
             if (isset($datos[$campo])) {
                 $campos[] = "$campo = :$campo";
                 $params[":$campo"] = $datos[$campo];
@@ -319,6 +340,28 @@ class AnimalController
         $where = ['a.usuario_id = :uid', "a.estado_general IN ('Vendido','Muerto')"];
         $params = [':uid' => $uid];
 
+        // Filtro por nombre (buscador)
+        if (!empty($_GET['search'])) {
+            $where[] = 'a.nombre LIKE :search';
+            $params[':search'] = '%' . $_GET['search'] . '%';
+        }
+
+        // Filtro por estado (Todos / Vendido / Muerto)
+        if (!empty($_GET['estado'])) {
+            $where[] = 'a.estado_general = :estado';
+            $params[':estado'] = $_GET['estado'];
+        }
+
+        // Filtro por período (fecha_salida)
+        if (!empty($_GET['fecha_desde'])) {
+            $where[] = 'a.fecha_salida >= :fecha_desde';
+            $params[':fecha_desde'] = $_GET['fecha_desde'];
+        }
+        if (!empty($_GET['fecha_hasta'])) {
+            $where[] = 'a.fecha_salida <= :fecha_hasta';
+            $params[':fecha_hasta'] = $_GET['fecha_hasta'];
+        }
+
         $whereClause = implode(' AND ', $where);
 
         $total = Database::queryOne(
@@ -338,7 +381,30 @@ class AnimalController
             $params
         );
 
-        Response::paginar($animales, (int)$total, $pagina, $porPagina);
+        // Contadores para los stats (sin paginación)
+        $counters = [];
+        $counters['total'] = (int)Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a WHERE a.usuario_id = :uid AND a.estado_general IN ('Vendido','Muerto')",
+            [':uid' => $uid]
+        )['total'];
+        $counters['vendidos'] = (int)Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a WHERE a.usuario_id = :uid AND a.estado_general = 'Vendido'",
+            [':uid' => $uid]
+        )['total'];
+        $counters['muertos'] = (int)Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a WHERE a.usuario_id = :uid AND a.estado_general = 'Muerto'",
+            [':uid' => $uid]
+        )['total'];
+
+        echo json_encode([
+            'ok'         => true,
+            'data'       => $animales,
+            'total'      => (int)$total,
+            'pagina'     => $pagina,
+            'por_pagina' => $porPagina,
+            'counters'   => $counters,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     /**
@@ -438,22 +504,223 @@ class AnimalController
     }
 
     /**
-     * Hijos de un animal (crías donde madre_id = :id).
+     * Hijos de un animal (crías donde madre_id = :id o padre_id = :id).
      * GET /api/animales/{id}/hijos
      */
     public function hijos(string $id): void
     {
         $uid = $this->usuarioId();
+        $animalId = (int)$id;
         $hijos = Database::query(
             'SELECT a.id, a.nombre, a.sexo, a.fecha_nacimiento, a.etapa, a.estado_reproductivo,
                     a.estado_general, a.foto, a.peso_entrada,
                     r.nombre as rebano_nombre
              FROM animales a
              LEFT JOIN rebanos r ON r.id = a.rebano_id
-             WHERE a.madre_id = :id AND a.usuario_id = :uid
+             WHERE (a.madre_id = :id OR a.padre_id = :id2) AND a.usuario_id = :uid
              ORDER BY a.fecha_nacimiento DESC',
-            [':id' => (int)$id, ':uid' => $uid]
+            [':id' => $animalId, ':id2' => $animalId, ':uid' => $uid]
         );
         Response::json($hijos);
+    }
+
+    /**
+     * Árbol genealógico de un animal.
+     * Devuelve padres, abuelos, hijos, hermanos y stats.
+     * GET /api/animales/{id}/arbol-genealogico
+     */
+    public function arbolGenealogico(string $id): void
+    {
+        $uid = $this->usuarioId();
+        $animalId = (int)$id;
+
+        // 1. Animal actual
+        $animal = Database::queryOne(
+            'SELECT a.*, r.nombre as rebano_nombre
+             FROM animales a
+             LEFT JOIN rebanos r ON r.id = a.rebano_id
+             WHERE a.id = :id AND a.usuario_id = :uid',
+            [':id' => $animalId, ':uid' => $uid]
+        );
+        if (!$animal) Response::error('Animal no encontrado', 404);
+
+        // Helper para obtener ancestro por ID (SIN filtro usuario porque
+        // los padres/abuelos pueden pertenecer a otro usuario en sociedades)
+        $obtenerAncestro = function (?int $id): ?array {
+            if (!$id) return null;
+            $a = Database::queryOne(
+                'SELECT id, nombre, sexo, etapa, estado_general, activo, foto,
+                        madre_id, padre_id, estado_reproductivo,
+                        (SELECT nombre FROM rebanos WHERE id = a.rebano_id) as rebano_nombre
+                 FROM animales a WHERE id = :id',
+                [':id' => $id]
+            );
+            return $a ?: null;
+        };
+
+        // 2. Padres
+        $madreId = $animal['madre_id'] ? (int)$animal['madre_id'] : null;
+        $padreId = $animal['padre_id'] ? (int)$animal['padre_id'] : null;
+        $madre = $obtenerAncestro($madreId);
+        $padre = $obtenerAncestro($padreId);
+
+        // 3. Abuelos
+        $abuelos = [
+            'maternos' => null,
+            'paternos' => null,
+        ];
+        if ($madre) {
+            $abuelos['maternos'] = [
+                'madre' => $obtenerAncestro($madre['madre_id'] ? (int)$madre['madre_id'] : null),
+                'padre' => $obtenerAncestro($madre['padre_id'] ? (int)$madre['padre_id'] : null),
+            ];
+        }
+        if ($padre) {
+            $abuelos['paternos'] = [
+                'madre' => $obtenerAncestro($padre['madre_id'] ? (int)$padre['madre_id'] : null),
+                'padre' => $obtenerAncestro($padre['padre_id'] ? (int)$padre['padre_id'] : null),
+            ];
+        }
+
+        // 4. Hijos — dos queries separadas (PDO con EMULATE_PREPARES=false
+        //    no soporta bien OR con mismo named parameter)
+        $hijos = Database::query(
+            'SELECT a.id, a.nombre, a.sexo, a.etapa, a.estado_general, a.activo,
+                    a.fecha_nacimiento, a.foto, a.peso_entrada,
+                    r.nombre as rebano_nombre
+             FROM animales a
+             LEFT JOIN rebanos r ON r.id = a.rebano_id
+             WHERE a.madre_id = :mid AND a.usuario_id = :uid
+             ORDER BY a.fecha_nacimiento DESC',
+            [':mid' => $animalId, ':uid' => $uid]
+        );
+        $hijosPadre = Database::query(
+            'SELECT a.id, a.nombre, a.sexo, a.etapa, a.estado_general, a.activo,
+                    a.fecha_nacimiento, a.foto, a.peso_entrada,
+                    r.nombre as rebano_nombre
+             FROM animales a
+             LEFT JOIN rebanos r ON r.id = a.rebano_id
+             WHERE a.padre_id = :pid AND a.usuario_id = :uid2
+             ORDER BY a.fecha_nacimiento DESC',
+            [':pid' => $animalId, ':uid2' => $uid]
+        );
+        // Combinar, deduplicar y ordenar
+        $todos = array_merge($hijos, $hijosPadre);
+        $vistos = [];
+        $hijos = [];
+        foreach ($todos as $h) {
+            $hid = (int)$h['id'];
+            if (!isset($vistos[$hid])) {
+                $vistos[$hid] = true;
+                $hijos[] = $h;
+            }
+        }
+        usort($hijos, fn($a, $b) => strcmp($b['fecha_nacimiento'] ?? '', $a['fecha_nacimiento'] ?? ''));
+
+        // 5. Hermanos (misma madre o mismo padre, excluyéndose a sí mismo)
+        $paramsHermanos = [':uid' => $uid, ':id' => $animalId];
+        $whereHermanos = [];
+        if ($madreId) {
+            $whereHermanos[] = 'a.madre_id = :madre';
+            $paramsHermanos[':madre'] = $madreId;
+        }
+        if ($padreId) {
+            $whereHermanos[] = 'a.padre_id = :padre';
+            $paramsHermanos[':padre'] = $padreId;
+        }
+        $hermanos = [];
+        if (!empty($whereHermanos)) {
+            $whereHermanosSql = '(' . implode(' OR ', $whereHermanos) . ')';
+            $hermanos = Database::query(
+                "SELECT a.id, a.nombre, a.sexo, a.etapa, a.estado_general, a.activo,
+                        a.fecha_nacimiento, a.foto,
+                        r.nombre as rebano_nombre
+                 FROM animales a
+                 LEFT JOIN rebanos r ON r.id = a.rebano_id
+                 WHERE $whereHermanosSql
+                   AND a.id != :id
+                   AND a.usuario_id = :uid
+                 ORDER BY a.fecha_nacimiento DESC",
+                $paramsHermanos
+            );
+        }
+
+        // 6. Sobrinos — hijos de los hermanos
+        $sobrinos = []; // ['hermano_id' => [hijos...]]
+        if (!empty($hermanos)) {
+            $hermanosIds = array_map(fn($h) => (int)$h['id'], $hermanos);
+            $hIds = [];
+            $sobrinoParams = [':uid' => $uid];
+            foreach ($hermanosIds as $i => $hid) {
+                $hIds[] = ":hm$i";
+                $sobrinoParams[":hm$i"] = $hid;
+                $hIds[] = ":hp$i";
+                $sobrinoParams[":hp$i"] = $hid;
+            }
+            $hPlaces = implode(',', $hIds);
+            // Reemplazar mitad como madre_id y mitad como padre_id
+            $madrePlaces = [];
+            $padrePlaces = [];
+            foreach ($hermanosIds as $i => $hid) {
+                $madrePlaces[] = ":hm$i";
+                $padrePlaces[] = ":hp$i";
+            }
+            $todosSobrinos = Database::query(
+                "SELECT a.id, a.nombre, a.sexo, a.etapa, a.estado_general, a.activo,
+                        a.fecha_nacimiento, a.madre_id, a.padre_id,
+                        r.nombre as rebano_nombre
+                 FROM animales a
+                 LEFT JOIN rebanos r ON r.id = a.rebano_id
+                 WHERE (a.madre_id IN (" . implode(',', $madrePlaces) . ")
+                    OR a.padre_id IN (" . implode(',', $padrePlaces) . "))
+                   AND a.usuario_id = :uid
+                   AND a.id != :animal_id
+                 ORDER BY a.fecha_nacimiento DESC",
+                array_merge($sobrinoParams, [':animal_id' => $animalId])
+            );
+            // Agrupar por hermano_id
+            $hermanosIdSet = array_flip($hermanosIds);
+            $vistosSobrinos = [];
+            foreach ($todosSobrinos as $s) {
+                $sid = (int)$s['id'];
+                if (isset($vistosSobrinos[$sid])) continue;
+                $vistosSobrinos[$sid] = true;
+
+                $mid = (int)$s['madre_id'];
+                $pid = (int)$s['padre_id'];
+                // Asignar al hermano que es padre/madre de este sobrino
+                if (isset($hermanosIdSet[$mid])) {
+                    $sobrinos[$mid][] = $s;
+                } elseif (isset($hermanosIdSet[$pid])) {
+                    $sobrinos[$pid][] = $s;
+                }
+            }
+        }
+
+        // 7. Stats
+        $totalHijos = count($hijos);
+        $totalHermanos = count($hermanos);
+        $totalSobrinos = array_sum(array_map('count', $sobrinos));
+
+        $resultado = [
+            'animal' => $animal,
+            'padres' => [
+                'madre' => $madre,
+                'padre' => $padre,
+            ],
+            'abuelos' => $abuelos,
+            'hijos' => $hijos,
+            'hermanos' => $hermanos,
+            'sobrinos' => $sobrinos,
+            'stats' => [
+                'total_hijos' => $totalHijos,
+                'total_hermanos' => $totalHermanos,
+                'total_sobrinos' => $totalSobrinos,
+                'tiene_padres' => $madreId !== null || $padreId !== null,
+                'tiene_hijos' => $totalHijos > 0,
+            ],
+        ];
+
+        Response::json($resultado);
     }
 }

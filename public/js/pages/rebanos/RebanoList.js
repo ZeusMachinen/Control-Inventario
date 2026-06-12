@@ -204,7 +204,7 @@ const RebanoListPage = {
       const { data } = await API.get(`/rebanos/${id}/estadisticas`);
       const e = data.data || data;
       document.getElementById('rebano-modal').innerHTML = `
-        <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)RebanoListPage.cerrarModal()">
+        <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)RebanoListPage.cerrarModal()">
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
               <div class="modal-header">
@@ -232,7 +232,7 @@ const RebanoListPage = {
 
   mostrarFormulario() {
     document.getElementById('rebano-modal').innerHTML = `
-      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)RebanoListPage.cerrarModal()">
+      <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)RebanoListPage.cerrarModal()">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
@@ -292,7 +292,7 @@ const RebanoListPage = {
       diaCorteActual = r ? r.dia_corte : '';
     }
     document.getElementById('rebano-modal').innerHTML = `
-      <div class="modal fade d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)RebanoListPage.cerrarModal()">
+      <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)RebanoListPage.cerrarModal()">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">

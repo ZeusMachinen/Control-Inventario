@@ -249,6 +249,10 @@ const ReproduccionPage = {
                   ${ev.tipo === 'parto' && Array.isArray(ev.crias) && ev.crias.length > 0 ? `<br><span class="small">${ev.crias.map(c => c.nombre || 'Cría').join(', ')} (${ev.crias.length})</span>` : ''}
                   ${ev.observaciones ? `<br><span class="small text-secondary">${ev.observaciones}</span>` : ''}
                 </div>
+                <div class="d-flex gap-1 align-items-start" style="min-width:70px">
+                  <button class="btn btn-outline-primary btn-sm" onclick="ReproduccionPage.editarEvento('${ev.tipo}', ${ev.id})" title="Editar"><i class="fas fa-pen"></i></button>
+                  <button class="btn btn-outline-danger btn-sm" onclick="ReproduccionPage.eliminarEvento('${ev.tipo}', ${ev.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -268,5 +272,40 @@ const ReproduccionPage = {
       this.expanded.add(animalId);
     }
     this.renderTimeline();
+  },
+
+  editarEvento(tipo, id) {
+    const rutas = {
+      celo: '/reproduccion/celos',
+      servicio: '/reproduccion/servicios',
+      diagnostico: '/reproduccion/diagnosticos',
+      parto: '/reproduccion/partos',
+    };
+    Router.navegar(`${rutas[tipo] || '/reproduccion'}/${id}/editar`);
+  },
+
+  async eliminarEvento(tipo, id) {
+    const etiquetas = {
+      celo: 'diagnóstico de celo',
+      servicio: 'servicio',
+      diagnostico: 'diagnóstico de gestación',
+      parto: 'parto',
+    };
+    if (!(await Confirm.show(`¿Eliminar este ${etiquetas[tipo] || 'evento'}?`))) return;
+
+    const endpoints = {
+      celo: `/reproduccion/celos/${id}`,
+      servicio: `/reproduccion/servicios/${id}`,
+      diagnostico: `/reproduccion/diagnosticos-gestacion/${id}`,
+      parto: `/reproduccion/partos/${id}`,
+    };
+
+    try {
+      await API.delete(endpoints[tipo]);
+      Toast.success(`${etiquetas[tipo] || 'Evento'} eliminado`);
+      this.cargar();
+    } catch (err) {
+      Toast.error(err.response?.data?.error || 'Error al eliminar');
+    }
   },
 };

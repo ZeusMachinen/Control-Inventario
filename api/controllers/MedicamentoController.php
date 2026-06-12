@@ -15,16 +15,39 @@ class MedicamentoController
 
     /**
      * Lista medicamentos del usuario.
-     * GET /api/medicamentos
+     * GET /api/medicamentos?search=
      */
     public function index(): void
     {
         $uid = $this->usuarioId();
+
+        $where = 'usuario_id = :uid AND activo = 1';
+        $params = [':uid' => $uid];
+
+        $search = $_GET['search'] ?? null;
+        if ($search) {
+            $where .= ' AND nombre LIKE :search';
+            $params[':search'] = "%{$search}%";
+        }
+
         $medicamentos = Database::query(
-            'SELECT * FROM medicamentos WHERE usuario_id = :uid AND activo = 1 ORDER BY nombre',
-            [':uid' => $uid]
+            'SELECT * FROM medicamentos WHERE ' . $where . ' ORDER BY nombre',
+            $params
         );
-        Response::json($medicamentos);
+
+        // Totales
+        $totales = Database::queryOne(
+            'SELECT COUNT(*) as cantidad,
+                    COALESCE(SUM(stock), 0) as total_stock,
+                    COALESCE(SUM(stock * precio), 0) as total_valor
+             FROM medicamentos WHERE ' . $where,
+            $params
+        );
+
+        Response::json([
+            'data'    => $medicamentos,
+            'totales' => $totales,
+        ]);
     }
 
     /**

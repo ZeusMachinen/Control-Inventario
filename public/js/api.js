@@ -73,6 +73,27 @@ const API = (() => {
       }
     }
   );
+  /**
+   * Descarga un archivo (blob) desde la API usando fetch.
+   */
+  async function descargar(url, filename) {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch(`${BASE_URL}${url}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Error de descarga' }));
+      throw new Error(err.error || `HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+  }
 
   return {
     get: (url, params) => cliente.get(url, { params }),
@@ -83,5 +104,6 @@ const API = (() => {
       cliente.post(url, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       }),
+    download: descargar,
   };
 })();
