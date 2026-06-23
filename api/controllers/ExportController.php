@@ -10,6 +10,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/CalculadorEdad.php';
+require_once __DIR__ . '/../helpers/CalculadorEdad.php';
 
 class ExportController
 {
@@ -58,6 +59,12 @@ class ExportController
         $resultado = [];
         foreach ($animales as $a) {
             $id = (int)$a['id'];
+            // Recalcular etapa real
+            $etapaCalculada = $a['etapa'];
+            if (!empty($a['fecha_nacimiento'])) {
+                $edad = CalculadorEdad::calcular($a['fecha_nacimiento']);
+                $etapaCalculada = CalculadorEdad::determinarEtapa($edad['total_meses']);
+            }
             $resultado[] = [
                 // Datos del animal
                 'nombre'                => $a['nombre'],
@@ -65,7 +72,7 @@ class ExportController
                 'sexo'                  => $a['sexo'],
                 'fecha_nacimiento'      => $a['fecha_nacimiento'],
                 'rebano_nombre'         => $a['rebano_nombre'],
-                'etapa'                 => $a['etapa'],
+                'etapa'                 => $etapaCalculada,
                 'activo'                => (bool)$a['activo'],
                 'estado_general'        => $a['estado_general'],
                 'estado_reproductivo'   => $a['estado_reproductivo'],

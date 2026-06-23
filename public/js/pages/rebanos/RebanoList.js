@@ -176,15 +176,15 @@ const RebanoListPage = {
           <td><a href="#/rebanos/${r.id}" class="animal-link fw-medium">${r.nombre}</a>${!r.activo ? ' <span class="badge bg-danger">Inactivo</span>' : ''}</td>
           <td><span class="small text-secondary">${fechaInicio}</span></td>
           <td><span class="badge bg-primary">${r.total_animales} animales</span></td>
-          <td>${costo ? '$' + costo.toFixed(2) : '—'}</td>
-          <td>${costo ? '$' + total : '—'}</td>
+          <td>${costo || costo === 0 ? '$' + costo.toFixed(2) : '—'}</td>
+          <td>${costo || costo === 0 ? '$' + total : '—'}</td>
           <td>
             <div class="d-flex gap-1">
               <button class="btn btn-outline-secondary btn-sm" onclick="Router.navegar('/rebanos/${r.id}')" title="Ver">
                 <i class="fas fa-eye"></i>
               </button>
               ${r.activo ? `
-                <button class="btn btn-outline-primary btn-sm" onclick="RebanoListPage.editar(${r.id}, '${r.nombre}', ${r.costo_cabeza || ''}, '${r.fecha_inicio || ''}', ${r.dia_corte || ''})" title="Editar">
+                <button class="btn btn-outline-primary btn-sm" onclick="RebanoListPage.editar(${r.id}, '${r.nombre}', ${r.costo_cabeza ?? ''}, '${r.fecha_inicio || ''}', ${r.dia_corte ?? ''})" title="Editar">
                   <i class="fas fa-pen"></i>
                 </button>
                 <button class="btn btn-outline-danger btn-sm" onclick="RebanoListPage.eliminar(${r.id}, '${r.nombre}', ${r.total_animales || 0})" title="Inactivar">
@@ -311,11 +311,11 @@ const RebanoListPage = {
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Costo por Cabeza ($)</label>
-                  <input type="number" step="0.01" min="0" class="form-control" id="rebano-costo" value="${costoActual || ''}" placeholder="Ej: 1500.00">
+                  <input type="number" step="0.01" min="0" class="form-control" id="rebano-costo" value="${costoActual ?? ''}" placeholder="Ej: 1500.00">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Día de corte (pastaje)</label>
-                  <input type="number" min="1" max="28" class="form-control" id="rebano-dia-corte" value="${diaCorteActual || ''}" placeholder="Ej: 15" style="max-width:100px">
+                  <input type="number" min="1" max="28" class="form-control" id="rebano-dia-corte" value="${diaCorteActual ?? ''}" placeholder="Ej: 15" style="max-width:100px">
                   <small class="text-secondary d-block mt-1">Día del mes en que te cobran el pastaje. Al guardar, se actualiza el gasto en Gastos.</small>
                 </div>
               </form>

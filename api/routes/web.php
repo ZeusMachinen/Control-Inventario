@@ -20,6 +20,7 @@ return [
     'GET|/api/animales/{id}'           => ['AnimalController', 'show',     true],
     'PUT|/api/animales/{id}'           => ['AnimalController', 'update',   true],
     'DELETE|/api/animales/{id}'        => ['AnimalController', 'destroy',  true],
+    'DELETE|/api/animales/{id}/definitivo' => ['AnimalController', 'destroyDefinitivo', true],
     'GET|/api/animales/{id}/celos'       => ['AnimalController', 'celos',       true],
     'GET|/api/animales/{id}/vacunas'     => ['AnimalController', 'vacunas',     true],
     'GET|/api/animales/{id}/movimientos' => ['AnimalController', 'movimientos', true],
@@ -140,7 +141,7 @@ return [
 
     // ─── Archivos / Subidas ────────────────────────────
     'POST|/api/upload/foto'     => ['UploadController', 'subir',       true],
-    'GET|/api/uploads/{tipo}/{archivo}' => ['UploadController', 'servir', false],
+    'GET|/api/uploads/{tipo}/{subcarpeta}/{archivo}' => ['UploadController', 'servir', false],
 
     // ─── Exportación / Importación ─────────────────────
     'GET|/api/exportar/animales'  => ['ExportController', 'exportarAnimales',  true],

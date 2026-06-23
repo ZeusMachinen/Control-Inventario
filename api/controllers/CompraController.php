@@ -108,6 +108,15 @@ class CompraController
             [':id' => (int)$id, ':uid' => $uid]
         );
 
+        // Recalcular etapa real basada en fecha_nacimiento
+        foreach ($animales as &$a) {
+            if (!empty($a['fecha_nacimiento'])) {
+                $edad = CalculadorEdad::calcular($a['fecha_nacimiento']);
+                $a['etapa'] = CalculadorEdad::determinarEtapa($edad['total_meses']);
+            }
+        }
+        unset($a);
+
         $compra['animales'] = $animales;
         Response::json($compra);
     }

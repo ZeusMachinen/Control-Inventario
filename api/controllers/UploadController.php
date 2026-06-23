@@ -34,15 +34,16 @@ class UploadController
 
     /**
      * Sirve un archivo (foto) de forma segura.
-     * GET /api/uploads/{tipo}/{archivo}
+     * GET /api/uploads/{tipo}/{subcarpeta}/{archivo}
      */
-    public function servir(string $tipo, string $archivo): void
+    public function servir(string $tipo, string $subcarpeta, string $archivo): void
     {
         // Prevenir path traversal
         $archivo = basename($archivo);
         $tipo = basename($tipo);
+        $subcarpeta = basename($subcarpeta);
 
-        $ruta = __DIR__ . '/../uploads/' . $tipo . '/' . $archivo;
+        $ruta = __DIR__ . '/../uploads/' . $tipo . '/' . $subcarpeta . '/' . $archivo;
 
         if (!file_exists($ruta)) {
             Response::error('Archivo no encontrado', 404);

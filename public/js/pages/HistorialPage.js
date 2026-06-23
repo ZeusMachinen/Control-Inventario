@@ -211,7 +211,10 @@ const HistorialPage = {
           <td>${a.precio_kg ? '$' + Number(a.precio_kg).toLocaleString('es-CO', { minimumFractionDigits: 2 }) : '—'}</td>
           <td>${a.rebano_nombre || '—'}</td>
           <td>
-            <button class="btn btn-outline-secondary btn-sm" onclick="Router.navegar('/animales/${a.id}')" title="Ver"><i class="fas fa-eye"></i></button>
+            <div class="d-flex gap-1">
+              <button class="btn btn-outline-secondary btn-sm" onclick="Router.navegar('/animales/${a.id}')" title="Ver"><i class="fas fa-eye"></i></button>
+              <button class="btn btn-outline-danger btn-sm" onclick="HistorialPage.eliminarDefinitivo(${a.id}, '${a.nombre.replace(/'/g, "\\'")}')" title="Eliminar definitivamente"><i class="fas fa-trash"></i></button>
+            </div>
           </td>
         </tr>
       `).join('');
@@ -234,5 +237,16 @@ const HistorialPage = {
   irPagina(pagina) {
     this.paginaActual = pagina;
     this.cargar();
+  },
+
+  async eliminarDefinitivo(id, nombre) {
+    if (!confirm(`¿Eliminar definitivamente a "${nombre}"?\n\nEsta acción NO se puede deshacer. El animal y todos sus datos asociados desaparecerán permanentemente.`)) return;
+    try {
+      await API.delete(`/animales/${id}`);
+      Toast.success(`"${nombre}" eliminado definitivamente`);
+      this.cargar();
+    } catch (err) {
+      Toast.error(err.response?.data?.error || 'Error al eliminar');
+    }
   },
 };

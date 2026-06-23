@@ -16,6 +16,18 @@ class AnimalController
     }
 
     /**
+     * Recalcula y sobreescribe la etapa de un animal según su fecha_nacimiento.
+     * Modifica el array por referencia.
+     */
+    private function recalcularEtapa(array &$animal): void
+    {
+        if (!empty($animal['fecha_nacimiento'])) {
+            $edad = CalculadorEdad::calcular($animal['fecha_nacimiento']);
+            $animal['etapa'] = CalculadorEdad::determinarEtapa($edad['total_meses']);
+        }
+    }
+
+    /**
      * Lista animales con filtros y paginación.
      * GET /api/animales
      */
@@ -44,7 +56,7 @@ class AnimalController
             $params[':rebano_id'] = (int)$_GET['rebano_id'];
         }
         if (!empty($_GET['etapa'])) {
-            $where[] = 'a.etapa = :etapa';
+            $where[] = CalculadorEdad::sqlEtapa() . ' = :etapa';
             $params[':etapa'] = $_GET['etapa'];
         }
         if (!empty($_GET['estado'])) {
@@ -65,6 +77,33 @@ class AnimalController
         }
 
         $whereClause = implode(' AND ', $where);
+
+        // Ordenamiento dinámico (whitelist para evitar SQL injection)
+        $ordenColumna = $_GET['ordenar_por'] ?? null;
+        $ordenDir    = strtoupper($_GET['direccion'] ?? 'ASC');
+        if (!in_array($ordenDir, ['ASC', 'DESC'])) $ordenDir = 'ASC';
+
+        $columnasOrdenables = [
+            'nombre'               => 'a.nombre',
+            'sexo'                 => 'a.sexo',
+            'edad'                 => 'a.fecha_nacimiento',
+            'rebano_nombre'        => 'r.nombre',
+            'etapa'                => CalculadorEdad::sqlEtapa(),
+            'peso_entrada'         => 'a.peso_entrada',
+            'precio_kg'            => 'a.precio_kg',
+            'precio_final'         => 'a.precio_final',
+            'estado_reproductivo'  => 'a.estado_reproductivo',
+        ];
+
+        $orderBy = 'a.created_at DESC';
+        if ($ordenColumna && isset($columnasOrdenables[$ordenColumna])) {
+            $colSql = $columnasOrdenables[$ordenColumna];
+            // Para edad: mayor edad = fecha más antigua → invertir dirección
+            if ($ordenColumna === 'edad') {
+                $ordenDir = $ordenDir === 'ASC' ? 'DESC' : 'ASC';
+            }
+            $orderBy = "$colSql $ordenDir";
+        }
 
         // Total (filtrado)
         $total = Database::queryOne(
@@ -100,11 +139,17 @@ class AnimalController
              LEFT JOIN rebanos r ON r.id = a.rebano_id
              LEFT JOIN animales m ON m.id = a.madre_id
              LEFT JOIN animales p ON p.id = a.padre_id
-             WHERE $whereClause
-             ORDER BY a.created_at DESC
+              WHERE $whereClause
+              ORDER BY $orderBy
              LIMIT $porPagina OFFSET $offset",
             $params
         );
+
+        // Recalcular etapa real basada en fecha_nacimiento
+        foreach ($animales as &$a) {
+            $this->recalcularEtapa($a);
+        }
+        unset($a);
 
         echo json_encode([
             'ok'         => true,
@@ -183,8 +228,8 @@ class AnimalController
         }
 
         Database::execute(
-            'INSERT INTO animales (nombre, identificacion, sexo, fecha_nacimiento, rebano_id, madre_id, padre_id, etapa, estado_reproductivo, peso_entrada, precio_kg, precio_final, usuario_id)
-             VALUES (:nombre, :identificacion, :sexo, :fecha, :rebano, :madre, :padre, :etapa, :estado, :peso_entrada, :precio_kg, :precio_final, :uid)',
+            'INSERT INTO animales (nombre, identificacion, sexo, fecha_nacimiento, rebano_id, madre_id, padre_id, etapa, estado_reproductivo, peso_entrada, precio_kg, precio_final, foto, usuario_id)
+             VALUES (:nombre, :identificacion, :sexo, :fecha, :rebano, :madre, :padre, :etapa, :estado, :peso_entrada, :precio_kg, :precio_final, :foto, :uid)',
             [
                 ':nombre'           => $datos['nombre'],
                 ':identificacion'   => $datos['identificacion'] ?? null,
@@ -198,6 +243,7 @@ class AnimalController
                 ':peso_entrada'     => isset($datos['peso_entrada']) ? (float)$datos['peso_entrada'] : null,
                 ':precio_kg'        => $precioKg,
                 ':precio_final'     => $precioFinal,
+                ':foto'             => $datos['foto'] ?? null,
                 ':uid'              => $uid,
             ]
         );
@@ -232,6 +278,7 @@ class AnimalController
         $animal['edad_anios'] = $edad['anios'];
         $animal['edad_meses'] = $edad['meses'];
         $animal['edad_total_meses'] = $edad['total_meses'];
+        $this->recalcularEtapa($animal);
 
         Response::json($animal);
     }
@@ -296,6 +343,9 @@ class AnimalController
 
         // Detectar cambio de rebaño para loguear movimiento
         $rebanoNuevo = $datos['rebano_id'] ?? null;
+        if ($rebanoNuevo && (int)$rebanoNuevo === (int)$existente['rebano_id']) {
+            Response::error('El animal ya está en el rebaño seleccionado', 422);
+        }
         if ($rebanoNuevo && (int)$rebanoNuevo !== (int)$existente['rebano_id']) {
             $rebanoOrigen = (int)$existente['rebano_id'];
         } else {
@@ -325,23 +375,42 @@ class AnimalController
     }
 
     /**
-     * Elimina (soft delete) un animal.
+     * Elimina un animal.
+     * - Si está activo → soft delete (marca como Muerto)
+     * - Si ya está inactivo → hard delete definitivo
      * DELETE /api/animales/{id}
      */
     public function destroy(string $id): void
     {
         $uid = $this->usuarioId();
 
-        Database::execute(
-            'UPDATE animales SET activo = 0, estado_general = \'Muerto\' WHERE id = :id AND usuario_id = :uid',
+        $animal = Database::queryOne(
+            'SELECT id, nombre, activo FROM animales WHERE id = :id AND usuario_id = :uid',
             [':id' => (int)$id, ':uid' => $uid]
         );
+        if (!$animal) Response::error('Animal no encontrado', 404);
 
-        Response::json(['mensaje' => 'Animal eliminado']);
+        if ((int)$animal['activo'] === 1) {
+            // Soft delete
+            Database::execute(
+                'UPDATE animales SET activo = 0, estado_general = \'Muerto\' WHERE id = :id AND usuario_id = :uid',
+                [':id' => (int)$id, ':uid' => $uid]
+            );
+            Response::json(['mensaje' => 'Animal eliminado']);
+        } else {
+            // Hard delete definitivo — ya estaba inactivo
+            Database::execute(
+                'DELETE FROM animales WHERE id = :id AND usuario_id = :uid',
+                [':id' => (int)$id, ':uid' => $uid]
+            );
+            Response::json(['mensaje' => "Animal '{$animal['nombre']}' eliminado definitivamente"]);
+        }
     }
 
     /**
-     * Elimina (soft delete) múltiples animales en bloque.
+     * Elimina múltiples animales en bloque.
+     * - Activos → soft delete
+     * - Inactivos → hard delete definitivo
      * POST /api/animales/eliminar-multiples
      */
     public function destroyMultiple(): void
@@ -358,7 +427,7 @@ class AnimalController
         $ids = array_map('intval', $ids);
         $ids = array_unique($ids);
 
-        // Build placeholders seguros
+        // Obtener estado actual de los animales
         $placeholders = [];
         $params = [':uid' => $uid];
         foreach ($ids as $i => $id) {
@@ -368,13 +437,85 @@ class AnimalController
         }
         $placeholdersStr = implode(',', $placeholders);
 
-        Database::execute(
-            "UPDATE animales SET activo = 0, estado_general = 'Muerto'
-             WHERE id IN ({$placeholdersStr}) AND usuario_id = :uid",
+        $animales = Database::query(
+            "SELECT id, activo FROM animales WHERE id IN ({$placeholdersStr}) AND usuario_id = :uid",
             $params
         );
 
-        Response::json(['mensaje' => count($ids) . ' animales eliminados']);
+        $activos = [];
+        $inactivos = [];
+        foreach ($animales as $a) {
+            if ((int)$a['activo'] === 1) {
+                $activos[] = (int)$a['id'];
+            } else {
+                $inactivos[] = (int)$a['id'];
+            }
+        }
+
+        $msgParts = [];
+
+        // Soft delete para activos
+        if (!empty($activos)) {
+            $p = [];
+            $paramsSoft = [':uid' => $uid];
+            foreach ($activos as $i => $aid) {
+                $k = ":a{$i}";
+                $p[] = $k;
+                $paramsSoft[$k] = $aid;
+            }
+            Database::execute(
+                "UPDATE animales SET activo = 0, estado_general = 'Muerto'
+                 WHERE id IN (" . implode(',', $p) . ") AND usuario_id = :uid",
+                $paramsSoft
+            );
+            $msgParts[] = count($activos) . ' eliminados (soft)';
+        }
+
+        // Hard delete para inactivos
+        if (!empty($inactivos)) {
+            $p = [];
+            $paramsHard = [':uid' => $uid];
+            foreach ($inactivos as $i => $aid) {
+                $k = ":d{$i}";
+                $p[] = $k;
+                $paramsHard[$k] = $aid;
+            }
+            Database::execute(
+                "DELETE FROM animales WHERE id IN (" . implode(',', $p) . ") AND usuario_id = :uid",
+                $paramsHard
+            );
+            $msgParts[] = count($inactivos) . ' eliminados definitivamente';
+        }
+
+        Response::json(['mensaje' => implode(', ', $msgParts)]);
+    }
+
+    /**
+     * Elimina DEFINITIVAMENTE un animal (hard delete).
+     * Solo permitido en animales inactivos (estado_general = Vendido/Muerto).
+     * DELETE /api/animales/{id}/definitivo
+     */
+    public function destroyDefinitivo(string $id): void
+    {
+        $uid = $this->usuarioId();
+
+        $animal = Database::queryOne(
+            'SELECT id, nombre, activo, estado_general FROM animales WHERE id = :id AND usuario_id = :uid',
+            [':id' => (int)$id, ':uid' => $uid]
+        );
+        if (!$animal) Response::error('Animal no encontrado', 404);
+
+        if ((int)$animal['activo'] === 1) {
+            Response::error('Solo se pueden eliminar definitivamente animales inactivos (vendidos o muertos). Use el borrado normal para animales activos.', 422);
+        }
+
+        // Hard delete — las FK con ON DELETE CASCADE/SET NULL limpian referencias
+        Database::execute(
+            'DELETE FROM animales WHERE id = :id AND usuario_id = :uid',
+            [':id' => (int)$id, ':uid' => $uid]
+        );
+
+        Response::json(['mensaje' => "Animal '{$animal['nombre']}' eliminado definitivamente"]);
     }
 
     /**
@@ -551,7 +692,7 @@ class AnimalController
         );
         foreach ($diagnosticos as $d) $eventos[] = $d;
 
-        // Partos
+        // Partos formales
         $partos = Database::query(
             'SELECT id, animal_id, fecha, \'parto\' as tipo,
                     crias, observaciones, created_at
@@ -560,6 +701,26 @@ class AnimalController
             [':id' => $animalId, ':uid' => $uid]
         );
         foreach ($partos as $p) $eventos[] = $p;
+
+        // Partos implícitos: hijos con madre_id sin parto formal registrado
+        $partosImplicitos = Database::query(
+            'SELECT NULL as id, :aid2 as animal_id, hijo.fecha_nacimiento as fecha,
+                    \'parto\' as tipo, NULL as crias,
+                    CONCAT(\'Implícito — \', COUNT(*), \' cría(s) desde registro\') as observaciones,
+                    NULL as created_at
+             FROM animales hijo
+             WHERE hijo.madre_id = :aid AND hijo.usuario_id = :uid2
+               AND NOT EXISTS (
+                 SELECT 1 FROM partos p
+                 WHERE p.animal_id = hijo.madre_id
+                   AND p.fecha = hijo.fecha_nacimiento
+                   AND p.usuario_id = :uid3
+               )
+             GROUP BY hijo.fecha_nacimiento
+             ORDER BY hijo.fecha_nacimiento DESC',
+            [':aid2' => $animalId, ':aid' => $animalId, ':uid2' => $uid, ':uid3' => $uid]
+        );
+        foreach ($partosImplicitos as $p) $eventos[] = $p;
 
         Response::json($eventos);
     }
@@ -622,6 +783,10 @@ class AnimalController
              ORDER BY a.fecha_nacimiento DESC',
             [':id' => $animalId, ':id2' => $animalId, ':uid' => $uid]
         );
+        foreach ($hijos as &$h) {
+            $this->recalcularEtapa($h);
+        }
+        unset($h);
         Response::json($hijos);
     }
 
@@ -841,6 +1006,34 @@ class AnimalController
                 }
             }
         }
+
+        // Recalcular etapa real para todos los animales del árbol
+        $this->recalcularEtapa($animal);
+        if ($madre) $this->recalcularEtapa($madre);
+        if ($padre) $this->recalcularEtapa($padre);
+        foreach ($hijos as &$h) $this->recalcularEtapa($h);
+        unset($h);
+        foreach ($hermanos as &$h) $this->recalcularEtapa($h);
+        unset($h);
+        foreach ($abuelos as &$grupo) {
+            if ($grupo) {
+                foreach ($grupo as &$abuelo) {
+                    if ($abuelo) $this->recalcularEtapa($abuelo);
+                }
+                unset($abuelo);
+            }
+        }
+        unset($grupo);
+        foreach ($nietos as &$grupo) {
+            foreach ($grupo as &$n) $this->recalcularEtapa($n);
+            unset($n);
+        }
+        unset($grupo);
+        foreach ($sobrinos as &$grupo) {
+            foreach ($grupo as &$s) $this->recalcularEtapa($s);
+            unset($s);
+        }
+        unset($grupo);
 
         // 7. Stats
         $totalHijos = count($hijos);

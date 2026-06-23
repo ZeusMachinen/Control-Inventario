@@ -6,6 +6,7 @@ require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/Validator.php';
 require_once __DIR__ . '/../helpers/CostosSyncHelper.php';
+require_once __DIR__ . '/../helpers/CalculadorEdad.php';
 
 class RebanoController
 {
@@ -25,7 +26,7 @@ class RebanoController
         $rebanos = Database::query(
             'SELECT r.*,
                     (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1) as total_animales,
-                    (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1 AND a.etapa != \'Ternero\') as total_animales_pastaje
+                    (SELECT COUNT(*) FROM animales a WHERE a.rebano_id = r.id AND a.activo = 1 AND ' . CalculadorEdad::sqlEtapa() . ' != \'Ternero\') as total_animales_pastaje
              FROM rebanos r
              WHERE r.usuario_id = :uid' . (!empty($_GET['inactivos']) ? '' : ' AND r.activo = 1') . '
              ORDER BY r.activo DESC, r.nombre',
@@ -163,6 +164,14 @@ class RebanoController
              ORDER BY nombre',
             [':id' => (int)$id, ':uid' => $uid]
         );
+        // Recalcular etapa real basada en fecha_nacimiento
+        foreach ($animales as &$a) {
+            if (!empty($a['fecha_nacimiento'])) {
+                $edad = CalculadorEdad::calcular($a['fecha_nacimiento']);
+                $a['etapa'] = CalculadorEdad::determinarEtapa($edad['total_meses']);
+            }
+        }
+        unset($a);
         Response::json($animales);
     }
 
@@ -191,6 +200,7 @@ class RebanoController
 
         $animalIds = $datos['animal_ids'] ?? [];
         $rebanoDestino = $datos['rebano_destino_id'] ?? null;
+        $fecha = !empty($datos['fecha']) ? $datos['fecha'] : date('Y-m-d');
 
         if (empty($animalIds) || !$rebanoDestino) {
             Response::error('Debe enviar animal_ids y rebano_destino_id', 422);
@@ -222,13 +232,25 @@ class RebanoController
             $rebanoIds[(int)$a['id']] = (int)$a['rebano_id'];
         }
 
-        $idsActuales = array_keys($rebanoIds);
-        if (empty($idsActuales)) Response::error('Animales no encontrados', 404);
+        // Filtrar animales que YA están en el rebaño destino
+        $idsAMover = [];
+        $idsSinCambio = [];
+        foreach ($rebanoIds as $aid => $rebanoActual) {
+            if ($rebanoActual === (int)$rebanoDestino) {
+                $idsSinCambio[] = $aid;
+            } else {
+                $idsAMover[] = $aid;
+            }
+        }
 
-        // Mover animales
+        if (empty($idsAMover)) {
+            Response::error('Todos los animales seleccionados ya están en el rebaño destino', 422);
+        }
+
+        // Mover solo los animales que realmente cambian de rebaño
         $idParams = [':destino' => (int)$rebanoDestino, ':uid' => $uid];
         $idPlaceholders = [];
-        foreach ($idsActuales as $i => $aid) {
+        foreach ($idsAMover as $i => $aid) {
             $k = ":aid$i";
             $idPlaceholders[] = $k;
             $idParams[$k] = $aid;
@@ -239,21 +261,47 @@ class RebanoController
             $idParams
         );
 
-        // Loguear movimientos
-        foreach ($idsActuales as $aid) {
-            Database::execute(
-                'INSERT INTO movimientos_rebano (animal_id, rebano_origen_id, rebano_destino_id, usuario_id)
-                 VALUES (:animal, :origen, :destino, :uid)',
-                [
-                    ':animal' => $aid,
-                    ':origen' => $rebanoIds[$aid],
-                    ':destino' => (int)$rebanoDestino,
-                    ':uid' => $uid,
-                ]
-            );
+        // Loguear movimientos (con o sin columna fecha según disponibilidad)
+        $tieneFecha = !empty(Database::query("SHOW COLUMNS FROM movimientos_rebano LIKE 'fecha'"));
+        foreach ($idsAMover as $aid) {
+            if ($tieneFecha) {
+                Database::execute(
+                    'INSERT INTO movimientos_rebano (animal_id, rebano_origen_id, rebano_destino_id, fecha, usuario_id)
+                     VALUES (:animal, :origen, :destino, :fecha, :uid)',
+                    [
+                        ':animal' => $aid,
+                        ':origen' => $rebanoIds[$aid],
+                        ':destino' => (int)$rebanoDestino,
+                        ':fecha' => $fecha,
+                        ':uid' => $uid,
+                    ]
+                );
+            } else {
+                Database::execute(
+                    'INSERT INTO movimientos_rebano (animal_id, rebano_origen_id, rebano_destino_id, usuario_id)
+                     VALUES (:animal, :origen, :destino, :uid)',
+                    [
+                        ':animal' => $aid,
+                        ':origen' => $rebanoIds[$aid],
+                        ':destino' => (int)$rebanoDestino,
+                        ':uid' => $uid,
+                    ]
+                );
+            }
         }
 
-        Response::json(['mensaje' => count($idsActuales) . ' animales movidos exitosamente']);
+        // Regenerar pastaje de todos los rebaños afectados (origen y destino)
+        $origenesAfectados = array_map(fn($aid) => $rebanoIds[$aid], $idsAMover);
+        $rebanosAfectados = array_unique(array_merge($origenesAfectados, [(int)$rebanoDestino]));
+        foreach ($rebanosAfectados as $rid) {
+            try { $this->generarHistorialPastaje($rid, $uid); } catch (\Throwable $e) {}
+        }
+
+        $msg = count($idsAMover) . ' animales movidos exitosamente';
+        if (!empty($idsSinCambio)) {
+            $msg .= '. ' . count($idsSinCambio) . ' ya estaban en el rebaño destino y no se movieron';
+        }
+        Response::json(['mensaje' => $msg]);
     }
 
     /**
@@ -270,7 +318,7 @@ class RebanoController
         )['total'] ?? 0;
 
         $totalNacidos = Database::queryOne(
-            "SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid",
+            "SELECT COUNT(*) as total FROM animales WHERE usuario_id = :uid AND rebano_nacimiento_id IS NOT NULL",
             [':uid' => $uid]
         )['total'] ?? 0;
 
@@ -341,10 +389,11 @@ class RebanoController
             $params[':fhasta'] = $fechaHasta;
         }
 
-        // Nacidos: todos los animales que están o estuvieron en este rebaño (rebano_id porque
-        // rebano_nacimiento_id nunca se popula en la creación de animales).
+        // Nacidos: animales cuyo rebano_nacimiento_id coincide con este rebaño.
+        // Solo cuenta animales nacidos aquí (vía partos en reproducción), no los
+        // registrados manualmente ni comprados.
         $nacidos = Database::queryOne(
-            'SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid' . $filtroFecha,
+            'SELECT COUNT(*) as total FROM animales a WHERE a.rebano_nacimiento_id = :id AND a.usuario_id = :uid' . $filtroFecha,
             $params
         )['total'] ?? 0;
 
@@ -359,8 +408,9 @@ class RebanoController
         )['total'] ?? 0;
 
         // Activos que pagan pastaje (excluye Terneros < 12 meses)
+        $etapaSql = CalculadorEdad::sqlEtapa();
         $activosPastaje = Database::queryOne(
-            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.activo = 1 AND a.etapa != 'Ternero'",
+            "SELECT COUNT(*) as total FROM animales a WHERE a.rebano_id = :id AND a.usuario_id = :uid AND a.activo = 1 AND $etapaSql != 'Ternero'",
             $paramsRebano
         )['total'] ?? 0;
 
@@ -440,17 +490,22 @@ class RebanoController
     public function generarPastaje(string $id): void
     {
         $uid = $this->usuarioId();
-        $this->generarGastoPastaje((int)$id, $uid);
 
-        $mensaje = Database::queryOne(
-            "SELECT COUNT(*) as total FROM gastos WHERE rebano_id = :rid AND tipo = 'mantenimiento' AND usuario_id = :uid AND descripcion LIKE 'Pastaje - %' AND mes = :mes",
-            [':rid' => (int)$id, ':uid' => $uid, ':mes' => date('Y-m-01')]
-        );
+        try {
+            $this->generarHistorialPastaje((int)$id, $uid);
 
-        Response::json([
-            'mensaje' => 'Gasto de pastaje generado correctamente',
-            'total_mes_actual' => (int)($mensaje['total'] ?? 0),
-        ]);
+            $mensaje = Database::queryOne(
+                "SELECT COUNT(*) as total FROM gastos WHERE rebano_id = :rid AND tipo = 'mantenimiento' AND usuario_id = :uid AND descripcion LIKE 'Pastaje - %'",
+                [':rid' => (int)$id, ':uid' => $uid]
+            );
+
+            Response::json([
+                'mensaje' => 'Historial de pastaje regenerado correctamente',
+                'total_meses' => (int)($mensaje['total'] ?? 0),
+            ]);
+        } catch (\Throwable $e) {
+            Response::error('Error al generar pastaje: ' . $e->getMessage(), 500);
+        }
     }
 
     /**
@@ -470,7 +525,7 @@ class RebanoController
                 'UPDATE gastos SET monto = :monto WHERE id = :id',
                 [':monto' => $monto, ':id' => $existente['id']]
             );
-            CostosSyncHelper::sincronizarGasto((int)$existente['id'], $uid);
+            try { CostosSyncHelper::sincronizarGasto((int)$existente['id'], $uid); } catch (\Throwable $e) {}
         } else {
             Database::execute(
                 'INSERT INTO gastos (tipo, descripcion, monto, mes, rebano_id, usuario_id)
@@ -484,7 +539,7 @@ class RebanoController
                     ':uid'   => $uid,
                 ]
             );
-            CostosSyncHelper::sincronizarGasto((int)Database::lastInsertId(), $uid);
+            try { CostosSyncHelper::sincronizarGasto((int)Database::lastInsertId(), $uid); } catch (\Throwable $e) {}
         }
     }
 
@@ -497,22 +552,29 @@ class RebanoController
      */
     private function cabezasPastajeMes(int $rebanoId, int $uid, string $mes): int
     {
-        $hist = Database::queryOne(
-            'SELECT cabezas FROM conteo_mensual_rebano
-             WHERE rebano_id = :rid AND usuario_id = :uid AND mes = :mes',
-            [':rid' => $rebanoId, ':uid' => $uid, ':mes' => $mes]
-        );
-        if ($hist) return (int)$hist['cabezas'];
+        // Intentar usar conteo_mensual_rebano (puede no existir si la migración no se aplicó)
+        try {
+            $hist = Database::queryOne(
+                'SELECT cabezas FROM conteo_mensual_rebano
+                 WHERE rebano_id = :rid AND usuario_id = :uid AND mes = :mes',
+                [':rid' => $rebanoId, ':uid' => $uid, ':mes' => $mes]
+            );
+            if ($hist) return (int)$hist['cabezas'];
+        } catch (\Throwable $e) {
+            // Tabla no existe, usar fallback directo
+        }
 
         // Fallback: contar animales activos, excluyendo los que llegaron por mudanza
         // después de este mes (si el animal llegó durante o después de M, no paga
         // pastaje en este rebaño para M — estaba en el origen al inicio del mes).
+        // Usa COALESCE(fecha, created_at) para respetar fecha explícita de movimiento.
+        $etapaSql = CalculadorEdad::sqlEtapa();
         $result = Database::queryOne(
             "SELECT COUNT(*) as total FROM animales a
              WHERE a.rebano_id = :rid
                AND a.usuario_id = :uid
                AND a.activo = 1
-               AND a.etapa != 'Ternero'
+               AND $etapaSql != 'Ternero'
                AND a.fecha_nacimiento < :sig_mes
                AND (
                    NOT EXISTS (
@@ -533,7 +595,6 @@ class RebanoController
                 ':rid2'    => $rebanoId,
                 ':rid3'    => $rebanoId,
                 ':uid'     => $uid,
-                ':mes'     => $mes,
                 ':mes2'    => $mes,
                 ':sig_mes' => (new \DateTime($mes))->modify('+1 month')->format('Y-m-d'),
             ]
@@ -551,7 +612,7 @@ class RebanoController
             [':id' => $rebanoId, ':uid' => $uid]
         );
 
-        if (!$rebano || !$rebano['dia_corte'] || !$rebano['costo_cabeza']) return;
+        if (!$rebano || !$rebano['costo_cabeza']) return;
         if ((float)$rebano['costo_cabeza'] <= 0) return;
 
         $fechaInicio = $rebano['fecha_inicio'] ?? date('Y-m-d', strtotime('-1 month'));
@@ -580,7 +641,7 @@ class RebanoController
             'SELECT * FROM rebanos r WHERE r.id = :id AND r.usuario_id = :uid',
             [':id' => $rebanoId, ':uid' => $uid]
         );
-        if (!$rebano || !$rebano['dia_corte'] || !$rebano['costo_cabeza']) return;
+        if (!$rebano || !$rebano['costo_cabeza']) return;
         if ((float)$rebano['costo_cabeza'] <= 0) return;
 
         $mes = date('Y-m-01');

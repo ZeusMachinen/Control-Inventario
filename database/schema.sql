@@ -31,6 +31,7 @@ CREATE TABLE rebanos (
   nombre        VARCHAR(100)   NOT NULL,
   costo_cabeza  DECIMAL(10,2) NULL,
   fecha_inicio  DATE           NULL,
+  dia_corte     TINYINT UNSIGNED NULL,
   usuario_id    INT UNSIGNED   NOT NULL,
   activo        TINYINT(1)     NOT NULL DEFAULT 1,
   created_at    TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -321,6 +322,7 @@ CREATE TABLE movimientos_rebano (
   animal_id         INT UNSIGNED   NOT NULL,
   rebano_origen_id  INT UNSIGNED   NULL,
   rebano_destino_id INT UNSIGNED   NOT NULL,
+  fecha             DATE           NULL COMMENT 'Fecha real del movimiento (default: hoy)',
   usuario_id        INT UNSIGNED   NOT NULL,
   created_at        TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_mov_animal  FOREIGN KEY (animal_id) REFERENCES animales(id) ON DELETE CASCADE,
@@ -336,7 +338,7 @@ CREATE INDEX idx_mov_destino ON movimientos_rebano(rebano_destino_id);
 -- -----------------------------------------------------------
 CREATE TABLE gastos (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  tipo        ENUM('mantenimiento','medicamentos','compras') NOT NULL,
+  tipo        ENUM('mantenimiento','medicamentos','compras','veterinarios') NOT NULL,
   descripcion VARCHAR(255)   NOT NULL,
   monto       DECIMAL(12,2)  NOT NULL,
   mes         DATE           NOT NULL,

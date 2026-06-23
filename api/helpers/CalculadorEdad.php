@@ -63,4 +63,20 @@ class CalculadorEdad
         $fecha->modify('+' . GESTACION_DIAS . ' days');
         return $fecha->format('Y-m-d');
     }
+
+    /**
+     * Expresión SQL que calcula la etapa del animal según su edad en meses.
+     * Usar en SELECT o WHERE en lugar de la columna 'etapa' almacenada.
+     *
+     * @param string $alias Alias de la tabla animales (default 'a')
+     * @return string Expresión CASE lista para interpolar en SQL
+     */
+    public static function sqlEtapa(string $alias = 'a'): string
+    {
+        return "CASE
+            WHEN TIMESTAMPDIFF(MONTH, {$alias}.fecha_nacimiento, CURDATE()) <= 12 THEN 'Ternero'
+            WHEN TIMESTAMPDIFF(MONTH, {$alias}.fecha_nacimiento, CURDATE()) <= 24 THEN 'Novillo'
+            ELSE 'Adulto'
+        END";
+    }
 }

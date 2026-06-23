@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
 require_once __DIR__ . '/../helpers/Validator.php';
+require_once __DIR__ . '/../helpers/CalculadorEdad.php';
 
 class VentaController
 {
@@ -138,6 +139,13 @@ class VentaController
             [':id' => (int)$id, ':uid' => $uid, ':uid2' => $uid]
         );
         if (!$venta) Response::error('Venta no encontrada', 404);
+
+        // Recalcular etapa real de la venta basada en fecha_nacimiento
+        if (!empty($venta['animal_fecha_nacimiento'])) {
+            $edad = CalculadorEdad::calcular($venta['animal_fecha_nacimiento']);
+            $venta['animal_etapa'] = CalculadorEdad::determinarEtapa($edad['total_meses']);
+        }
+
         Response::json($venta);
     }
 

@@ -433,14 +433,15 @@ class ReproduccionController
         }
 
         Database::execute(
-            'INSERT INTO diagnosticos_gestacion (servicio_id, animal_id, fecha, metodo, resultado, observaciones, usuario_id)
-             VALUES (:servicio, :animal, :fecha, :metodo, :resultado, :obs, :uid)',
+            'INSERT INTO diagnosticos_gestacion (servicio_id, animal_id, fecha, metodo, resultado, meses_gestacion, observaciones, usuario_id)
+             VALUES (:servicio, :animal, :fecha, :metodo, :resultado, :meses, :obs, :uid)',
             [
                 ':servicio'  => $servicioId ? (int)$servicioId : null,
                 ':animal'    => $animalId,
                 ':fecha'     => $datos['fecha'],
                 ':metodo'    => $datos['metodo'] ?? 'Palpación',
                 ':resultado' => $datos['resultado'],
+                ':meses'     => isset($datos['meses_gestacion']) ? (float)$datos['meses_gestacion'] : null,
                 ':obs'       => $datos['observaciones'] ?? null,
                 ':uid'       => $uid,
             ]
@@ -496,7 +497,7 @@ class ReproduccionController
         $campos = [];
         $params = [':id' => (int)$id];
 
-        foreach (['fecha', 'metodo', 'resultado', 'observaciones'] as $c) {
+        foreach (['fecha', 'metodo', 'resultado', 'meses_gestacion', 'observaciones'] as $c) {
             if (isset($datos[$c])) {
                 $campos[] = "$c = :$c";
                 $params[":$c"] = $datos[$c];
@@ -538,6 +539,84 @@ class ReproduccionController
     // ═══════════════════════════════════════════════════════════
 
     /**
+     * Obtiene partos implícitos: animales que figuran como hijos (madre_id)
+     * pero cuyo parto no está registrado formalmente en la tabla partos.
+     *
+     * Agrupa por madre + fecha_nacimiento para evitar duplicar mellizos
+     * y excluye combinaciones que ya tienen un parto formal registrado.
+     *
+     * @return array Partos implícitos con misma estructura que uno formal + campo 'implicito'
+     */
+    private function obtenerPartosImplicitos(int $uid, ?int $animalId = null): array
+    {
+        $sql = "SELECT
+                    madre.id as animal_id,
+                    madre.nombre as animal_nombre,
+                    hijo.id as cria_id,
+                    hijo.nombre as cria_nombre,
+                    hijo.sexo as cria_sexo,
+                    hijo.fecha_nacimiento as fecha,
+                    hijo.peso_entrada as cria_peso
+                FROM animales hijo
+                JOIN animales madre ON madre.id = hijo.madre_id
+                WHERE madre.usuario_id = :uid
+                  AND madre.activo = 1
+                  AND NOT EXISTS (
+                    SELECT 1 FROM partos p
+                    WHERE p.animal_id = madre.id
+                      AND p.fecha = hijo.fecha_nacimiento
+                      AND p.usuario_id = :uid2
+                  )";
+
+        $params = [':uid' => $uid, ':uid2' => $uid];
+
+        if ($animalId) {
+            $sql .= ' AND madre.id = :aid';
+            $params[':aid'] = $animalId;
+        }
+
+        $sql .= ' ORDER BY hijo.fecha_nacimiento DESC, madre.id';
+
+        $filas = Database::query($sql, $params);
+
+        // Agrupar por (madre, fecha) — un parto puede tener múltiples crías
+        $grupos = [];
+        foreach ($filas as $f) {
+            $key = $f['animal_id'] . '_' . $f['fecha'];
+            if (!isset($grupos[$key])) {
+                $grupos[$key] = [
+                    'id'                       => null,
+                    'diagnostico_gestacion_id' => null,
+                    'animal_id'                => (int)$f['animal_id'],
+                    'animal_nombre'            => $f['animal_nombre'],
+                    'fecha'                    => $f['fecha'],
+                    'crias'                    => [],
+                    'observaciones'            => null,
+                    'created_at'               => null,
+                    'implicito'                => true,
+                ];
+            }
+            $grupos[$key]['crias'][] = [
+                'nombre'   => $f['cria_nombre'],
+                'sexo'     => $f['cria_sexo'],
+                'cantidad' => 1,
+                'peso'     => $f['cria_peso'] ? (float)$f['cria_peso'] : null,
+            ];
+        }
+
+        // Convertir a array final con crias como JSON
+        $resultado = [];
+        foreach ($grupos as $g) {
+            $total = count($g['crias']);
+            $g['crias'] = json_encode($g['crias'], JSON_UNESCAPED_UNICODE);
+            $g['observaciones'] = "Implícito — $total cría(s) desde registro de animales";
+            $resultado[] = $g;
+        }
+
+        return $resultado;
+    }
+
+    /**
      * Lista partos.
      * GET /api/reproduccion/partos
      */
@@ -551,8 +630,15 @@ class ReproduccionController
                 WHERE p.usuario_id = :uid';
         if (!$incluirInactivos) $sql .= ' AND a.activo = 1';
         $sql .= ' ORDER BY p.fecha DESC';
-        $partos = Database::query($sql, [':uid' => $uid]);
-        Response::json($partos);
+        $partosFormales = Database::query($sql, [':uid' => $uid]);
+
+        // Partos implícitos (hijos con madre_id sin parto formal)
+        $partosImplicitos = $this->obtenerPartosImplicitos($uid);
+
+        $todos = array_merge($partosFormales, $partosImplicitos);
+        usort($todos, fn($a, $b) => strcmp($b['fecha'], $a['fecha']));
+
+        Response::json($todos);
     }
 
     /**
@@ -642,28 +728,32 @@ class ReproduccionController
                 $estadoRepro = ($sexo === 'Hembra') ? 'Vacia' : null;
 
                 Database::execute(
-                    'INSERT INTO animales (nombre, sexo, fecha_nacimiento, rebano_id, madre_id, etapa, estado_reproductivo, peso_entrada, usuario_id, activo, estado_general)
-                     VALUES (:nombre, :sexo, :fecha, :rebano, :madre, :etapa, :estado, :peso, :uid, 1, \'Activo\')',
+                    'INSERT INTO animales (nombre, sexo, fecha_nacimiento, rebano_id, rebano_nacimiento_id, madre_id, etapa, estado_reproductivo, peso_entrada, usuario_id, activo, estado_general)
+                     VALUES (:nombre, :sexo, :fecha, :rebano, :rebano_nac, :madre, :etapa, :estado, :peso, :uid, 1, \'Activo\')',
                     [
-                        ':nombre'  => $nombre,
-                        ':sexo'    => $sexo,
-                        ':fecha'   => $datos['fecha'],
-                        ':rebano'  => $madre['rebano_id'],
-                        ':madre'   => $animalId,
-                        ':etapa'   => 'Ternero',
-                        ':estado'  => $estadoRepro,
-                        ':peso'    => $peso,
-                        ':uid'     => $uid,
+                        ':nombre'     => $nombre,
+                        ':sexo'       => $sexo,
+                        ':fecha'      => $datos['fecha'],
+                        ':rebano'     => $madre['rebano_id'],
+                        ':rebano_nac' => $madre['rebano_id'],
+                        ':madre'      => $animalId,
+                        ':etapa'      => 'Ternero',
+                        ':estado'     => $estadoRepro,
+                        ':peso'       => $peso,
+                        ':uid'        => $uid,
                     ]
                 );
             }
         }
 
-        // Máquina de estados: Parto → Lactando
-        Database::execute(
-            'UPDATE animales SET estado_reproductivo = \'Lactando\' WHERE id = :id',
-            [':id' => $animalId]
-        );
+        // Máquina de estados: Parto → Lactando (solo si ≤ 8 meses)
+        $mesesDesdeParto = CalculadorEdad::calcularHasta($datos['fecha'], date('Y-m-d'))['total_meses'];
+        if ($mesesDesdeParto <= 8) {
+            Database::execute(
+                'UPDATE animales SET estado_reproductivo = \'Lactando\' WHERE id = :id',
+                [':id' => $animalId]
+            );
+        }
 
         Response::json(['id' => (int)$partoId, 'mensaje' => 'Parto registrado correctamente']);
     }
@@ -807,7 +897,7 @@ class ReproduccionController
         );
         foreach ($diagnosticos as $d) $eventos[] = $d;
 
-        // 4. Partos
+        // 4. Partos formales
         $partos = Database::query(
             'SELECT p.id, p.animal_id, p.fecha, \'parto\' as evento_tipo,
                     \'Parto\' as evento_nombre, p.crias, p.observaciones, p.created_at
@@ -815,6 +905,14 @@ class ReproduccionController
             [':id' => $animalId, ':uid' => $uid]
         );
         foreach ($partos as $p) $eventos[] = $p;
+
+        // 4b. Partos implícitos (hijos sin parto formal)
+        $partosImplicitos = $this->obtenerPartosImplicitos($uid, $animalId);
+        foreach ($partosImplicitos as $p) {
+            $p['evento_tipo'] = 'parto';
+            $p['evento_nombre'] = 'Parto (implícito)';
+            $eventos[] = $p;
+        }
 
         // Ordenar por fecha ascendente
         usort($eventos, function ($a, $b) {

@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/../helpers/Database.php';
 require_once __DIR__ . '/../helpers/Response.php';
+require_once __DIR__ . '/../helpers/CalculadorEdad.php';
 
 class EstadisticaController
 {
@@ -90,9 +91,10 @@ class EstadisticaController
             [':uid' => $uid]
         );
 
-        // Por etapa
+        // Por etapa (calculada dinámicamente desde fecha_nacimiento)
+        $etapaSql = CalculadorEdad::sqlEtapa();
         $etapas = Database::query(
-            'SELECT etapa, COUNT(*) as total FROM animales WHERE usuario_id = :uid AND activo = 1 GROUP BY etapa',
+            "SELECT $etapaSql as etapa, COUNT(*) as total FROM animales a WHERE usuario_id = :uid AND activo = 1 GROUP BY $etapaSql",
             [':uid' => $uid]
         );
 

@@ -5,6 +5,7 @@ const AnimalListPage = {
   columnaOrden: null,
   direccionOrden: 'asc',
   datosPagina: [],
+  modoVista: 'lista',   // 'lista' | 'galeria'
 
   filtroRebanoUrl: null,
 
@@ -31,6 +32,9 @@ const AnimalListPage = {
           <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-primary" onclick="Router.navegar('/animales/nuevo')">
               <i class="fas fa-plus"></i> Nuevo Animal
+            </button>
+            <button class="btn btn-outline-secondary" id="btn-toggle-vista" onclick="AnimalListPage.toggleVista()" title="Cambiar vista">
+              <i class="fas fa-th-large"></i> Galería
             </button>
             <button class="btn btn-outline-secondary d-none" id="btn-mover-multiples" onclick="AnimalListPage.mostrarMoverModal()">
               <i class="fas fa-arrows-alt"></i> Mover (<span id="seleccionados-count">0</span>)
@@ -108,8 +112,8 @@ const AnimalListPage = {
           </div>
         </div>
 
-        <div class="card">
-          <div class="table-responsive">
+        <div class="card" id="animales-contenedor">
+          <div class="table-responsive" id="animales-tabla">
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
@@ -131,6 +135,7 @@ const AnimalListPage = {
               </tbody>
             </table>
           </div>
+          <div id="animales-galeria" class="row g-3 p-3" style="display:none"></div>
           <div id="animales-pagination" class="pagination-custom"></div>
         </div>
 
@@ -147,6 +152,27 @@ const AnimalListPage = {
     this.filtros = {};
     this.seleccionados = new Set();
     if (this.filtroRebanoUrl) this.filtros.rebano_id = this.filtroRebanoUrl;
+
+    // Restaurar preferencia de vista
+    try {
+      const saved = localStorage.getItem('animales-vista');
+      if (saved === 'galeria') this.modoVista = 'galeria';
+    } catch(e) {}
+
+    // Sincronizar botón y visibilidad
+    const btn = document.getElementById('btn-toggle-vista');
+    const tabla = document.getElementById('animales-tabla');
+    const galeria = document.getElementById('animales-galeria');
+    if (this.modoVista === 'galeria') {
+      if (btn) btn.innerHTML = '<i class="fas fa-list"></i> Lista';
+      if (tabla) tabla.style.display = 'none';
+      if (galeria) galeria.style.display = '';
+    } else {
+      if (btn) btn.innerHTML = '<i class="fas fa-th-large"></i> Galería';
+      if (tabla) tabla.style.display = '';
+      if (galeria) galeria.style.display = 'none';
+    }
+
     this.cargarAnimales();
   },
 
@@ -159,12 +185,25 @@ const AnimalListPage = {
       else this.seleccionados.delete(id);
     });
     this.actualizarBotonMove();
+
+    // En galería, actualizar bordes visuales de todas las tarjetas
+    if (this.modoVista === 'galeria') {
+      document.querySelectorAll('.animal-card').forEach(card => {
+        card.classList.toggle('border-primary', checkbox.checked);
+      });
+    }
   },
 
   toggleAnimal(checkbox, id) {
     if (checkbox.checked) this.seleccionados.add(id);
     else this.seleccionados.delete(id);
     this.actualizarBotonMove();
+
+    // En galería, actualizar borde visual de la tarjeta
+    if (this.modoVista === 'galeria') {
+      const card = checkbox.closest('.animal-card');
+      if (card) card.classList.toggle('border-primary', checkbox.checked);
+    }
   },
 
   actualizarBotonMove() {
@@ -193,6 +232,7 @@ const AnimalListPage = {
     try {
       const { data: rebanos } = await API.get('/rebanos');
       const rebanosList = rebanos.data || [];
+      const hoy = new Date().toISOString().substring(0, 10);
       document.getElementById('animal-move-modal').innerHTML = `
         <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)" onclick="if(event.target===this)document.getElementById('animal-move-modal').innerHTML=''">
           <div class="modal-dialog modal-dialog-centered">
@@ -208,6 +248,11 @@ const AnimalListPage = {
                     <option value="">Seleccione...</option>
                     ${rebanosList.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('')}
                   </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Fecha del movimiento</label>
+                  <input type="date" class="form-control" id="move-fecha" value="${hoy}">
+                  <small class="text-secondary d-block mt-1">Fecha real en que se movieron los animales. Si fue antes de hoy, indicalo para que los costos se calculen correctamente.</small>
                 </div>
               </div>
               <div class="modal-footer">
@@ -314,10 +359,12 @@ const AnimalListPage = {
   async ejecutarMove() {
     const destino = document.getElementById('move-rebano-destino').value;
     if (!destino) { Toast.warning('Seleccione un rebaño destino'); return; }
+    const fecha = document.getElementById('move-fecha')?.value || null;
     try {
       await API.post('/rebanos/mover-multiples', {
         animal_ids: Array.from(this.seleccionados),
         rebano_destino_id: parseInt(destino),
+        fecha,
       });
       document.getElementById('animal-move-modal').innerHTML = '';
       this.seleccionados = new Set();
@@ -350,22 +397,30 @@ const AnimalListPage = {
       this.columnaOrden = columna;
       this.direccionOrden = 'asc';
     }
-    SortUtil.actualizarEncabezados('animales-tbody', this.columnaOrden, this.direccionOrden);
-    this.renderTabla();
+    this.paginaActual = 1;
+    this.cargarAnimales();
   },
 
   async cargarAnimales() {
-    const tbody = document.getElementById('animales-tbody');
-    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>';
+    if (this.modoVista === 'lista') {
+      const tbody = document.getElementById('animales-tbody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</td></tr>';
+    } else {
+      const galeria = document.getElementById('animales-galeria');
+      if (galeria) galeria.innerHTML = '<div class="col-12 text-center py-5 text-secondary"><div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Cargando...</div>';
+    }
 
     try {
       const params = { pagina: this.paginaActual, ...this.filtros };
+      if (this.columnaOrden) {
+        params.ordenar_por = this.columnaOrden;
+        params.direccion = this.direccionOrden;
+      }
       const { data } = await API.get('/animales', params);
       this.datosPagina = data.data || [];
       this.total = data.total || 0;
       this.porPagina = data.por_pagina || 20;
 
-      // Actualizar contadores de stats
       const counters = data.counters || {};
       const elTotal = document.getElementById('kpi-animales-total');
       const elMachos = document.getElementById('kpi-animales-machos');
@@ -374,26 +429,111 @@ const AnimalListPage = {
       if (elMachos) elMachos.textContent = Formateador.numero(counters.machos ?? 0);
       if (elHembras) elHembras.textContent = Formateador.numero(counters.hembras ?? 0);
 
-      // Resaltar tarjeta activa según filtro de sexo
       this.actualizarHighlightStats();
 
-      this.renderTabla();
+      if (this.modoVista === 'lista') {
+        this.renderTabla();
+      } else {
+        this.renderGaleria();
+      }
     } catch (error) {
-      tbody.innerHTML = `<tr><td colspan="11" class="text-danger py-3 text-center">Error: ${error.message}</td></tr>`;
+      if (this.modoVista === 'lista') {
+        const tbody = document.getElementById('animales-tbody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="text-danger py-3 text-center">Error: ${error.message}</td></tr>`;
+      } else {
+        const galeria = document.getElementById('animales-galeria');
+        if (galeria) galeria.innerHTML = `<div class="col-12 text-danger py-3 text-center">Error: ${error.message}</div>`;
+      }
     }
+  },
+
+  toggleVista() {
+    this.modoVista = this.modoVista === 'lista' ? 'galeria' : 'lista';
+    const btn = document.getElementById('btn-toggle-vista');
+    const tabla = document.getElementById('animales-tabla');
+    const galeria = document.getElementById('animales-galeria');
+
+    if (this.modoVista === 'galeria') {
+      if (btn) btn.innerHTML = '<i class="fas fa-list"></i> Lista';
+      if (tabla) tabla.style.display = 'none';
+      if (galeria) galeria.style.display = '';
+    } else {
+      if (btn) btn.innerHTML = '<i class="fas fa-th-large"></i> Galería';
+      if (tabla) tabla.style.display = '';
+      if (galeria) galeria.style.display = 'none';
+    }
+
+    // Guardar preferencia
+    try { localStorage.setItem('animales-vista', this.modoVista); } catch(e) {}
+
+    // Recargar con el modo nuevo
+    this.paginaActual = 1;
+    this.cargarAnimales();
+  },
+
+  renderGaleria() {
+    const galeria = document.getElementById('animales-galeria');
+    const animales = [...this.datosPagina];
+
+    if (animales.length === 0) {
+      galeria.innerHTML = '<div class="col-12 text-center py-5 text-secondary">No hay animales registrados</div>';
+      return;
+    }
+
+    galeria.innerHTML = animales.map(a => {
+      const fotoSrc = a.foto ? `/api/${a.foto}` : null;
+      const sexoClass = a.sexo === 'Macho' ? 'badge-sexo-macho' : 'badge-sexo-hembra';
+      const sexoIcono = a.sexo === 'Macho' ? 'fa-mars' : 'fa-venus';
+      const seleccionado = this.seleccionados.has(a.id);
+      const etapaColor = { 'Ternero': 'bg-info', 'Novillo': 'bg-success', 'Adulto': 'bg-primary' }[a.etapa] || 'bg-secondary';
+
+      return `
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="card animal-card h-100 ${seleccionado ? 'border-primary border-2' : ''}" style="cursor:pointer" onclick="Router.navegar('/animales/${a.id}')">
+            <div class="position-relative" style="height:160px;overflow:hidden">
+              ${fotoSrc
+                ? `<img src="${fotoSrc}" class="card-img-top w-100 h-100" style="object-fit:cover" alt="${a.nombre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                   <div class="d-flex align-items-center justify-content-center bg-light w-100 h-100" style="display:none"><i class="fas fa-image fa-3x text-secondary"></i></div>`
+                : `<div class="d-flex align-items-center justify-content-center bg-light w-100 h-100"><i class="fas fa-image fa-3x text-secondary"></i></div>`
+              }
+              <span class="position-absolute top-0 end-0 m-2">
+                <input type="checkbox" class="form-check-input animal-checkbox" data-id="${a.id}" ${seleccionado ? 'checked' : ''} onclick="event.stopPropagation();AnimalListPage.toggleAnimal(this, ${a.id})" style="width:18px;height:18px;background:white">
+              </span>
+            </div>
+            <div class="card-body p-2">
+              <h6 class="card-title mb-1 fw-bold text-truncate">${a.nombre}</h6>
+              <div class="d-flex gap-1 flex-wrap mb-1">
+                <span class="badge ${sexoClass}"><i class="fas ${sexoIcono} me-1"></i>${a.sexo}</span>
+                <span class="badge ${etapaColor}">${a.etapa}</span>
+              </div>
+            </div>
+            <div class="card-footer bg-transparent p-2 d-flex gap-1 justify-content-center" onclick="event.stopPropagation()">
+              <button class="btn btn-outline-secondary btn-sm" onclick="Router.navegar('/animales/${a.id}')" title="Ver detalle">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn btn-outline-success btn-sm" onclick="Router.navegar('/animales/${a.id}/arbol')" title="Árbol genealógico">
+                <i class="fas fa-sitemap"></i>
+              </button>
+              ${a.estado_general === 'Activo' ? `
+              <button class="btn btn-outline-info btn-sm" onclick="AnimalListPage.moverIndividual(${a.id})" title="Mover a otro rebaño">
+                <i class="fas fa-arrows-alt"></i>
+              </button>
+              <button class="btn btn-outline-warning btn-sm" onclick="AnimalListPage.darDeBajaIndividual(${a.id}, '${a.nombre.replace(/'/g, "\\'")}')" title="Dar de baja (Vender/Muerto)">
+                <i class="fas fa-sign-out-alt"></i>
+              </button>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const totalPaginas = Math.ceil(this.total / this.porPagina);
+    this.renderPaginacion(totalPaginas);
   },
 
   renderTabla() {
     const tbody = document.getElementById('animales-tbody');
-    const animales = [...this.datosPagina];
-
-    if (this.columnaOrden) {
-      animales.sort((a, b) => SortUtil.comparar(
-        this.obtenerValor(this.columnaOrden, a),
-        this.obtenerValor(this.columnaOrden, b),
-        this.direccionOrden
-      ));
-    }
+    const animales = this.datosPagina;
 
     if (animales.length === 0) {
       tbody.innerHTML = '<tr><td colspan="11" class="text-center py-5 text-secondary">No hay animales registrados</td></tr>';
@@ -420,6 +560,9 @@ const AnimalListPage = {
               ${a.estado_general === 'Activo' ? `
               <button class="btn btn-outline-info btn-sm" onclick="AnimalListPage.moverIndividual(${a.id})" title="Mover a otro rebaño">
                 <i class="fas fa-arrows-alt"></i>
+              </button>
+              <button class="btn btn-outline-warning btn-sm" onclick="AnimalListPage.darDeBajaIndividual(${a.id}, '${a.nombre.replace(/'/g, "\\'")}')" title="Dar de baja (Vender/Muerto)">
+                <i class="fas fa-sign-out-alt"></i>
               </button>` : ''}
             </div>
           </td>
@@ -490,6 +633,96 @@ const AnimalListPage = {
   moverIndividual(id) {
     this.seleccionados = new Set([id]);
     this.mostrarMoverModal();
+  },
+
+  /**
+   * Da de baja un animal individual (Vender/Muerto).
+   */
+  darDeBajaIndividual(id, nombre) {
+    const modalId = `baja-modal-${id}`;
+    document.getElementById(modalId)?.remove();
+
+    const div = document.createElement('div');
+    div.id = modalId;
+    div.className = 'modal fade show d-block';
+    div.setAttribute('tabindex', '-1');
+    div.style.background = 'rgba(0,0,0,0.5)';
+    div.onclick = function(e) { if (e.target === this) this.remove(); };
+    div.innerHTML = `
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-door-open me-2"></i>Dar de baja: ${nombre}</h5>
+            <button class="btn-close" onclick="this.closest('.modal.fade').remove()"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Estado *</label>
+              <select class="form-select" id="${modalId}-estado">
+                <option value="Vendido">Vendido</option>
+                <option value="Muerto">Muerto</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Fecha</label>
+              <input type="date" class="form-control" id="${modalId}-fecha" value="${new Date().toISOString().substring(0, 10)}">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Motivo</label>
+              <input type="text" class="form-control" id="${modalId}-motivo" placeholder="Ej: Murió por enfermedad">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Peso de salida (kg)</label>
+              <input type="number" step="0.01" class="form-control" id="${modalId}-peso" placeholder="Peso al momento de la baja">
+            </div>
+            <div class="mb-3" id="${modalId}-precio-group">
+              <label class="form-label">Precio de venta</label>
+              <input type="number" step="1" class="form-control" id="${modalId}-precio" placeholder="Precio de venta">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" onclick="this.closest('.modal.fade').remove()">Cancelar</button>
+            <button type="button" class="btn btn-danger" id="${modalId}-btn">Dar de baja</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+
+    // Mostrar/ocultar precio según estado
+    const estadoSelect = document.getElementById(`${modalId}-estado`);
+    const precioGroup = document.getElementById(`${modalId}-precio-group`);
+    estadoSelect.onchange = () => {
+      precioGroup.style.display = estadoSelect.value === 'Vendido' ? '' : 'none';
+    };
+
+    // Botón confirmar
+    document.getElementById(`${modalId}-btn`).onclick = async () => {
+      const estado = estadoSelect.value;
+      const fecha = document.getElementById(`${modalId}-fecha`).value;
+      const motivo = document.getElementById(`${modalId}-motivo`).value.trim();
+      const peso = document.getElementById(`${modalId}-peso`).value;
+      const precio = document.getElementById(`${modalId}-precio`).value;
+
+      try {
+        const body = {
+          estado_general: estado,
+          fecha_salida: fecha || null,
+          motivo_salida: motivo || null,
+          peso_salida: peso ? parseFloat(peso) : null,
+        };
+        if (estado === 'Vendido' && precio) {
+          body.precio_venta = parseFloat(precio);
+        }
+
+        await API.post(`/animales/${id}/baja`, body);
+        document.getElementById(modalId)?.remove();
+        Toast.success(`"${nombre}" dado de baja como ${estado}`);
+        this.cargarAnimales();
+      } catch (err) {
+        Toast.error(err.response?.data?.error || 'Error al dar de baja');
+      }
+    };
   },
 
   // ─── Eliminar ─────────────────────────────────────────

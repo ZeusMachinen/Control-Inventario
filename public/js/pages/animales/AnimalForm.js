@@ -535,8 +535,23 @@ const AnimalFormPage = {
     }
 
     const fotoInput = document.getElementById('animal-foto');
-    if (fotoInput.files.length > 0) {
-      formData.append('foto', fotoInput.files[0]);
+    const tieneFoto = fotoInput.files.length > 0;
+
+    // Si hay foto nueva, subirla primero al endpoint de upload
+    let fotoRuta = null;
+    if (tieneFoto) {
+      try {
+        const fotoForm = new FormData();
+        fotoForm.append('foto', fotoInput.files[0]);
+        const { data: uploadRes } = await API.upload('/upload/foto', fotoForm);
+        fotoRuta = uploadRes.ruta || uploadRes.data?.ruta || null;
+      } catch (err) {
+        Toast.error(err.response?.data?.error || 'Error al subir la foto');
+        return;
+      }
+    }
+    if (fotoRuta) {
+      formData.append('foto', fotoRuta);
     }
 
     try {
