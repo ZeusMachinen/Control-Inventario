@@ -13,15 +13,14 @@ const AnimalArbolPage = {
 
       return MainLayout.render(`
         <style>
-          .arbol-container { display:flex; flex-direction:column; align-items:center; gap:0; padding:1rem 0; }
-          .arbol-nivel { display:flex; justify-content:center; align-items:flex-start; gap:1.5rem; width:100%; flex-wrap:wrap; }
+          .arbol-wrapper { overflow-x:auto; padding-bottom:0.5rem; }
+          .arbol-container { display:flex; flex-direction:column; align-items:center; gap:0; padding:1rem 2rem; min-width:max-content; }
+          .arbol-nivel { display:flex; justify-content:center; align-items:flex-start; gap:1.5rem; flex-wrap:nowrap; }
           .arbol-nivel-doble { display:flex; align-items:flex-start; gap:0.25rem; }
           .arbol-conector-v { width:2px; height:30px; background:#adb5bd; margin:4px auto; }
           .arbol-conector-h-container { display:flex; align-items:center; min-width:20px; }
           .arbol-conector-h { height:2px; flex:1; background:#adb5bd; min-width:20px; }
-          .arbol-nivel-center { display:flex; justify-content:center; }
-          .arbol-nivel-hijos { display:flex; justify-content:center; gap:1rem; flex-wrap:wrap; }
-          .arbol-col-hijo { display:flex; flex-direction:column; align-items:center; }
+          .arbol-col-hijo { display:flex; flex-direction:column; align-items:center; min-width:140px; }
           .arbol-card { min-width:130px; transition:transform 0.15s; }
           .arbol-card:hover { transform:scale(1.05); }
           .arbol-card-null { min-width:130px; border:1px dashed #adb5bd; background:#f8f9fa; }
@@ -41,8 +40,10 @@ const AnimalArbolPage = {
         </div>
 
         <div class="card">
-          <div class="card-body">
-            ${this.renderArbol(d)}
+          <div class="card-body p-0">
+            <div class="arbol-wrapper" id="arbol-wrapper">
+              ${this.renderArbol(d)}
+            </div>
           </div>
         </div>
       `);
@@ -65,11 +66,19 @@ const AnimalArbolPage = {
   },
 
   afterRender() {
-    // No se necesita afterRender por ahora
+    // Centrar el scroll horizontal en el animal actual
+    const wrapper = document.getElementById('arbol-wrapper');
+    const actual = document.querySelector('.arbol-actual');
+    if (wrapper && actual) {
+      const wrapperWidth = wrapper.clientWidth;
+      const cardLeft = actual.offsetLeft;
+      const cardWidth = actual.offsetWidth;
+      wrapper.scrollLeft = cardLeft - (wrapperWidth / 2) + (cardWidth / 2);
+    }
   },
 
   renderArbol(d) {
-    const { animal, padres, abuelos, hijos, hermanos, sobrinos, stats } = d || {};
+    const { animal, padres, abuelos, hijos, nietos, hermanos, sobrinos, stats } = d || {};
 
     const card = (a, label) => {
       if (!a) {
@@ -139,7 +148,6 @@ const AnimalArbolPage = {
 
     // Animal actual + Hermanos (mismo nivel, cada uno con sus descendientes)
     if (animal) {
-      const inactivo = animal.estado_general === 'Muerto' || animal.estado_general === 'Vendido';
       html += '<div class="arbol-nivel mb-2">';
 
       // Hermanos (cada uno con sus sobrinos debajo)
@@ -156,7 +164,7 @@ const AnimalArbolPage = {
         html += '</div>';
       });
 
-      // Animal actual (destacado) con sus hijos debajo
+      // Animal actual (destacado, sin hijos debajo — van en su propia fila)
       html += '<div class="arbol-col-hijo">';
       html += `
         <a href="#/animales/${animal.id}" class="text-decoration-none d-flex flex-column align-items-center">
@@ -165,26 +173,42 @@ const AnimalArbolPage = {
             <div class="fw-bold mt-1">${animal.nombre}</div>
             <div class="mt-1">
               <span class="badge bg-primary">${animal.etapa}</span>
-              <span class="badge ${inactivo ? 'bg-dark' : 'bg-success'}">${animal.estado_general}</span>
+              <span class="badge ${animal.estado_general === 'Muerto' || animal.estado_general === 'Vendido' ? 'bg-dark' : 'bg-success'}">${animal.estado_general}</span>
             </div>
           </div>
           <div class="small text-success fw-semibold mt-1">Actual</div>
         </a>`;
-      if (hijos && hijos.length > 0) {
-        html += '<div class="arbol-conector-v"></div>';
-        hijos.forEach(h => {
-          html += card(h, 'Hijo');
-        });
-      }
       html += '</div>';
 
-      html += '</div>';
+      html += '</div>'; // cierra arbol-nivel (hermanos + animal)
+
+      // Hijos del animal actual — en su propia fila horizontal
+      if (hijos && hijos.length > 0) {
+        html += '<div class="arbol-conector-v"></div>';
+        html += '<div class="arbol-nivel">';
+        hijos.forEach(h => {
+          html += '<div class="arbol-col-hijo">';
+          html += card(h, 'Hijo');
+
+          // Nietos (hijos de este hijo)
+          const nietosDeEste = (nietos && nietos[h.id]) || [];
+          if (nietosDeEste.length > 0) {
+            html += '<div class="arbol-conector-v"></div>';
+            nietosDeEste.forEach(n => {
+              html += card(n, 'Nieto');
+            });
+          }
+          html += '</div>';
+        });
+        html += '</div>'; // cierra arbol-nivel (hijos)
+      }
     }
 
     // Stats
-    const sinRelaciones = !stats?.total_hijos && !stats?.total_hermanos && !stats?.total_sobrinos;
+    const sinRelaciones = !stats?.total_hijos && !stats?.total_hermanos && !stats?.total_sobrinos && !stats?.total_nietos;
     html += `<div class="text-center mt-4 text-secondary small border-top pt-3" style="width:100%;max-width:500px">
       ${stats?.total_hijos > 0 ? `<span class="me-3"><i class="fas fa-paw me-1"></i>${stats.total_hijos} hijo(s)</span>` : ''}
+      ${stats?.total_nietos > 0 ? `<span class="me-3"><i class="fas fa-seedling me-1"></i>${stats.total_nietos} nieto(s)</span>` : ''}
       ${stats?.total_hermanos > 0 ? `<span class="me-3"><i class="fas fa-users me-1"></i>${stats.total_hermanos} hermano(s)</span>` : ''}
       ${stats?.total_sobrinos > 0 ? `<span><i class="fas fa-child me-1"></i>${stats.total_sobrinos} sobrino(s)</span>` : ''}
       ${sinRelaciones ? 'Sin relaciones registradas' : ''}

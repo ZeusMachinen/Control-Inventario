@@ -99,6 +99,7 @@ const Sidebar = {
     const sidebar = document.getElementById('sidebar');
     if (window.innerWidth > 768) {
       sidebar.classList.toggle('collapsed');
+      localStorage.setItem('sidebar_collapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
     } else {
       sidebar.classList.toggle('open');
     }

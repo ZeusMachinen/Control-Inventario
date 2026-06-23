@@ -44,6 +44,30 @@ const AnimalListPage = {
           </div>
         </div>
 
+        <div class="stats-grid" id="animales-stats">
+          <div class="stat-card" style="border-left-color:var(--verde-principal);cursor:pointer" onclick="AnimalListPage.filtrarPorSexo('')" id="stat-todos">
+            <div class="stat-card-icon" style="background:var(--verde-bg);color:var(--verde-principal)"><i class="fas fa-paw"></i></div>
+            <div class="stat-card-info">
+              <h3 id="kpi-animales-total">···</h3>
+              <p>Total Activos</p>
+            </div>
+          </div>
+          <div class="stat-card" style="border-left-color:var(--azul);cursor:pointer" onclick="AnimalListPage.filtrarPorSexo('Macho')" id="stat-machos">
+            <div class="stat-card-icon" style="background:var(--azul-claro);color:var(--azul)"><i class="fas fa-mars"></i></div>
+            <div class="stat-card-info">
+              <h3 id="kpi-animales-machos">···</h3>
+              <p>Machos</p>
+            </div>
+          </div>
+          <div class="stat-card" style="border-left-color:#C2185B;cursor:pointer" onclick="AnimalListPage.filtrarPorSexo('Hembra')" id="stat-hembras">
+            <div class="stat-card-icon" style="background:#FCE4EC;color:#C2185B"><i class="fas fa-venus"></i></div>
+            <div class="stat-card-info">
+              <h3 id="kpi-animales-hembras">···</h3>
+              <p>Hembras</p>
+            </div>
+          </div>
+        </div>
+
         <div class="filter-panel">
           <div class="form-group">
             <label class="form-label">Buscar nombre</label>
@@ -340,6 +364,19 @@ const AnimalListPage = {
       this.datosPagina = data.data || [];
       this.total = data.total || 0;
       this.porPagina = data.por_pagina || 20;
+
+      // Actualizar contadores de stats
+      const counters = data.counters || {};
+      const elTotal = document.getElementById('kpi-animales-total');
+      const elMachos = document.getElementById('kpi-animales-machos');
+      const elHembras = document.getElementById('kpi-animales-hembras');
+      if (elTotal) elTotal.textContent = Formateador.numero(counters.total ?? 0);
+      if (elMachos) elMachos.textContent = Formateador.numero(counters.machos ?? 0);
+      if (elHembras) elHembras.textContent = Formateador.numero(counters.hembras ?? 0);
+
+      // Resaltar tarjeta activa según filtro de sexo
+      this.actualizarHighlightStats();
+
       this.renderTabla();
     } catch (error) {
       tbody.innerHTML = `<tr><td colspan="11" class="text-danger py-3 text-center">Error: ${error.message}</td></tr>`;
@@ -425,6 +462,29 @@ const AnimalListPage = {
     if (estado) this.filtros.estado = estado;
     this.paginaActual = 1;
     this.cargarAnimales();
+  },
+
+  /**
+   * Activa el filtro de sexo desde las tarjetas de stats.
+   * @param {string} sexo - '' (todos), 'Macho' o 'Hembra'
+   */
+  filtrarPorSexo(sexo) {
+    const select = document.getElementById('filtro-sexo');
+    if (select) select.value = sexo;
+    this.aplicarFiltro();
+  },
+
+  /**
+   * Resalta la tarjeta de stats que corresponde al filtro de sexo activo.
+   */
+  actualizarHighlightStats() {
+    const statsEl = document.getElementById('animales-stats');
+    if (!statsEl) return;
+    const sexo = this.filtros.sexo || '';
+    statsEl.querySelectorAll('.stat-card').forEach(el => el.style.opacity = '0.6');
+    const id = sexo === '' ? 'stat-todos' : sexo === 'Macho' ? 'stat-machos' : 'stat-hembras';
+    const active = document.getElementById(id);
+    if (active) active.style.opacity = '1';
   },
 
   moverIndividual(id) {

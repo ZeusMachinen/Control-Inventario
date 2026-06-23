@@ -291,3 +291,39 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Parent Picker (selector de madre/padre) ────────── */
+.parent-picker {
+  position: relative;
+}
+
+.parent-picker-btn {
+  cursor: pointer;
+  padding-right: 2.5rem;
+}
+
+.parent-picker-menu {
+  width: 100%;
+  max-height: 360px;
+}
+
+.parent-picker-search {
+  border-radius: var(--border-radius) !important;
+}
+
+.parent-picker-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.parent-picker-list .dropdown-item {
+  padding: 0.5rem 1rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.parent-picker-list .dropdown-item small {
+  font-size: 0.8rem;
+  display: block;
+  margin-top: 2px;
+}

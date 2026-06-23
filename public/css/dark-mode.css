@@ -491,3 +491,34 @@ html.dark-mode .text-dark {
 html.dark-mode .text-body {
   color: #e4e8ee !important;
 }
+
+/* ─── Parent Picker ───────────────────────────────────── */
+html.dark-mode .parent-picker-btn {
+  background-color: #1a1f2e;
+  border-color: #2d3548;
+  color: #e4e8ee;
+}
+
+html.dark-mode .parent-picker-menu {
+  background-color: #1a1f2e;
+  border-color: #2d3548;
+}
+
+html.dark-mode .parent-picker-menu .dropdown-item {
+  color: #e4e8ee;
+}
+
+html.dark-mode .parent-picker-menu .dropdown-item:hover {
+  background-color: #252d3f;
+  color: #fff;
+}
+
+html.dark-mode .parent-picker-search {
+  background-color: #141926;
+  border-color: #2d3548;
+  color: #e4e8ee;
+}
+
+html.dark-mode .parent-picker-search::placeholder {
+  color: #6b7280;
+}

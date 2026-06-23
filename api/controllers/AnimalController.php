@@ -23,11 +23,16 @@ class AnimalController
     {
         $uid = $this->usuarioId();
         $pagina = max(1, (int)($_GET['pagina'] ?? 1));
-        $porPagina = min(50, max(1, (int)($_GET['por_pagina'] ?? ITEMS_POR_PAGINA)));
+        $porPagina = min(500, max(1, (int)($_GET['por_pagina'] ?? ITEMS_POR_PAGINA)));
         $offset = ($pagina - 1) * $porPagina;
 
-        $where = ['a.usuario_id = :uid', 'a.activo = 1'];
+        $where = ['a.usuario_id = :uid'];
         $params = [':uid' => $uid];
+
+        // Por defecto solo activos; incluir_inactivos=1 los trae todos
+        if (empty($_GET['incluir_inactivos'])) {
+            $where[] = 'a.activo = 1';
+        }
 
         // Filtros opcionales
         if (!empty($_GET['sexo'])) {
@@ -61,17 +66,36 @@ class AnimalController
 
         $whereClause = implode(' AND ', $where);
 
-        // Total
+        // Total (filtrado)
         $total = Database::queryOne(
             "SELECT COUNT(*) as total FROM animales a WHERE $whereClause",
             $params
         )['total'];
 
+        // Contadores globales para stats (sin filtros — siempre el total real del usuario)
+        $counters = [];
+        $counters['total'] = (int)Database::queryOne(
+            "SELECT COUNT(*) as total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1",
+            [':uid' => $uid]
+        )['total'];
+
+        $sexCounts = Database::query(
+            "SELECT sexo, COUNT(*) as total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 GROUP BY sexo",
+            [':uid' => $uid]
+        );
+        $counters['machos'] = 0;
+        $counters['hembras'] = 0;
+        foreach ($sexCounts as $row) {
+            if ($row['sexo'] === 'Macho') $counters['machos'] = (int)$row['total'];
+            if ($row['sexo'] === 'Hembra') $counters['hembras'] = (int)$row['total'];
+        }
+
         // Datos
         $animales = Database::query(
             "SELECT a.*, r.nombre as rebano_nombre,
                     m.nombre as madre_nombre,
-                    p.nombre as padre_nombre
+                    p.nombre as padre_nombre,
+                    TIMESTAMPDIFF(MONTH, a.fecha_nacimiento, CURDATE()) as edad_meses
              FROM animales a
              LEFT JOIN rebanos r ON r.id = a.rebano_id
              LEFT JOIN animales m ON m.id = a.madre_id
@@ -82,7 +106,15 @@ class AnimalController
             $params
         );
 
-        Response::paginar($animales, (int)$total, $pagina, $porPagina);
+        echo json_encode([
+            'ok'         => true,
+            'data'       => $animales,
+            'total'      => (int)$total,
+            'pagina'     => $pagina,
+            'por_pagina' => $porPagina,
+            'counters'   => $counters,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
 
     /**
@@ -111,6 +143,22 @@ class AnimalController
             [':id' => $datos['rebano_id'], ':uid' => $uid]
         );
         if (!$rebano) Response::error('Rebaño no encontrado', 404);
+
+        // Validar que los padres existan (pueden estar inactivos — ej: toro muerto)
+        if (!empty($datos['madre_id'])) {
+            $madre = Database::queryOne(
+                'SELECT id FROM animales WHERE id = :id AND usuario_id = :uid',
+                [':id' => (int)$datos['madre_id'], ':uid' => $uid]
+            );
+            if (!$madre) Response::error('La madre seleccionada no existe', 422);
+        }
+        if (!empty($datos['padre_id'])) {
+            $padre = Database::queryOne(
+                'SELECT id FROM animales WHERE id = :id AND usuario_id = :uid',
+                [':id' => (int)$datos['padre_id'], ':uid' => $uid]
+            );
+            if (!$padre) Response::error('El padre seleccionado no existe', 422);
+        }
 
         // Estado reproductivo según sexo
         $estado = $datos['estado_reproductivo'] ?? null;
@@ -202,6 +250,22 @@ class AnimalController
             [':id' => (int)$id, ':uid' => $uid]
         );
         if (!$existente) Response::error('Animal no encontrado', 404);
+
+        // Validar que los nuevos padres existan (pueden estar inactivos)
+        if (!empty($datos['madre_id'])) {
+            $madreUpdate = Database::queryOne(
+                'SELECT id FROM animales WHERE id = :id AND usuario_id = :uid',
+                [':id' => (int)$datos['madre_id'], ':uid' => $uid]
+            );
+            if (!$madreUpdate) Response::error('La madre seleccionada no existe', 422);
+        }
+        if (!empty($datos['padre_id'])) {
+            $padreUpdate = Database::queryOne(
+                'SELECT id FROM animales WHERE id = :id AND usuario_id = :uid',
+                [':id' => (int)$datos['padre_id'], ':uid' => $uid]
+            );
+            if (!$padreUpdate) Response::error('El padre seleccionado no existe', 422);
+        }
 
         $campos = [];
         $params = [':id' => (int)$id];
@@ -654,6 +718,50 @@ class AnimalController
         }
         usort($hijos, fn($a, $b) => strcmp($b['fecha_nacimiento'] ?? '', $a['fecha_nacimiento'] ?? ''));
 
+        // 4.5 Nietos (hijos de cada hijo del animal actual)
+        $nietos = []; // ['hijo_id' => [nieto1, nieto2, ...]]
+        if (!empty($hijos)) {
+            $hijosIds = array_map(fn($h) => (int)$h['id'], $hijos);
+            $nPlacesMadre = [];
+            $nPlacesPadre = [];
+            $nietoParams = [':uid' => $uid];
+            foreach ($hijosIds as $i => $hid) {
+                $nPlacesMadre[] = ":nm$i";
+                $nietoParams[":nm$i"] = $hid;
+                $nPlacesPadre[] = ":np$i";
+                $nietoParams[":np$i"] = $hid;
+            }
+            if (!empty($nPlacesMadre)) {
+                $todosNietos = Database::query(
+                    "SELECT a.id, a.nombre, a.sexo, a.etapa, a.estado_general, a.activo,
+                            a.fecha_nacimiento, a.madre_id, a.padre_id,
+                            r.nombre as rebano_nombre
+                     FROM animales a
+                     LEFT JOIN rebanos r ON r.id = a.rebano_id
+                     WHERE (a.madre_id IN (" . implode(',', $nPlacesMadre) . ")
+                        OR a.padre_id IN (" . implode(',', $nPlacesPadre) . "))
+                       AND a.usuario_id = :uid
+                     ORDER BY a.fecha_nacimiento DESC",
+                    $nietoParams
+                );
+                // Agrupar por hijo_id (el padre/madre directo)
+                $hijosIdSet = array_flip($hijosIds);
+                $vistosNietos = [];
+                foreach ($todosNietos as $n) {
+                    $nid = (int)$n['id'];
+                    if (isset($vistosNietos[$nid])) continue;
+                    $vistosNietos[$nid] = true;
+                    $mid = (int)$n['madre_id'];
+                    $pid = (int)$n['padre_id'];
+                    if (isset($hijosIdSet[$mid])) {
+                        $nietos[$mid][] = $n;
+                    } elseif (isset($hijosIdSet[$pid])) {
+                        $nietos[$pid][] = $n;
+                    }
+                }
+            }
+        }
+
         // 5. Hermanos (misma madre o mismo padre, excluyéndose a sí mismo)
         $paramsHermanos = [':uid' => $uid, ':id' => $animalId];
         $whereHermanos = [];
@@ -738,6 +846,7 @@ class AnimalController
         $totalHijos = count($hijos);
         $totalHermanos = count($hermanos);
         $totalSobrinos = array_sum(array_map('count', $sobrinos));
+        $totalNietos = array_sum(array_map('count', $nietos));
 
         $resultado = [
             'animal' => $animal,
@@ -747,12 +856,14 @@ class AnimalController
             ],
             'abuelos' => $abuelos,
             'hijos' => $hijos,
+            'nietos' => $nietos,
             'hermanos' => $hermanos,
             'sobrinos' => $sobrinos,
             'stats' => [
                 'total_hijos' => $totalHijos,
                 'total_hermanos' => $totalHermanos,
                 'total_sobrinos' => $totalSobrinos,
+                'total_nietos' => $totalNietos,
                 'tiene_padres' => $madreId !== null || $padreId !== null,
                 'tiene_hijos' => $totalHijos > 0,
             ],

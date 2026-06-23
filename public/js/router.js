@@ -76,11 +76,23 @@ const Router = (() => {
       return;
     }
 
+    // Preservar estado del sidebar antes de reemplazar el DOM
+    const sidebarEl = document.getElementById('sidebar');
+    const sidebarCollapsed = sidebarEl
+      ? sidebarEl.classList.contains('collapsed')
+      : localStorage.getItem('sidebar_collapsed') === '1';
+
     const app = document.getElementById('app');
 
     try {
       const html = await ruta.render(ruta.params);
       app.innerHTML = html;
+
+      // Restaurar estado del sidebar
+      if (sidebarCollapsed) {
+        const newSidebar = document.getElementById('sidebar');
+        if (newSidebar) newSidebar.classList.add('collapsed');
+      }
 
       // Actualizar sidebar activo
       document.querySelectorAll('.sidebar-link').forEach((link) => {
