@@ -12,8 +12,8 @@ const Sidebar = {
 
         <nav class="sidebar-nav flex-grow-1">
           <a class="sidebar-link d-flex align-items-center gap-4 px-4 py-2" href="#/estadisticas">
-            <i class="fas fa-chart-bar sidebar-link-icon"></i>
-            Estadísticas
+            <i class="fas fa-chart-pie sidebar-link-icon"></i>
+            Analítica
           </a>
 
           <div class="sidebar-section-title px-4">Registro</div>

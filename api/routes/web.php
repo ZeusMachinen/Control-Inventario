@@ -106,6 +106,18 @@ return [
     'GET|/api/estadisticas/vacunacion'    => ['EstadisticaController', 'coberturaVacuna',  true],
     'GET|/api/estadisticas/comerciales'   => ['EstadisticaController', 'comerciales',      true],
 
+    // ─── Analítica (Micrositio) ───────────────────────────
+    'GET|/api/analitica/dashboard-kpis'           => ['AnaliticaController', 'dashboardKpis',        true],
+    'GET|/api/analitica/composicion'              => ['AnaliticaController', 'composicion',          true],
+    'GET|/api/analitica/series-temporales'        => ['AnaliticaController', 'seriesTemporales',     true],
+    'GET|/api/analitica/rankings'                 => ['AnaliticaController', 'rankings',             true],
+    'GET|/api/analitica/descarte'                 => ['AnaliticaController', 'descarte',             true],
+    'GET|/api/analitica/comparativa-temporal'     => ['AnaliticaController', 'comparativaTemporal',  true],
+    'GET|/api/analitica/exportar'                 => ['AnaliticaController', 'exportar',             true],
+    'GET|/api/analitica/rebanos/comparativa'      => ['AnaliticaController', 'comparativaRebanos',   true],
+    'GET|/api/analitica/rebanos/{id}/proyecciones' => ['AnaliticaController', 'proyeccionesRebano',  true],
+    'GET|/api/analitica/scorecard/{id}'           => ['AnaliticaController', 'scorecard',            true],
+
     // ─── Compañías ──────────────────────────────────────────
     'GET|/api/companias'        => ['CompaniaController', 'index',      true],
     'POST|/api/companias'       => ['CompaniaController', 'store',     true],

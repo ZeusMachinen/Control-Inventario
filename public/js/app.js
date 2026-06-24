@@ -27,7 +27,8 @@
   Router.registrar('/reproduccion/diagnosticos/:id/editar',   (p) => DiagnosticoGestacionFormPage.render(p));
   Router.registrar('/reproduccion/partos/nuevo',              () => PartoFormPage.render({}));
   Router.registrar('/reproduccion/partos/:id/editar',         (p) => PartoFormPage.render(p));
-  Router.registrar('/estadisticas', () => DashboardStatsPage.render());
+  Router.registrar('/estadisticas', () => MicrositioEstadisticasPage.render());
+  Router.registrar('/estadisticas/v1', () => DashboardStatsPage.render());
   Router.registrar('/compras',         () => CompraListPage.render());
   Router.registrar('/compras/nuevo',   () => CompraFormPage.render());
   Router.registrar('/compras/:id',     (p) => CompraDetailPage.render(p));
@@ -59,7 +60,8 @@
     '/reproduccion/servicios/:id/editar':      (p) => ServicioFormPage.afterRender?.(),
     '/reproduccion/diagnosticos/:id/editar':   (p) => DiagnosticoGestacionFormPage.afterRender?.(),
     '/reproduccion/partos/:id/editar':         (p) => PartoFormPage.afterRender?.(),
-    '/estadisticas':                 () => DashboardStatsPage.afterRender(),
+    '/estadisticas':                 () => MicrositioEstadisticasPage.afterRender(),
+    '/estadisticas/v1':              () => DashboardStatsPage.afterRender(),
     '/historial':                    () => HistorialPage.afterRender(),
     '/gastos':                       () => GastosPage.afterRender(),
     '/compras':                      () => CompraListPage.afterRender(),
