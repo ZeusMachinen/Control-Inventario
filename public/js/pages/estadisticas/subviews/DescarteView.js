@@ -3,11 +3,9 @@
  */
 const DescarteView = {
   async render(container) {
-    const rid = MicrositioEstadisticasPage.rebanoId();
-    const params = rid ? `?rebano_id=${rid}` : '';
-
+    const qp = MicrositioEstadisticasPage.queryParams();
     try {
-      const { data } = await API.get(`/analitica/descarte${params}`);
+      const { data } = await API.get(`/analitica/descarte${qp}`);
       const d = data.data || {};
       const vacas = d.vacas || [];
       const resumen = d.resumen || {};

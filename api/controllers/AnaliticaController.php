@@ -70,9 +70,21 @@ class AnaliticaController
             [':uid' => $uid]
         )['total'];
 
-        // Nacimientos ultimo ano
+        // Nacidos en finca (madre registrada en el sistema)
+        $nacidosFinca = Database::queryOne(
+            "SELECT COUNT(*) AS total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 AND a.madre_id IS NOT NULL $filtroRebano",
+            [':uid' => $uid]
+        )['total'];
+
+        // Comprados (sin madre registrada = origen externo)
+        $comprados = Database::queryOne(
+            "SELECT COUNT(*) AS total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 AND a.madre_id IS NULL $filtroRebano",
+            [':uid' => $uid]
+        )['total'];
+
+        // Nacimientos ultimo ano (solo nacidos en finca)
         $nacimientos = Database::queryOne(
-            "SELECT COUNT(*) AS total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 AND a.fecha_nacimiento >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) $filtroRebano",
+            "SELECT COUNT(*) AS total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 AND a.madre_id IS NOT NULL AND a.fecha_nacimiento >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) $filtroRebano",
             [':uid' => $uid]
         )['total'];
 
@@ -121,6 +133,8 @@ class AnaliticaController
             'total_animales'      => (int)$total,
             'machos'              => (int)$machos,
             'hembras'             => (int)$hembras,
+            'nacidos_finca'       => (int)$nacidosFinca,
+            'comprados'           => (int)$comprados,
             'prenadas'            => (int)$prenadas,
             'lactando'            => (int)$lactando,
             'tasa_natalidad'      => $tasaNatalidad,

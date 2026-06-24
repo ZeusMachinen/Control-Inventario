@@ -25,6 +25,8 @@ const MicrositioEstadisticasPage = {
             <select id="filtro-rebano" class="form-select form-select-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()">
               <option value="">Todos los rebanos</option>
             </select>
+            <input type="date" id="filtro-desde" class="form-control form-control-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:140px" title="Desde">
+            <input type="date" id="filtro-hasta" class="form-control form-control-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:140px" title="Hasta">
             <button class="btn btn-sm btn-outline-secondary ms-2" onclick="MicrositioEstadisticasPage.exportarPDF()" title="Exportar PDF"><i class="fas fa-file-pdf"></i></button>
             <button class="btn btn-sm btn-outline-secondary" onclick="MicrositioEstadisticasPage.exportarExcel()" title="Exportar Excel"><i class="fas fa-file-excel"></i></button>
           </div>
@@ -120,6 +122,22 @@ const MicrositioEstadisticasPage = {
   rebanoId() {
     const select = document.getElementById('filtro-rebano');
     return select?.value || '';
+  },
+
+  fechaDesde() {
+    return document.getElementById('filtro-desde')?.value || '';
+  },
+
+  fechaHasta() {
+    return document.getElementById('filtro-hasta')?.value || '';
+  },
+
+  queryParams() {
+    const params = new URLSearchParams();
+    const rid = this.rebanoId(); if (rid) params.set('rebano_id', rid);
+    const fd = this.fechaDesde(); if (fd) params.set('fecha_desde', fd);
+    const fh = this.fechaHasta(); if (fh) params.set('fecha_hasta', fh);
+    return params.toString() ? '?' + params.toString() : '';
   },
 
   async aplicarFiltros() {

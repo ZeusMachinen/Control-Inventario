@@ -3,11 +3,9 @@
  */
 const ComposicionDetallada = {
   async render(container) {
-    const rid = MicrositioEstadisticasPage.rebanoId();
-    const params = rid ? `?rebano_id=${rid}` : '';
-
+    const qp = MicrositioEstadisticasPage.queryParams();
     try {
-      const { data } = await API.get(`/analitica/composicion${params}`);
+      const { data } = await API.get(`/analitica/composicion${qp}`);
       const d = data.data || {};
       const categorias = d.categorias || {};
       const total = d.total || 0;

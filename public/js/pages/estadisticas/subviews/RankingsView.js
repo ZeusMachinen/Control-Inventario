@@ -5,11 +5,11 @@ const RankingsView = {
   tipoActual: 'vacas',
 
   async render(container) {
-    const rid = MicrositioEstadisticasPage.rebanoId();
-    const params = rid ? `rebano_id=${rid}&` : '';
-
+    const qp = MicrositioEstadisticasPage.queryParams();
+    // agregar tipo al query param
+    const sep = qp ? '&' : '?';
     try {
-      const { data } = await API.get(`/analitica/rankings?${params}tipo=${this.tipoActual}`);
+      const { data } = await API.get(`/analitica/rankings${qp}${sep}tipo=${this.tipoActual}`);
       const ranking = data.data?.ranking || [];
 
       const top3 = ranking.slice(0, 3);
