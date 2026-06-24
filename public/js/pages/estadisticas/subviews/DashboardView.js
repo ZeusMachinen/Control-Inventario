@@ -1,129 +1,104 @@
 /**
- * DashboardView — KPIs principales con tooltips, drill-down y graficos Plotly con valores.
+ * DashboardView — KPIs con tooltips, drill-down a Animales con filtros, graficos Plotly con anotaciones.
  */
 const DashboardView = {
   kpiDefs: [
-    { key: 'total_animales',   label: 'Total Animales',   icon: 'fa-cow',              help: 'Animales activos en el hato. Incluye nacidos en la finca y comprados.' },
-    { key: 'machos_hembras',   label: 'Machos / Hembras', icon: 'fa-venus-mars',       help: 'Distribucion por sexo del total de animales activos.' },
-    { key: 'nacidos_finca',    label: 'Nacidos en Finca', icon: 'fa-home',             help: 'Animales nacidos en la finca (tienen madre registrada). Excluye comprados.' },
-    { key: 'comprados',        label: 'Comprados',        icon: 'fa-truck',            help: 'Animales adquiridos por compra. No tienen madre registrada en el sistema.' },
-    { key: 'tasa_natalidad',   label: 'Tasa Natalidad',   icon: 'fa-baby',             help: 'Porcentaje de nacimientos sobre el total de animales en el ultimo ano.' },
-    { key: 'tasa_prenez',      label: 'Tasa Prenez',      icon: 'fa-heart',            help: 'Diagnosticos de gestacion positivos sobre el total de diagnosticos del hato.' },
-    { key: 'prenadas',         label: 'Prenadas',         icon: 'fa-calendar-check',   help: 'Hembras con estado reproductivo Prenada actualmente.' },
-    { key: 'lactando',         label: 'Lactando',         icon: 'fa-droplet',          help: 'Hembras en periodo de lactancia activa.' },
-    { key: 'ganancia_neta',    label: 'Ganancia Neta',    icon: 'fa-dollar-sign',      help: 'Ingresos por ventas menos gastos operativos en el periodo seleccionado.' },
-    { key: 'costo_por_cabeza', label: 'Costo por Cabeza', icon: 'fa-coins',            help: 'Gasto operativo total dividido por la cantidad de animales activos.' },
-    { key: 'cobertura_vacunacion', label: 'Vacunacion 3m', icon: 'fa-syringe',         help: 'Porcentaje de animales que recibieron al menos una vacuna en los ultimos 3 meses.' },
+    { key: 'total_animales',   label: 'Total Animales',   icon: 'fa-cow',         help: 'Animales activos en el hato.', filter: null },
+    { key: 'machos_hembras',   label: 'Machos / Hembras', icon: 'fa-venus-mars',  help: 'Distribucion por sexo.', filter: null },
+    { key: 'nacidos_finca',    label: 'Nacidos en Finca', icon: 'fa-home',        help: 'Nacidos con madre registrada.', filter: 'madre' },
+    { key: 'comprados',        label: 'Comprados',        icon: 'fa-truck',       help: 'Sin madre registrada (externos).', filter: 'externo' },
+    { key: 'tasa_natalidad',   label: 'Tasa Natalidad',   icon: 'fa-baby',        help: 'Nacimientos / total en el periodo.', filter: null },
+    { key: 'tasa_prenez',      label: 'Tasa Prenez',      icon: 'fa-heart',       help: 'Diagnosticos positivos / total.', filter: null },
+    { key: 'prenadas',         label: 'Prenadas',         icon: 'fa-calendar-check', help: 'Hembras con estado Prenada.', filter: 'Prenada' },
+    { key: 'lactando',         label: 'Lactando',         icon: 'fa-droplet',     help: 'Hembras en lactancia.', filter: 'Lactando' },
+    { key: 'ganancia_neta',    label: 'Ganancia Neta',    icon: 'fa-dollar-sign', help: 'Ingresos - gastos en el periodo.', filter: null },
+    { key: 'costo_por_cabeza', label: 'Costo / Cabeza',   icon: 'fa-coins',       help: 'Gasto total / animales activos.', filter: null },
+    { key: 'cobertura_vacunacion', label: 'Vacunacion 3m', icon: 'fa-syringe',    help: '% vacunados en 3 meses.', filter: 'Vacunados' },
   ],
 
   async render(container) {
+    const qp = MicrositioEstadisticasPage.queryParams();
     try {
-      const qp = MicrositioEstadisticasPage.queryParams();
       const { data: kpis } = await API.get(`/analitica/dashboard-kpis${qp}`);
       const r = kpis.data || {};
 
       container.innerHTML = `
-        <div class="kpi-grid" id="kpi-grid">
-          ${this.kpiDefs.map(def => `
-            <div class="kpi-card kpi-clickable" data-kpi="${def.key}" onclick="DashboardView.drillDown('${def.key}')">
-              <div class="kpi-icon"><i class="fas ${def.icon}"></i></div>
-              <div class="kpi-valor">${this.formatearValor(def.key, r)}</div>
-              <div class="kpi-label">${def.label}</div>
-              <span class="kpi-tooltip" title="${def.help}"><i class="fas fa-info-circle"></i></span>
-            </div>
-          `).join('')}
-        </div>
-        <div class="chart-card mt-4">
-          <h3><i class="fas fa-chart-line me-2"></i>Series Temporales</h3>
-          <div id="chart-series" style="height:350px"></div>
+        <div class="kpi-grid">${this.kpiDefs.map(d => {
+          const val = this.fmt(d.key, r);
+          const hasFilter = !!d.filter;
+          return `<div class="kpi-card ${hasFilter ? 'kpi-clickable' : ''}" ${hasFilter ? `onclick="DashboardView.drillDown('${d.filter}')"` : ''}>
+            <div class="kpi-icon"><i class="fas ${d.icon}"></i></div>
+            <div class="kpi-valor">${val}</div>
+            <div class="kpi-label">${d.label}</div>
+            <span class="kpi-tooltip" title="${d.help}"><i class="fas fa-info-circle"></i></span>
+          </div>`;
+        }).join('')}</div>
+
+        <div class="row g-3 mt-3">
+          <div class="col-md-6"><div class="chart-card"><h3>Natalidad vs Partos</h3><div id="chart-nat-partos" style="height:300px"></div></div></div>
+          <div class="col-md-6"><div class="chart-card"><h3>Ingresos vs Gastos</h3><div id="chart-ingresos" style="height:300px"></div></div></div>
         </div>
       `;
 
-      // Cargar series temporales
       const { data: series } = await API.get(`/analitica/series-temporales${qp}`);
       const s = series.data || {};
 
       if (typeof Plotly !== 'undefined') {
-        const natalidad = s.natalidad || {};
-        const partos = s.partos || {};
-        const ingresos = s.ingresos || {};
-        const gastos = s.gastos || {};
-        const allKeys = [...new Set([...Object.keys(natalidad), ...Object.keys(partos)])].sort();
+        const nat = s.natalidad || {}; const par = s.partos || {};
+        const ing = s.ingresos || {}; const gas = s.gastos || {};
+        const keys1 = [...new Set([...Object.keys(nat), ...Object.keys(par)])].sort();
+        const keys2 = [...new Set([...Object.keys(ing), ...Object.keys(gas)])].sort();
 
-        const trace1 = {
-          x: allKeys, y: allKeys.map(k => natalidad[k] || 0),
-          name: 'Natalidad', type: 'scatter', mode: 'lines+markers',
-          hovertemplate: '%{x}<br>Natalidad: <b>%{y}</b><extra></extra>'
-        };
-        const trace2 = {
-          x: allKeys, y: allKeys.map(k => partos[k] || 0),
-          name: 'Partos', type: 'scatter', mode: 'lines+markers',
-          hovertemplate: '%{x}<br>Partos: <b>%{y}</b><extra></extra>'
-        };
+        const makeTrace = (x, y, name, color) => ({
+          x, y, name, type: 'scatter', mode: 'lines+markers+text',
+          text: y.map(v => v > 0 ? v : ''),
+          textposition: 'top center', textfont: { size: 9, color },
+          marker: { size: 5 }, line: { width: 2, color },
+          hovertemplate: '%{x}<br><b>%{y}</b><extra>%{fullData.name}</extra>'
+        });
 
-        const layout = {
-          margin: { t: 10, r: 20, b: 50, l: 50 },
-          legend: { orientation: 'h', y: 1.1 },
+        const layout = (title) => ({
+          margin: { t: 5, r: 10, b: 60, l: 50 },
           paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-          hovermode: 'x unified',
-          xaxis: { tickangle: -45 }
-        };
-        const config = { responsive: true, displaylogo: false, modeBarButtonsToRemove: ['lasso2d','select2d'] };
+          xaxis: { tickangle: -45, tickfont: { size: 9 } },
+          showlegend: true, legend: { orientation: 'h', y: 1.15, font: { size: 10 } }
+        });
 
-        Plotly.newPlot('chart-series', [trace1, trace2], layout, config);
+        Plotly.newPlot('chart-nat-partos', [
+          makeTrace(keys1, keys1.map(k => nat[k]||0), 'Natalidad', '#2E7D32'),
+          makeTrace(keys1, keys1.map(k => par[k]||0), 'Partos', '#1565C0')
+        ], layout(), { responsive: true, displaylogo: false });
+
+        Plotly.newPlot('chart-ingresos', [
+          makeTrace(keys2, keys2.map(k => ing[k]||0), 'Ingresos', '#2E7D32'),
+          makeTrace(keys2, keys2.map(k => gas[k]||0), 'Gastos', '#C62828')
+        ], layout(), { responsive: true, displaylogo: false });
       }
     } catch (e) {
       container.innerHTML = `<div class="alert alert-danger">Error: ${e.message}</div>`;
     }
   },
 
-  formatearValor(key, r) {
+  fmt(key, r) {
     switch (key) {
       case 'machos_hembras': return `${Formateador.numero(r.machos||0)} / ${Formateador.numero(r.hembras||0)}`;
       case 'total_animales': return Formateador.numero(r.total_animales||0);
-      case 'nacidos_finca':  return Formateador.numero(r.nacidos_finca||0);
-      case 'comprados':      return Formateador.numero(r.comprados||0);
-      case 'tasa_natalidad': return (r.tasa_natalidad||0) + '%';
-      case 'tasa_prenez':    return (r.tasa_prenez||0) + '%';
-      case 'prenadas':       return Formateador.numero(r.prenadas||0);
-      case 'lactando':       return Formateador.numero(r.lactando||0);
-      case 'ganancia_neta':  return Formateador.moneda(r.ganancia_neta||0);
-      case 'costo_por_cabeza': return Formateador.moneda(r.costo_por_cabeza||0);
-      case 'cobertura_vacunacion': return (r.cobertura_vacunacion||0) + '%';
+      case 'nacidos_finca': case 'comprados': return Formateador.numero(r[key]||0);
+      case 'tasa_natalidad': case 'tasa_prenez': case 'cobertura_vacunacion': return (r[key]||0) + '%';
+      case 'prenadas': case 'lactando': return Formateador.numero(r[key]||0);
+      case 'ganancia_neta': case 'costo_por_cabeza': return Formateador.moneda(r[key]||0);
       default: return '—';
     }
   },
 
-  drillDown(kpi) {
-    const params = new URLSearchParams();
+  drillDown(filter) {
+    const params = [];
     const rid = MicrositioEstadisticasPage.rebanoId();
-    if (rid) params.set('rebano_id', rid);
-
-    switch (kpi) {
-      case 'prenadas':
-        params.set('estado_reproductivo', 'Prenada');
-        break;
-      case 'lactando':
-        params.set('estado_reproductivo', 'Lactando');
-        break;
-      case 'machos_hembras':
-        // Alterna entre machos y hembras al hacer doble click — por ahora va a todos
-        break;
-      case 'nacidos_finca':
-        params.set('origen', 'nacimiento');
-        break;
-      case 'comprados':
-        params.set('origen', 'compra');
-        break;
-      case 'cobertura_vacunacion':
-        params.set('vacunados', '1');
-        break;
-      default:
-        // Sin filtro especifico, va a lista general
-        break;
-    }
-
-    const qs = params.toString();
-    window.location.hash = `#/animales${qs ? '?' + qs : ''}`;
+    if (rid) params.push(`rebano_id=${rid}`);
+    if (filter === 'Prenada' || filter === 'Lactando') params.push(`estado=${filter}`);
+    if (filter === 'madre') params.push(`search=madre`); // animales con madre
+    if (filter === 'externo') params.push(`search=externo`);
+    if (filter === 'Vacunados') params.push(`search=vacunados`);
+    window.location.hash = `#/animales${params.length ? '?' + params.join('&') : ''}`;
   }
 };

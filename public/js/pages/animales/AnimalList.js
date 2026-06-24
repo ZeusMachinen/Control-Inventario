@@ -8,17 +8,23 @@ const AnimalListPage = {
   modoVista: 'lista',   // 'lista' | 'galeria'
 
   filtroRebanoUrl: null,
+  filtroEstadoUrl: null,
+  filtroSearchUrl: null,
 
   async render() {
     try {
       this.filtroRebanoUrl = null;
+      this.filtroEstadoUrl = null;
+      this.filtroSearchUrl = null;
       const hash = window.location.hash;
       const qIdx = hash.indexOf('?');
       if (qIdx !== -1) {
         const qs = hash.substring(qIdx + 1);
         qs.split('&').forEach(pair => {
           const [k, v] = pair.split('=');
-          if (k === 'rebano_id') this.filtroRebanoUrl = v || null;
+          if (k === 'rebano_id') this.filtroRebanoUrl = decodeURIComponent(v || '');
+          if (k === 'estado') this.filtroEstadoUrl = decodeURIComponent(v || '');
+          if (k === 'search') this.filtroSearchUrl = decodeURIComponent(v || '');
         });
       }
 
@@ -153,6 +159,20 @@ const AnimalListPage = {
     this.seleccionados = new Set();
     if (this.filtroRebanoUrl) this.filtros.rebano_id = this.filtroRebanoUrl;
 
+    // Aplicar filtros desde URL
+    if (this.filtroRebanoUrl) {
+      const sel = document.getElementById('filtro-rebano');
+      if (sel) sel.value = this.filtroRebanoUrl;
+    }
+    if (this.filtroEstadoUrl) {
+      const sel = document.getElementById('filtro-estado');
+      if (sel) sel.value = this.filtroEstadoUrl;
+    }
+    if (this.filtroSearchUrl) {
+      const inp = document.getElementById('filtro-nombre');
+      if (inp) inp.value = this.filtroSearchUrl;
+    }
+
     // Restaurar preferencia de vista
     try {
       const saved = localStorage.getItem('animales-vista');
@@ -173,7 +193,7 @@ const AnimalListPage = {
       if (galeria) galeria.style.display = 'none';
     }
 
-    this.cargarAnimales();
+    this.aplicarFiltro();
   },
 
   toggleTodos(checkbox) {

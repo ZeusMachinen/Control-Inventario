@@ -25,8 +25,13 @@ const MicrositioEstadisticasPage = {
             <select id="filtro-rebano" class="form-select form-select-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()">
               <option value="">Todos los rebanos</option>
             </select>
-            <input type="date" id="filtro-desde" class="form-control form-control-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:140px" title="Desde">
-            <input type="date" id="filtro-hasta" class="form-control form-control-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:140px" title="Hasta">
+            <select id="filtro-periodo" class="form-select form-select-sm" onchange="MicrositioEstadisticasPage.cambiarPeriodo()" style="min-width:150px">
+              <option value="todo">Todo</option>
+              <option value="mes">Mes</option>
+              <option value="anio">Año</option>
+              <option value="rango">Rango personalizado</option>
+            </select>
+            <span id="filtro-periodo-extra"></span>
             <button class="btn btn-sm btn-outline-secondary ms-2" onclick="MicrositioEstadisticasPage.exportarPDF()" title="Exportar PDF"><i class="fas fa-file-pdf"></i></button>
             <button class="btn btn-sm btn-outline-secondary" onclick="MicrositioEstadisticasPage.exportarExcel()" title="Exportar Excel"><i class="fas fa-file-excel"></i></button>
           </div>
@@ -124,19 +129,57 @@ const MicrositioEstadisticasPage = {
     return select?.value || '';
   },
 
-  fechaDesde() {
-    return document.getElementById('filtro-desde')?.value || '';
-  },
+  modoPeriodo: 'todo',
 
-  fechaHasta() {
-    return document.getElementById('filtro-hasta')?.value || '';
+  cambiarPeriodo() {
+    const modo = document.getElementById('filtro-periodo')?.value || 'todo';
+    this.modoPeriodo = modo;
+    const extra = document.getElementById('filtro-periodo-extra');
+    if (!extra) return;
+
+    const hoy = new Date();
+    const mesActual = hoy.toISOString().substring(0, 7);
+    const anioActual = hoy.getFullYear();
+
+    if (modo === 'mes') {
+      extra.innerHTML = `<input type="month" id="filtro-mes" class="form-control form-control-sm" value="${mesActual}" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:150px">`;
+    } else if (modo === 'anio') {
+      let ops = '';
+      for (let y = anioActual; y >= anioActual - 5; y--) {
+        ops += `<option value="${y}" ${y === anioActual ? 'selected' : ''}>${y}</option>`;
+      }
+      extra.innerHTML = `<select id="filtro-anio" class="form-select form-select-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:120px">${ops}</select>`;
+    } else if (modo === 'rango') {
+      extra.innerHTML = `<input type="date" id="filtro-desde" class="form-control form-control-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:135px" placeholder="Desde">
+        <input type="date" id="filtro-hasta" class="form-control form-control-sm" onchange="MicrositioEstadisticasPage.aplicarFiltros()" style="width:135px" placeholder="Hasta">`;
+    } else {
+      extra.innerHTML = '';
+    }
+    this.aplicarFiltros();
   },
 
   queryParams() {
     const params = new URLSearchParams();
     const rid = this.rebanoId(); if (rid) params.set('rebano_id', rid);
-    const fd = this.fechaDesde(); if (fd) params.set('fecha_desde', fd);
-    const fh = this.fechaHasta(); if (fh) params.set('fecha_hasta', fh);
+
+    const modo = this.modoPeriodo;
+    if (modo === 'mes') {
+      const mes = document.getElementById('filtro-mes')?.value;
+      if (mes) {
+        const [y, m] = mes.split('-');
+        const ultimo = new Date(+y, +m, 0).getDate();
+        params.set('fecha_desde', `${mes}-01`);
+        params.set('fecha_hasta', `${mes}-${String(ultimo).padStart(2, '0')}`);
+      }
+    } else if (modo === 'anio') {
+      const anio = document.getElementById('filtro-anio')?.value;
+      if (anio) { params.set('fecha_desde', `${anio}-01-01`); params.set('fecha_hasta', `${anio}-12-31`); }
+    } else if (modo === 'rango') {
+      const fd = document.getElementById('filtro-desde')?.value;
+      const fh = document.getElementById('filtro-hasta')?.value;
+      if (fd) params.set('fecha_desde', fd);
+      if (fh) params.set('fecha_hasta', fh);
+    }
     return params.toString() ? '?' + params.toString() : '';
   },
 
