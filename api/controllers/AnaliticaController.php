@@ -82,10 +82,17 @@ class AnaliticaController
             [':uid' => $uid]
         )['total'];
 
-        // Nacimientos ultimo ano (solo nacidos en finca)
+        // Nacimientos en el periodo (solo nacidos en finca)
+        $filtroNacFecha = '';
+        $paramsNac = [':uid' => $uid];
+        if ($desde) { $filtroNacFecha .= ' AND a.fecha_nacimiento >= :desde'; $paramsNac[':desde'] = $desde; }
+        if ($hasta) { $filtroNacFecha .= ' AND a.fecha_nacimiento <= :hasta'; $paramsNac[':hasta'] = $hasta; }
+        if (!$desde && !$hasta) {
+            $filtroNacFecha = ' AND a.fecha_nacimiento >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
+        }
         $nacimientos = Database::queryOne(
-            "SELECT COUNT(*) AS total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 AND a.madre_id IS NOT NULL AND a.fecha_nacimiento >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) $filtroRebano",
-            [':uid' => $uid]
+            "SELECT COUNT(*) AS total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 AND a.madre_id IS NOT NULL $filtroRebano $filtroNacFecha",
+            $paramsNac
         )['total'];
 
         $tasaNatalidad = $total > 0 ? round(($nacimientos / $total) * 100, 1) : 0;
@@ -168,42 +175,62 @@ class AnaliticaController
         $rid = $this->rebanoId();
         $filtroRebano = $rid ? 'AND a.rebano_id = ' . $rid : '';
         $granularidad = $_GET['granularidad'] ?? 'mes';
+        $desde = $this->fechaDesde();
+        $hasta = $this->fechaHasta();
 
         $format = $granularidad === 'ano' ? '%Y' : ($granularidad === 'dia' ? '%Y-%m-%d' : '%Y-%m');
+
+        $filtroFecha = '';
+        $params = [':uid' => $uid, ':fmt' => $format];
+        if ($desde) { $filtroFecha .= ' AND a.fecha_nacimiento >= :desde'; $params[':desde'] = $desde; }
+        if ($hasta) { $filtroFecha .= ' AND a.fecha_nacimiento <= :hasta'; $params[':hasta'] = $hasta; }
 
         // Natalidad por periodo
         $natalidad = Database::query(
             "SELECT DATE_FORMAT(fecha_nacimiento, :fmt) AS periodo, COUNT(*) AS total
              FROM animales a
-             WHERE a.usuario_id = :uid AND a.activo = 1 $filtroRebano
+             WHERE a.usuario_id = :uid AND a.activo = 1 $filtroRebano $filtroFecha
              GROUP BY periodo ORDER BY periodo",
-            [':uid' => $uid, ':fmt' => $format]
+            $params
         );
+
+        $filtroFechaPartos = '';
+        $paramsP = [':uid' => $uid, ':fmt' => $format];
+        if ($desde) { $filtroFechaPartos .= ' AND p.fecha >= :desde'; $paramsP[':desde'] = $desde; }
+        if ($hasta) { $filtroFechaPartos .= ' AND p.fecha <= :hasta'; $paramsP[':hasta'] = $hasta; }
 
         // Partos por periodo
         $partos = Database::query(
             "SELECT DATE_FORMAT(p.fecha, :fmt) AS periodo, COUNT(*) AS total
              FROM partos p
              JOIN animales a ON a.id = p.animal_id
-             WHERE p.usuario_id = :uid $filtroRebano
+             WHERE p.usuario_id = :uid $filtroRebano $filtroFechaPartos
              GROUP BY periodo ORDER BY periodo",
-            [':uid' => $uid, ':fmt' => $format]
+            $paramsP
         );
 
-        // Ventas (ingresos) por periodo
+        $filtroFechaV = '';
+        $paramsV = [':uid' => $uid, ':fmt' => $format];
+        if ($desde) { $filtroFechaV .= ' AND fecha >= :desde'; $paramsV[':desde'] = $desde; }
+        if ($hasta) { $filtroFechaV .= ' AND fecha <= :hasta'; $paramsV[':hasta'] = $hasta; }
+
         $ventas = Database::query(
             "SELECT DATE_FORMAT(fecha, :fmt) AS periodo, COALESCE(SUM(precio), 0) AS total
-             FROM ventas WHERE vendedor_id = :uid
+             FROM ventas WHERE vendedor_id = :uid $filtroFechaV
              GROUP BY periodo ORDER BY periodo",
-            [':uid' => $uid, ':fmt' => $format]
+            $paramsV
         );
 
-        // Gastos por periodo
+        $filtroFechaG = '';
+        $paramsG = [':uid' => $uid, ':fmt' => $format];
+        if ($desde) { $filtroFechaG .= ' AND mes >= :desde'; $paramsG[':desde'] = $desde; }
+        if ($hasta) { $filtroFechaG .= ' AND mes <= :hasta'; $paramsG[':hasta'] = $hasta; }
+
         $gastos = Database::query(
             "SELECT DATE_FORMAT(mes, :fmt) AS periodo, COALESCE(SUM(monto), 0) AS total
-             FROM gastos WHERE usuario_id = :uid
+             FROM gastos WHERE usuario_id = :uid $filtroFechaG
              GROUP BY periodo ORDER BY periodo",
-            [':uid' => $uid, ':fmt' => $format]
+            $paramsG
         );
 
         Response::json([
