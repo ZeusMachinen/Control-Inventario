@@ -34,9 +34,13 @@ const DashboardView = {
           </div>`;
         }).join('')}</div>
 
-        <div class="row g-3 mt-3">
-          <div class="col-md-6"><div class="chart-card"><h3>Natalidad vs Partos</h3><div id="chart-nat-partos" style="height:300px"></div></div></div>
-          <div class="col-md-6"><div class="chart-card"><h3>Ingresos vs Gastos</h3><div id="chart-ingresos" style="height:300px"></div></div></div>
+        <div class="chart-card mt-3">
+          <h3><i class="fas fa-chart-line me-2"></i>Natalidad vs Partos</h3>
+          <div id="chart-nat-partos" style="height:320px"></div>
+        </div>
+        <div class="chart-card mt-3">
+          <h3><i class="fas fa-chart-bar me-2"></i>Ingresos vs Gastos</h3>
+          <div id="chart-ingresos" style="height:320px"></div>
         </div>
       `;
 
@@ -49,19 +53,33 @@ const DashboardView = {
         const keys1 = [...new Set([...Object.keys(nat), ...Object.keys(par)])].sort();
         const keys2 = [...new Set([...Object.keys(ing), ...Object.keys(gas)])].sort();
 
-        const makeTrace = (x, y, name, color) => ({
+        const makeTrace = (x, y, name, color, fill) => ({
           x, y, name, type: 'scatter', mode: 'lines+markers+text',
           text: y.map(v => v > 0 ? v : ''),
-          textposition: 'top center', textfont: { size: 9, color },
-          marker: { size: 5 }, line: { width: 2, color },
-          hovertemplate: '%{x}<br><b>%{y}</b><extra>%{fullData.name}</extra>'
+          textposition: 'top center', textfont: { size: 10, color, family: 'system-ui' },
+          marker: { size: 6, color, line: { width: 1, color: '#fff' } },
+          line: { width: 2.5, color },
+          hovertemplate: '<b>%{y}</b><extra>%{fullData.name}</extra>',
+          ...(fill ? { fill: 'tozeroy', fillcolor: color.replace(')', ',0.1)').replace('rgb', 'rgba') } : {})
         });
 
-        const layout = (title) => ({
-          margin: { t: 5, r: 10, b: 60, l: 50 },
-          paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-          xaxis: { tickangle: -45, tickfont: { size: 9 } },
-          showlegend: true, legend: { orientation: 'h', y: 1.15, font: { size: 10 } }
+        const layout = () => ({
+          margin: { t: 10, r: 15, b: 50, l: 50 },
+          paper_bgcolor: 'transparent',
+          plot_bgcolor: 'rgba(0,0,0,0.02)',
+          xaxis: {
+            tickangle: -45, tickfont: { size: 9, color: '#666' },
+            gridcolor: 'rgba(0,0,0,0.06)', showgrid: true,
+            zeroline: false
+          },
+          yaxis: {
+            tickfont: { size: 9, color: '#666' },
+            gridcolor: 'rgba(0,0,0,0.06)', showgrid: true,
+            zeroline: true, zerolinecolor: 'rgba(0,0,0,0.15)', zerolinewidth: 1
+          },
+          showlegend: true,
+          legend: { orientation: 'h', y: 1.12, x: 0, font: { size: 11 } },
+          font: { family: 'system-ui, sans-serif' }
         });
 
         Plotly.newPlot('chart-nat-partos', [
