@@ -189,23 +189,66 @@ const MicrositioEstadisticasPage = {
     await this.cambiarTab(this.tabActual);
   },
 
-  async exportarPDF() {
-    await this.cargarLibreria('jspdf', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text('Analitica del Hato', 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Generado: ${new Date().toLocaleDateString()}`, 14, 28);
-    doc.text(`Vista: ${this.tabActual}`, 14, 34);
-    // Capturar contenido visible como texto simple (limitado)
-    const content = document.getElementById('micrositio-content');
-    if (content) {
-      const text = content.innerText.substring(0, 3000);
-      doc.setFontSize(8);
-      doc.text(text, 14, 42, { maxWidth: 180 });
+  getPeriodoLabel() {
+    const modo = this.modoPeriodo;
+    if (modo === 'mes') {
+      const el = document.getElementById('filtro-mes');
+      return el?.value || 'Mes actual';
     }
-    doc.save(`analitica-${this.tabActual}.pdf`);
+    if (modo === 'anio') {
+      const el = document.getElementById('filtro-anio');
+      return el?.value || 'Año actual';
+    }
+    if (modo === 'rango') {
+      const desde = document.getElementById('filtro-desde')?.value || '';
+      const hasta = document.getElementById('filtro-hasta')?.value || '';
+      return desde && hasta ? `${desde} a ${hasta}` : 'Rango personalizado';
+    }
+    return 'Todo el historial';
+  },
+
+  async exportarPDF() {
+    try {
+      const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+      const userName = usuario.nombre || 'Usuario';
+      const rebanoSelect = document.getElementById('filtro-rebano');
+      const rebanoName = rebanoSelect?.selectedOptions?.[0]?.text || 'Todos los rebaños';
+      const periodoLabel = this.getPeriodoLabel();
+      const filters = `Rebano: ${rebanoName} | Periodo: ${periodoLabel}`;
+
+      const pdf = PDFExport.create({
+        title: 'Analitica del Hato',
+        orientation: 'portrait',
+        logo: true,
+        userName: userName,
+        filters: filters
+      });
+
+      const tab = this.tabs.find(t => t.id === this.tabActual);
+      const sectionTitle = tab ? tab.label : 'Reporte';
+      pdf.addSection({ type: 'title', data: { text: sectionTitle } });
+      pdf.addSection({ type: 'spacer', data: { height: 5 } });
+
+      const scorecardOpen = !!document.getElementById('scorecard-overlay');
+      if (scorecardOpen) {
+        await this._exportScorecard(pdf);
+      } else {
+        switch (this.tabActual) {
+          case 'dashboard':    await this._exportDashboard(pdf); break;
+          case 'composicion':  await this._exportComposicion(pdf); break;
+          case 'rankings':     await this._exportRankings(pdf); break;
+          case 'comparativa':  await this._exportComparativa(pdf); break;
+          case 'proyecciones': await this._exportProyecciones(pdf); break;
+          case 'descarte':     await this._exportDescarte(pdf); break;
+        }
+      }
+
+      const slug = scorecardOpen ? 'scorecard' : (this.tabActual || 'reporte');
+      await pdf.save(`analitica-${slug}.pdf`);
+    } catch (e) {
+      if (window.Toast) Toast.error('Error al generar PDF: ' + e.message);
+      console.error('PDF export failed:', e);
+    }
   },
 
   async exportarExcel() {
@@ -230,5 +273,145 @@ const MicrositioEstadisticasPage = {
       script.onerror = () => { console.warn(`${name} no disponible`); resolve(); };
       document.head.appendChild(script);
     });
+  },
+
+  // ============================================================================
+  // PER-TAB PDF EXTRACTORS
+  // ============================================================================
+
+  async _exportDashboard(pdf) {
+    const kpiRows = this._extractKpiCards('#micrositio-content .kpi-card');
+    if (kpiRows.length) {
+      pdf.addSection({ type: 'text', data: { text: 'Indicadores Clave' } });
+      pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
+    }
+    await this._captureAllCharts(pdf, '#micrositio-content');
+  },
+
+  async _exportComposicion(pdf) {
+    await this._addAllTables(pdf, '#micrositio-content');
+    await this._captureAllCharts(pdf, '#micrositio-content');
+  },
+
+  async _exportRankings(pdf) {
+    // Stats bar
+    const stats = document.querySelector('#micrositio-content .rankings-stats-bar');
+    if (stats) {
+      const items = Array.from(stats.querySelectorAll('.rankings-stat')).map(s => {
+        const label = s.querySelector('span')?.textContent?.trim() || '';
+        const value = s.querySelector('strong')?.textContent?.trim() || '';
+        return [label, value];
+      }).filter(([l, v]) => l && v);
+      if (items.length) {
+        pdf.addSection({ type: 'text', data: { text: 'Resumen' } });
+        pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: items } });
+      }
+    }
+    // Podium as image
+    const podium = document.querySelector('#micrositio-content .rankings-podium');
+    if (podium) {
+      const img = await pdf.captureChart('.rankings-podium');
+      if (img) {
+        pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        pdf.addSection({ type: 'chart', data: { image: img } });
+      }
+    }
+    // Ranking cards as image
+    const cards = document.querySelector('#micrositio-content .ranking-cards');
+    if (cards) {
+      const img = await pdf.captureChart('.ranking-cards');
+      if (img) {
+        pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        pdf.addSection({ type: 'chart', data: { image: img } });
+      }
+    }
+  },
+
+  async _exportComparativa(pdf) {
+    await this._addAllTables(pdf, '#micrositio-content');
+  },
+
+  async _exportProyecciones(pdf) {
+    await this._addAllTables(pdf, '#micrositio-content');
+    await this._captureAllCharts(pdf, '#micrositio-content');
+  },
+
+  async _exportDescarte(pdf) {
+    const kpiRows = this._extractKpiCards('#micrositio-content .kpi-card');
+    if (kpiRows.length) {
+      pdf.addSection({ type: 'text', data: { text: 'Resumen' } });
+      pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
+    }
+    await this._addAllTables(pdf, '#micrositio-content');
+  },
+
+  async _exportScorecard(pdf) {
+    const modal = document.querySelector('#scorecard-overlay .scorecard-modal');
+    if (!modal) return;
+
+    const nameEl = modal.querySelector('.modal-header h4');
+    const animalName = nameEl?.firstChild?.textContent?.trim()
+      || nameEl?.textContent?.trim()
+      || 'Animal';
+    pdf.addSection({ type: 'text', data: { text: `Animal: ${animalName}` } });
+    pdf.addSection({ type: 'spacer', data: { height: 3 } });
+
+    const kpiRows = this._extractKpiCards('#scorecard-overlay .kpi-mini');
+    if (kpiRows.length) {
+      pdf.addSection({ type: 'text', data: { text: 'Metricas' } });
+      pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
+    }
+
+    modal.querySelectorAll('table').forEach(table => {
+      const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+      if (!headers.length) return;
+      const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr =>
+        Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
+      ).filter(r => r.length);
+      if (rows.length) {
+        pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        pdf.addSection({ type: 'table', data: { headers, rows } });
+      }
+    });
+  },
+
+  // ============================================================================
+  // DOM EXTRACTION HELPERS
+  // ============================================================================
+
+  _extractKpiCards(selector) {
+    const rows = [];
+    document.querySelectorAll(selector).forEach(card => {
+      const label = card.querySelector('.kpi-label, span')?.textContent?.trim();
+      const valor = card.querySelector('.kpi-valor, strong')?.textContent?.trim();
+      if (label && valor) rows.push([label, valor]);
+    });
+    return rows;
+  },
+
+  async _addAllTables(pdf, containerSel) {
+    const tables = document.querySelectorAll(`${containerSel} table`);
+    for (const table of tables) {
+      const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+      if (!headers.length) continue;
+      const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr =>
+        Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
+      ).filter(r => r.length);
+      if (rows.length) {
+        pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        pdf.addSection({ type: 'table', data: { headers, rows } });
+      }
+    }
+  },
+
+  async _captureAllCharts(pdf, containerSel) {
+    const charts = document.querySelectorAll(`${containerSel} [id^="chart"]`);
+    for (const el of charts) {
+      const img = await pdf.captureChart(`#${el.id}`);
+      if (img) {
+        pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        pdf.addSection({ type: 'chart', data: { image: img } });
+      }
+    }
   },
 };
