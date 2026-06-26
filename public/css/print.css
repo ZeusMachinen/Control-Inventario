@@ -1,0 +1,35 @@
+/* Print CSS — oculta chrome interactivo y prepara el DOM para captura/impresión */
+@media print {
+  .btn, .navbar, .sidebar, .sidebar-logo, .toast, .tooltip,
+  .dropdown-menu, .no-print, .modal, button,
+  .navbar-brand, .sidebar-link-icon, .fa-cow,
+  [class*="fa-"] {
+    display: none !important;
+  }
+
+  *, *::before, *::after {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .collapsed, .collapse, [aria-expanded="false"] ~ * {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+  }
+
+  .page-content, .main-content, .app-shell {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  img, svg, canvas { max-width: 100% !important; page-break-inside: avoid; }
+}
