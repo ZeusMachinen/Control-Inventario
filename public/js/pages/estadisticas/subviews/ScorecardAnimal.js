@@ -62,6 +62,19 @@ const ScorecardAnimal = {
     document.getElementById('scorecard-overlay')?.remove();
   },
 
+  categoryBadgeClass(categoria) {
+    const cat = categoria || '';
+    if (cat.startsWith('Aceptable')) return 'cat-badge cat-badge-aceptable';
+    if (cat.startsWith('Elite') || cat.includes('Élite')) return 'cat-badge cat-badge-elite';
+    if (cat.startsWith('Muy buena')) return 'cat-badge cat-badge-muy-buena';
+    if (cat.startsWith('Buena')) return 'cat-badge cat-badge-buena';
+    if (cat.startsWith('Regular')) return 'cat-badge cat-badge-regular';
+    if (cat.includes('revisar descarte') || cat.includes('Linea de descarte')) return 'cat-badge cat-badge-mala';
+    if (cat.includes('Descarte')) return 'cat-badge cat-badge-descarte';
+    if (cat.startsWith('Mala')) return 'cat-badge cat-badge-mala';
+    return 'cat-badge cat-badge-regular';
+  },
+
   renderIVM(ivm) {
     const scoreClass = ivm.ivm_final >= 68 ? 'text-success' : ivm.ivm_final >= 50 ? 'text-warning' : ivm.ivm_final >= 40 ? 'text-primary' : 'text-danger';
     return `
@@ -70,7 +83,7 @@ const ScorecardAnimal = {
         <div class="row g-2 mb-2">
           <div class="col-6 col-md-3"><div class="kpi-mini"><span>IVM Final</span><strong class="${scoreClass}">${ivm.ivm_final}</strong></div></div>
           <div class="col-6 col-md-3"><div class="kpi-mini"><span>IVM Bruto</span><strong>${ivm.ivm_bruto}</strong></div></div>
-          <div class="col-6 col-md-3"><div class="kpi-mini"><span>Categoría</span><strong>${ivm.categoria || '-'}</strong></div></div>
+          <div class="col-6 col-md-3"><div class="kpi-mini"><span>Categoría</span><strong><span class="badge ${this.categoryBadgeClass(ivm.categoria)}" style="font-size:0.7rem">${ivm.categoria || '-'}</span></strong></div></div>
           <div class="col-6 col-md-3"><div class="kpi-mini"><span>Confianza</span><strong>${((ivm.factor_confianza || 0) * 100).toFixed(0)}%</strong></div></div>
         </div>
         <div class="row g-2 mb-2">
@@ -100,7 +113,7 @@ const ScorecardAnimal = {
         <h6 class="mb-2">IVM-P — Índice de Valor Maternal Provisional</h6>
         <div class="row g-2 mb-2">
           <div class="col-6 col-md-4"><div class="kpi-mini"><span>IVM-P</span><strong class="${scoreClass}">${score}</strong></div></div>
-          <div class="col-6 col-md-4"><div class="kpi-mini"><span>Clasificación</span><strong>${ivm.categoria || '-'}</strong></div></div>
+          <div class="col-6 col-md-4"><div class="kpi-mini"><span>Clasificación</span><strong><span class="badge ${this.categoryBadgeClass(ivm.categoria)}" style="font-size:0.7rem">${ivm.categoria || '-'}</span></strong></div></div>
           <div class="col-6 col-md-4"><div class="kpi-mini"><span>Partos</span><strong>0 (preparto)</strong></div></div>
         </div>
         <div class="alert alert-info py-1 px-2 mt-2 mb-0 small">

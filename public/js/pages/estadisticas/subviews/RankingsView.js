@@ -136,7 +136,7 @@ const RankingsView = {
           <div class="ivm-footer-info">
             <strong>Factor de confianza:</strong> 1 parto=×0.55 · 2=×0.75 · 3=×0.90 · 4+=×1.00<br>
             <strong>Fórmula:</strong> IVM bruto = Σ criterios 1-5 + bono → IVM final = 50 + confianza × (bruto − 50) → tope 0-100<br>
-            <strong>Categorías:</strong> <span class="badge bg-warning text-dark">≥78 Élite</span> <span class="badge bg-success">≥68 Muy buena</span> <span class="badge bg-info">≥58 Buena</span> <span class="badge bg-secondary">≥50 Regular</span> <span class="badge bg-primary">40-49 Aceptable</span> <span class="badge bg-danger">&lt;40 Mala</span><br>
+            <strong>Categorías:</strong> <span class="badge cat-badge cat-badge-elite">≥78 Élite</span> <span class="badge cat-badge cat-badge-muy-buena">≥68 Muy buena</span> <span class="badge cat-badge cat-badge-buena">≥58 Buena</span> <span class="badge cat-badge cat-badge-regular">≥50 Regular</span> <span class="badge cat-badge cat-badge-aceptable">40-49 Aceptable</span> <span class="badge cat-badge cat-badge-mala">&lt;40 Mala</span><br>
             <strong class="text-danger">⚠️ Reglas de descarte:</strong> 2+ crías muertas -30d o 2+ intervalos +700d → "Línea de descarte"<br>
             <strong>IVM-P (preparto):</strong> Hembras sin partos. Preñada joven &gt; vacía adulta. +48m vacía = línea de descarte.
           </div>

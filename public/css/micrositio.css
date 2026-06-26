@@ -975,3 +975,35 @@
   background: linear-gradient(135deg, #424242, #1a1a1a);
   color: #EF9A9A;
 }
+
+/* Descarte / Riesgo badges */
+.cat-badge-descarte-bajo {
+  background: linear-gradient(135deg, #66BB6A, #2E7D32);
+  color: #fff;
+}
+.cat-badge-descarte-bajo::before { content: "\f058"; } /* fa-check-circle */
+
+.cat-badge-descarte-atencion {
+  background: linear-gradient(135deg, #FFA726, #EF6C00);
+  color: #fff;
+}
+.cat-badge-descarte-atencion::before { content: "\f071"; } /* fa-exclamation-triangle */
+
+.cat-badge-descarte-alto {
+  background: linear-gradient(135deg, #EF5350, #B71C1C);
+  color: #fff;
+}
+.cat-badge-descarte-alto::before { content: "\f05e"; } /* fa-ban */
+
+.dark-mode .cat-badge-descarte-bajo {
+  background: linear-gradient(135deg, #2E7D32, #1B5E20);
+  color: #C8E6C9;
+}
+.dark-mode .cat-badge-descarte-atencion {
+  background: linear-gradient(135deg, #E65100, #BF360C);
+  color: #FFE0B2;
+}
+.dark-mode .cat-badge-descarte-alto {
+  background: linear-gradient(135deg, #B71C1C, #7F0000);
+  color: #FFCDD2;
+}

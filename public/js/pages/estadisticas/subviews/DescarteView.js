@@ -21,12 +21,12 @@ const DescarteView = {
           <table class="table table-sm table-hover">
             <thead><tr><th>Nombre</th><th>Edad</th><th>Dias ult. parto</th><th>Estado</th><th>Partos</th><th>Tasa Prenez</th><th>Score Riesgo</th><th>Veredicto</th></tr></thead>
             <tbody>${vacas.map(v => {
-              const color = v.semaforo === 'verde' ? 'success' : v.semaforo === 'amarillo' ? 'warning' : 'danger';
+              const badgeClass = v.semaforo === 'verde' ? 'cat-badge cat-badge-descarte-bajo' : v.semaforo === 'amarillo' ? 'cat-badge cat-badge-descarte-atencion' : 'cat-badge cat-badge-descarte-alto';
               return `<tr>
                 <td><strong>${v.nombre}</strong></td><td>${v.edad_meses}m</td><td>${v.dias_ultimo_parto||'-'}</td>
                 <td>${v.estado_reproductivo}</td><td>${v.partos_total}</td><td>${v.tasa_prenez}</td>
                 <td>${v.score_riesgo}</td>
-                <td><span class="badge bg-${color}">${v.veredicto}</span></td></tr>`;
+                <td><span class="badge ${badgeClass}">${v.veredicto}</span></td></tr>`;
             }).join('')}</tbody>
           </table>
         </div>
