@@ -11,7 +11,7 @@ const MicrositioEstadisticasPage = {
     { id: 'dashboard',    label: 'Dashboard',       icon: 'fa-chart-line',  view: 'DashboardView' },
     { id: 'composicion',  label: 'Composicion',     icon: 'fa-layer-group', view: 'ComposicionDetallada' },
     { id: 'rankings',     label: 'Rankings',        icon: 'fa-trophy',      view: 'RankingsView' },
-    { id: 'descarte',     label: 'Descarte',        icon: 'fa-exclamation-triangle', view: 'DescarteView' },
+
     { id: 'comparativa',  label: 'Comparativa',     icon: 'fa-balance-scale', view: 'ComparativaRebanos' },
     { id: 'proyecciones', label: 'Proyecciones',    icon: 'fa-chart-area',  view: 'ProyeccionesView' },
   ],
@@ -98,7 +98,7 @@ const MicrositioEstadisticasPage = {
         case 'dashboard':    await DashboardView.render(content); break;
         case 'composicion':  await ComposicionDetallada.render(content); break;
         case 'rankings':     await RankingsView.render(content); break;
-        case 'descarte':     await DescarteView.render(content); break;
+
         case 'comparativa':  await ComparativaRebanos.render(content); break;
         case 'proyecciones': await ProyeccionesView.render(content); break;
       }
