@@ -267,7 +267,7 @@ const RankingsView = {
                   <div class="ranking-card-bar-fill" style="width:${Math.min(100, (a.ivm_p || 0))}%;background:var(--azul)"></div>
                 </div>
                 <div class="ranking-card-metrics">
-                  <span class="badge bg-info text-dark">${a.categoria || '-'}</span>
+                  <span class="badge ${this.categoryBadgeClass(a.categoria)}">${a.categoria || '-'}</span>
                   <span><i class="fas fa-venus"></i>${a.ivm_tipo || 'IVM-P'}</span>
                   ${a.alerta ? `<span class="text-danger"><i class="fas fa-exclamation-triangle"></i>${a.alerta}</span>` : ''}
                 </div>
@@ -404,7 +404,7 @@ const RankingsView = {
                     <span><i class="fas fa-baby"></i>${a.hijos_total || 0} crías</span>
                     <span><i class="fas fa-weight-scale"></i>${a.peso_nacer_prom || '-'}kg</span>
                     <span><i class="fas fa-chart-line"></i>${a.tendencia || '-'}</span>
-                    <span class="badge ${a.veredicto?.includes('Buen') ? 'bg-success' : a.veredicto?.includes('Alerta') ? 'bg-warning text-dark' : a.veredicto?.includes('Revisar') ? 'bg-danger' : 'bg-secondary'}">${a.veredicto || '-'}</span>
+                    <span class="badge ${this.toroBadgeClass(a.veredicto)}">${a.veredicto || '-'}</span>
                   `}
                 </div>
               </div>
@@ -436,15 +436,15 @@ const RankingsView = {
 
   categoryBadgeClass(categoria) {
     const cat = categoria || '';
-    if (cat.startsWith('Aceptable')) return 'bg-primary';
-    if (cat.startsWith('Elite') || cat.includes('Élite')) return 'bg-warning text-dark';
-    if (cat.startsWith('Muy buena')) return 'bg-success';
-    if (cat.startsWith('Buena')) return 'bg-info text-dark';
-    if (cat.startsWith('Regular')) return 'bg-secondary';
-    if (cat.includes('revisar descarte') || cat.includes('Linea de descarte')) return 'bg-danger';
-    if (cat.includes('Descarte')) return 'bg-dark';
-    if (cat.startsWith('Mala')) return 'bg-danger';
-    return 'bg-secondary';
+    if (cat.startsWith('Aceptable')) return 'cat-badge cat-badge-aceptable';
+    if (cat.startsWith('Elite') || cat.includes('Élite')) return 'cat-badge cat-badge-elite';
+    if (cat.startsWith('Muy buena')) return 'cat-badge cat-badge-muy-buena';
+    if (cat.startsWith('Buena')) return 'cat-badge cat-badge-buena';
+    if (cat.startsWith('Regular')) return 'cat-badge cat-badge-regular';
+    if (cat.includes('revisar descarte') || cat.includes('Linea de descarte')) return 'cat-badge cat-badge-mala';
+    if (cat.includes('Descarte')) return 'cat-badge cat-badge-descarte';
+    if (cat.startsWith('Mala')) return 'cat-badge cat-badge-mala';
+    return 'cat-badge cat-badge-regular';
   },
 
   categoryRowClass(categoria) {
@@ -466,6 +466,14 @@ const RankingsView = {
     if (veredicto.startsWith('Alerta')) return 'regular';
     if (veredicto.startsWith('Revisar')) return 'mala';
     return 'regular';
+  },
+
+  toroBadgeClass(veredicto) {
+    if (!veredicto || typeof veredicto !== 'string') return 'cat-badge cat-badge-regular';
+    if (veredicto.startsWith('Buen')) return 'cat-badge cat-badge-buena';
+    if (veredicto.startsWith('Alerta')) return 'cat-badge cat-badge-regular';
+    if (veredicto.startsWith('Revisar')) return 'cat-badge cat-badge-mala';
+    return 'cat-badge cat-badge-regular';
   },
 
   async cambiarTipo(tipo) {

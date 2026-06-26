@@ -870,3 +870,108 @@
 .dark-mode .ranking-card.cat-row-aceptable:hover  { background: rgba(25, 118, 210, 0.20); }
 .dark-mode .ranking-card.cat-row-mala:hover       { background: rgba(239, 83, 80, 0.20); }
 .dark-mode .ranking-card.cat-row-descarte:hover   { background: rgba(66, 66, 66, 0.30); }
+
+/* ══════════════════════════════════════════════════
+   Modern Category Badges — pill shape + gradients + icons
+   ══════════════════════════════════════════════════ */
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: none;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+.cat-badge::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 0.6rem;
+  opacity: 0.85;
+}
+.cat-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+}
+
+.cat-badge-elite {
+  background: linear-gradient(135deg, #FFD700, #FFA000);
+  color: #5D4037;
+}
+.cat-badge-elite::before { content: "\f005"; } /* fa-star */
+
+.cat-badge-muy-buena {
+  background: linear-gradient(135deg, #66BB6A, #388E3C);
+  color: #fff;
+}
+.cat-badge-muy-buena::before { content: "\f058"; } /* fa-check-circle */
+
+.cat-badge-buena {
+  background: linear-gradient(135deg, #42A5F5, #1E88E5);
+  color: #fff;
+}
+.cat-badge-buena::before { content: "\f087"; } /* fa-thumbs-up */
+
+.cat-badge-regular {
+  background: linear-gradient(135deg, #BDBDBD, #757575);
+  color: #fff;
+}
+.cat-badge-regular::before { content: "\f111"; } /* fa-circle */
+
+.cat-badge-aceptable {
+  background: linear-gradient(135deg, #64B5F6, #1976D2);
+  color: #fff;
+}
+.cat-badge-aceptable::before { content: "\f06a"; } /* fa-exclamation-circle */
+
+.cat-badge-mala {
+  background: linear-gradient(135deg, #EF5350, #C62828);
+  color: #fff;
+}
+.cat-badge-mala::before { content: "\f057"; } /* fa-times-circle */
+
+.cat-badge-descarte {
+  background: linear-gradient(135deg, #616161, #212121);
+  color: #FF8A80;
+}
+.cat-badge-descarte::before { content: "\f05e"; } /* fa-ban */
+
+/* Dark mode — subdued gradients */
+.dark-mode .cat-badge {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+}
+.dark-mode .cat-badge-elite {
+  background: linear-gradient(135deg, #B8860B, #8B6914);
+  color: #FFE082;
+}
+.dark-mode .cat-badge-muy-buena {
+  background: linear-gradient(135deg, #2E7D32, #1B5E20);
+  color: #C8E6C9;
+}
+.dark-mode .cat-badge-buena {
+  background: linear-gradient(135deg, #1565C0, #0D47A1);
+  color: #BBDEFB;
+}
+.dark-mode .cat-badge-regular {
+  background: linear-gradient(135deg, #757575, #424242);
+  color: #E0E0E0;
+}
+.dark-mode .cat-badge-aceptable {
+  background: linear-gradient(135deg, #1976D2, #0D47A1);
+  color: #BBDEFB;
+}
+.dark-mode .cat-badge-mala {
+  background: linear-gradient(135deg, #C62828, #8B0000);
+  color: #FFCDD2;
+}
+.dark-mode .cat-badge-descarte {
+  background: linear-gradient(135deg, #424242, #1a1a1a);
+  color: #EF9A9A;
+}
