@@ -326,12 +326,13 @@
 }
 
 /* Category colors */
-.cat-elite    { background: #FFD700; color: #5D4037; }
-.cat-muy-buena{ background: #4CAF50; color: #fff; }
-.cat-buena    { background: #29B6F6; color: #fff; }
-.cat-regular  { background: #9E9E9E; color: #fff; }
-.cat-mala     { background: #EF5350; color: #fff; }
-.cat-descarte { background: #424242; color: #FF8A80; }
+.cat-elite     { background: var(--cat-elite); color: var(--cat-elite-text); }
+.cat-muy-buena { background: var(--cat-muy-buena); color: var(--cat-muy-buena-text); }
+.cat-buena     { background: var(--cat-buena); color: var(--cat-buena-text); }
+.cat-regular   { background: var(--cat-regular); color: var(--cat-regular-text); }
+.cat-aceptable { background: var(--cat-aceptable); color: var(--cat-aceptable-text); }
+.cat-mala      { background: var(--cat-mala); color: var(--cat-mala-text); }
+.cat-descarte  { background: var(--cat-descarte); color: var(--cat-descarte-text); }
 
 /* ─── Ranking cards (4+) ─── */
 .rankings-section-header {
@@ -474,6 +475,38 @@
   font-size: 0.65rem;
   opacity: 0.6;
 }
+
+/* Category row backgrounds — fondo clarito del color de la categoría */
+.ranking-card.cat-row-elite      { background: #FFF9C4 !important; }
+.ranking-card.cat-row-muy-buena  { background: #C8E6C9 !important; }
+.ranking-card.cat-row-buena      { background: #B3E5FC !important; }
+.ranking-card.cat-row-regular    { background: #E0E0E0 !important; }
+.ranking-card.cat-row-aceptable  { background: #BBDEFB !important; }
+.ranking-card.cat-row-mala       { background: #FFCDD2 !important; }
+.ranking-card.cat-row-descarte   { background: #BDBDBD !important; }
+
+/* Text contour for legibility on colored backgrounds */
+.ranking-card-name {
+  text-shadow: 0 0 1px rgba(255,255,255,0.8), 0 0 2px rgba(255,255,255,0.5);
+}
+.ranking-card-score {
+  text-shadow: 0 0 1px rgba(255,255,255,0.8);
+}
+.ranking-card-metrics {
+  text-shadow: 0 0 1px rgba(255,255,255,0.7);
+}
+.ranking-card-rank-num {
+  text-shadow: 0 0 1px rgba(255,255,255,0.8);
+}
+
+/* Hover para filas con color de categoría */
+.ranking-card.cat-row-elite:hover     { background: #FFF176; }
+.ranking-card.cat-row-muy-buena:hover { background: #A5D6A7; }
+.ranking-card.cat-row-buena:hover     { background: #81D4FA; }
+.ranking-card.cat-row-regular:hover   { background: #BDBDBD; }
+.ranking-card.cat-row-aceptable:hover { background: #90CAF9; }
+.ranking-card.cat-row-mala:hover      { background: #EF9A9A; }
+.ranking-card.cat-row-descarte:hover  { background: #9E9E9E; }
 
 /* ─── Podium animation for cards ─── */
 .rankings-podium-card {
@@ -804,9 +837,36 @@
 .dark-mode .podium-alert {
   color: #ef9a9a;
 }
-.dark-mode .cat-elite    { background: #B8860B; color: #FFE082; }
-.dark-mode .cat-muy-buena{ background: #2E7D32; color: #C8E6C9; }
-.dark-mode .cat-buena    { background: #1565C0; color: #BBDEFB; }
-.dark-mode .cat-regular  { background: #616161; color: #E0E0E0; }
-.dark-mode .cat-mala     { background: #B71C1C; color: #FFCDD2; }
-.dark-mode .cat-descarte { background: #212121; color: #EF9A9A; }
+.dark-mode .cat-elite     { background: #B8860B; color: #FFE082; }
+.dark-mode .cat-muy-buena { background: #2E7D32; color: #C8E6C9; }
+.dark-mode .cat-buena     { background: #1565C0; color: #BBDEFB; }
+.dark-mode .cat-regular   { background: #616161; color: #E0E0E0; }
+.dark-mode .cat-aceptable { background: #0D47A1; color: #BBDEFB; }
+.dark-mode .cat-mala      { background: #B71C1C; color: #FFCDD2; }
+.dark-mode .cat-descarte  { background: #212121; color: #EF9A9A; }
+
+/* Dark mode — fondos de fila por categoría (semitransparentes) */
+.dark-mode .cat-row-elite      { background: rgba(255, 215, 0, 0.12); }
+.dark-mode .cat-row-muy-buena  { background: rgba(76, 175, 80, 0.12); }
+.dark-mode .cat-row-buena      { background: rgba(41, 182, 246, 0.12); }
+.dark-mode .cat-row-regular    { background: rgba(158, 158, 158, 0.12); }
+.dark-mode .cat-row-aceptable  { background: rgba(25, 118, 210, 0.12); }
+.dark-mode .cat-row-mala       { background: rgba(239, 83, 80, 0.12); }
+.dark-mode .cat-row-descarte   { background: rgba(66, 66, 66, 0.20); }
+
+/* Dark mode — text-shadow oscuro para contraste sobre fondos claros */
+.dark-mode .ranking-card-name,
+.dark-mode .ranking-card-score,
+.dark-mode .ranking-card-metrics,
+.dark-mode .ranking-card-rank-num {
+  text-shadow: 0 0 1px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.3);
+}
+
+/* Dark mode — hover para filas de categoría */
+.dark-mode .ranking-card.cat-row-elite:hover      { background: rgba(255, 215, 0, 0.20); }
+.dark-mode .ranking-card.cat-row-muy-buena:hover  { background: rgba(76, 175, 80, 0.20); }
+.dark-mode .ranking-card.cat-row-buena:hover      { background: rgba(41, 182, 246, 0.20); }
+.dark-mode .ranking-card.cat-row-regular:hover    { background: rgba(158, 158, 158, 0.20); }
+.dark-mode .ranking-card.cat-row-aceptable:hover  { background: rgba(25, 118, 210, 0.20); }
+.dark-mode .ranking-card.cat-row-mala:hover       { background: rgba(239, 83, 80, 0.20); }
+.dark-mode .ranking-card.cat-row-descarte:hover   { background: rgba(66, 66, 66, 0.30); }

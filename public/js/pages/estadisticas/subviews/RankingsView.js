@@ -193,20 +193,19 @@ const RankingsView = {
 
   renderGrupoVacas(items, titulo, startIndex = 1) {
     if (!items.length) return '';
-    const ranking = this.invertido ? [...items].reverse() : items;
     return `
       <div class="rankings-section-header">
         <h3>${titulo}</h3>
-        <span class="badge bg-secondary ms-2">${ranking.length}</span>
+        <span class="badge bg-secondary ms-2">${items.length}</span>
       </div>
       <div class="ranking-cards">
-        ${ranking.map((a, i) => {
+        ${items.map((a, i) => {
           const rank = a.posicion || (startIndex + i);
           const fotoSrc = a.foto ? `/api/${a.foto}` : null;
           const scorePercent = Math.min(100, (a.ivm_final || 0));
 
           return `
-            <div class="ranking-card visible" onclick="RankingsView.verScorecard(${a.id})" style="animation-delay:${i * 0.05}s">
+            <div class="ranking-card visible cat-row-${this.categoryRowClass(a.categoria)}" onclick="RankingsView.verScorecard(${a.id})" style="animation-delay:${i * 0.05}s">
               <div class="ranking-card-rank"><span class="ranking-card-rank-num">${rank}</span></div>
               <div class="ranking-card-photo">
                 ${fotoSrc
@@ -250,7 +249,7 @@ const RankingsView = {
           const rank = a.posicion || (i + 1);
           const fotoSrc = a.foto ? `/api/${a.foto}` : null;
           return `
-            <div class="ranking-card visible" onclick="RankingsView.verScorecard(${a.id})" style="animation-delay:${i * 0.05}s">
+            <div class="ranking-card visible cat-row-${this.categoryRowClass(a.categoria)}" onclick="RankingsView.verScorecard(${a.id})" style="animation-delay:${i * 0.05}s">
               <div class="ranking-card-rank"><span class="ranking-card-rank-num">${rank}</span></div>
               <div class="ranking-card-photo">
                 ${fotoSrc
@@ -371,7 +370,7 @@ const RankingsView = {
             : Math.min(100, ((parseFloat(a.tasa_vigente) || 0) / Math.max(0.01, parseFloat(resto[0]?.tasa_vigente) || 0.01)) * 100);
 
           return `
-            <div class="ranking-card visible" onclick="RankingsView.verScorecard(${a.id})" style="animation-delay:${i * 0.05}s">
+            <div class="ranking-card visible cat-row-${this.tipoActual === 'vacas' ? this.categoryRowClass(a.categoria) : this.toroCategoryClass(a.veredicto)}" onclick="RankingsView.verScorecard(${a.id})" style="animation-delay:${i * 0.05}s">
               <div class="ranking-card-rank">
                 <span class="ranking-card-rank-num">${rank}</span>
               </div>
@@ -446,6 +445,27 @@ const RankingsView = {
     if (cat.includes('Descarte')) return 'bg-dark';
     if (cat.startsWith('Mala')) return 'bg-danger';
     return 'bg-secondary';
+  },
+
+  categoryRowClass(categoria) {
+    const cat = categoria || '';
+    if (cat.startsWith('Aceptable')) return 'aceptable';
+    if (cat.startsWith('Elite') || cat.includes('Élite')) return 'elite';
+    if (cat.startsWith('Muy buena')) return 'muy-buena';
+    if (cat.startsWith('Buena')) return 'buena';
+    if (cat.startsWith('Regular')) return 'regular';
+    if (cat.includes('revisar descarte') || cat.includes('Linea de descarte')) return 'mala';
+    if (cat.includes('Descarte')) return 'descarte';
+    if (cat.startsWith('Mala')) return 'mala';
+    return 'regular';
+  },
+
+  toroCategoryClass(veredicto) {
+    if (!veredicto || typeof veredicto !== 'string') return 'regular';
+    if (veredicto.startsWith('Buen')) return 'buena';
+    if (veredicto.startsWith('Alerta')) return 'regular';
+    if (veredicto.startsWith('Revisar')) return 'mala';
+    return 'regular';
   },
 
   async cambiarTipo(tipo) {

@@ -64,4 +64,31 @@
 
   /* Transiciones */
   --transition:      0.2s ease;
+
+  /* Categorías — colores de fondo claros (para filas del ranking) */
+  --cat-elite-bg:       #FFF9C4;
+  --cat-muy-buena-bg:   #C8E6C9;
+  --cat-buena-bg:       #B3E5FC;
+  --cat-regular-bg:     #E0E0E0;
+  --cat-aceptable-bg:   #BBDEFB;
+  --cat-mala-bg:        #FFCDD2;
+  --cat-descarte-bg:    #BDBDBD;
+
+  /* Categorías — colores base (badge) */
+  --cat-elite:          #FFD700;
+  --cat-muy-buena:      #4CAF50;
+  --cat-buena:          #29B6F6;
+  --cat-regular:        #9E9E9E;
+  --cat-aceptable:      #1976D2;
+  --cat-mala:           #EF5350;
+  --cat-descarte:       #424242;
+
+  /* Categorías — color de texto sobre badge */
+  --cat-elite-text:     #5D4037;
+  --cat-muy-buena-text: #fff;
+  --cat-buena-text:     #fff;
+  --cat-regular-text:   #fff;
+  --cat-aceptable-text: #fff;
+  --cat-mala-text:      #fff;
+  --cat-descarte-text:  #FF8A80;
 }
