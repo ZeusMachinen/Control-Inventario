@@ -253,21 +253,32 @@ class ScorecardHelper
     {
         $hato = self::benchmarksHato($usuarioId);
 
-        // Partos
-        $partosData = Database::query(
+        // Partos: tabla partos + crías con madre_id, deduplicados por fecha
+        $partosFormales = Database::query(
             "SELECT fecha FROM partos WHERE animal_id = :aid AND usuario_id = :uid ORDER BY fecha",
             [':aid' => $vacaId, ':uid' => $usuarioId]
         );
-        $partosTotal = count($partosData);
-        $fechasPartos = array_column($partosData, 'fecha');
+        $fechasFormales = array_column($partosFormales, 'fecha');
 
-        // IEP promedio
+        // Partos implícitos: crías que tienen a esta vaca como madre
+        $crias = Database::query(
+            "SELECT fecha_nacimiento FROM animales WHERE madre_id = :aid AND usuario_id = :uid AND fecha_nacimiento IS NOT NULL",
+            [':aid' => $vacaId, ':uid' => $usuarioId]
+        );
+        $fechasImplicitos = array_column($crias, 'fecha_nacimiento');
+
+        // Unir y deduplicar (misma fecha = mismo parto)
+        $todasLasFechas = array_unique(array_merge($fechasFormales, $fechasImplicitos));
+        sort($todasLasFechas);
+        $partosTotal = count($todasLasFechas);
+
+        // IEP promedio (todos los intervalos >= 280 días, igual que en IVM)
         $iepPromedio = null;
-        if (count($fechasPartos) >= 2) {
+        if (count($todasLasFechas) >= 2) {
             $intervalos = [];
-            for ($i = 1; $i < count($fechasPartos); $i++) {
-                $d = (new \DateTime($fechasPartos[$i]))->diff(new \DateTime($fechasPartos[$i - 1]))->days;
-                if ($d >= 280 && $d <= 730) {
+            for ($i = 1; $i < count($todasLasFechas); $i++) {
+                $d = (new \DateTime($todasLasFechas[$i]))->diff(new \DateTime($todasLasFechas[$i - 1]))->days;
+                if ($d >= 280) {
                     $intervalos[] = $d;
                 }
             }
@@ -276,17 +287,17 @@ class ScorecardHelper
 
         // Dias desde ultimo parto
         $diasUltimoParto = null;
-        if (!empty($fechasPartos)) {
-            $ultimo = end($fechasPartos);
+        if (!empty($todasLasFechas)) {
+            $ultimo = end($todasLasFechas);
             $diasUltimoParto = (new \DateTime($ultimo))->diff(new \DateTime())->days;
         }
 
-        // Crias totales
-        $crias = Database::queryOne(
-            "SELECT COUNT(*) AS total FROM animales WHERE madre_id = :aid AND usuario_id = :uid",
+        // Crias totales (por relacion madre, sin contar como partos)
+        $crias = Database::query(
+            "SELECT id FROM animales WHERE madre_id = :aid AND usuario_id = :uid",
             [':aid' => $vacaId, ':uid' => $usuarioId]
         );
-        $criasTotal = (int)($crias['total'] ?? 0);
+        $criasTotal = count($crias);
 
         // Servicios y concepcion
         $servStats = Database::queryOne(
@@ -327,9 +338,9 @@ class ScorecardHelper
 
         // Edad al primer parto
         $edadPrimerParto = null;
-        if (!empty($fechasPartos)) {
+        if (!empty($todasLasFechas)) {
             $nacimiento = new \DateTime($animal['fecha_nacimiento']);
-            $primerParto = new \DateTime($fechasPartos[0]);
+            $primerParto = new \DateTime($todasLasFechas[0]);
             $edadPrimerParto = $nacimiento->diff($primerParto)->m + ($nacimiento->diff($primerParto)->y * 12);
         }
 
@@ -348,6 +359,525 @@ class ScorecardHelper
             'delta_peso_hato'          => $pesoPromCrias && $hato['peso_nacer_hato']
                 ? round($pesoPromCrias - $hato['peso_nacer_hato'], 2)
                 : null,
+        ];
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // IVM — Índice de Valor Maternal (corregido)
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * IVM vacío para animales sin datos.
+     */
+    private static function ivmVacio(): array
+    {
+        return [
+            'ivm_tipo'                     => 'IVM',
+            'ivm_p'                        => null,
+            'cantidad_partos'              => 0,
+            'edad_primer_parto_meses'      => null,
+            'promedio_iep_dias'            => null,
+            'intervalos_mayores_700'       => 0,
+            'intervalos_mayores_600'       => 0,
+            'cantidad_crias'               => 0,
+            'crias_vendidas'               => 0,
+            'crias_vivas'                  => 0,
+            'crias_muertas_antes_7'        => 0,
+            'crias_muertas_antes_30'       => 0,
+            'puntaje_edad_primer_parto'    => 0.0,
+            'puntaje_intervalo'            => 0.0,
+            'puntaje_crias'                => 0.0,
+            'puntaje_consistencia'         => 0.0,
+            'bono_precocidad'              => 0.0,
+            'ivm_bruto'                    => 0.0,
+            'factor_confianza'             => 0.60,
+            'ivm_final'                    => 0.0,
+            'categoria'                    => 'Sin datos',
+            'alerta'                       => 'Datos insuficientes',
+            'detalle_crias'                => [],
+        ];
+    }
+
+    /**
+     * Clasifica el estado reproductivo en 3 categorías para IVM-P.
+     */
+    private static function clasificarEstado(string $estado): string
+    {
+        $e = mb_strtolower(trim($estado));
+        if (strpos($e, 'prenada') !== false || strpos($e, 'preñada') !== false) return 'prenada';
+        if ($e === 'lactando') return 'prenada'; // lactando = ya parió, pero IVM-P es para 0 partos
+        if ($e === 'vacia' || $e === 'vacía') return 'vacia';
+        return 'servicio';
+    }
+
+    /**
+     * IVM-P — Provisional para hembras con 0 partos.
+     */
+    public static function calcularIVMP(int $vacaId, int $usuarioId): array
+    {
+        $animal = Database::queryOne(
+            "SELECT fecha_nacimiento, estado_reproductivo,
+                    TIMESTAMPDIFF(MONTH, fecha_nacimiento, CURDATE()) AS meses
+             FROM animales WHERE id = :id",
+            [':id' => $vacaId]
+        );
+        if (!$animal || empty($animal['fecha_nacimiento'])) {
+            return self::ivmVacio();
+        }
+
+        $edadMeses = (int)($animal['meses'] ?? 0);
+        $estado = self::clasificarEstado($animal['estado_reproductivo'] ?? 'Vacia');
+
+        $base = self::ivmVacio();
+        $base['ivm_tipo'] = 'IVM-P';
+        $base['cantidad_partos'] = 0;
+        $base['subcategoria'] = 'Preparto';
+
+        if ($edadMeses < 18) {
+            $base['categoria'] = 'No evaluar';
+            $base['alerta'] = null;
+            return $base;
+        }
+
+        // Tabla IVM-P
+        $tabla = [
+            '18-23' => ['prenada' => 72, 'servicio' => 58, 'vacia' => 48],
+            '24-30' => ['prenada' => 78, 'servicio' => 55, 'vacia' => 42],
+            '31-34' => ['prenada' => 65, 'servicio' => 45, 'vacia' => 35],
+            '35+'   => ['prenada' => 55, 'servicio' => 35, 'vacia' => 25],
+        ];
+
+        $rango = $edadMeses <= 23 ? '18-23'
+            : ($edadMeses <= 30 ? '24-30'
+            : ($edadMeses <= 34 ? '31-34' : '35+'));
+
+        $ivmP = $tabla[$rango][$estado] ?? 25;
+        $base['ivm_p'] = $ivmP;
+        $base['ivm_final'] = $ivmP;
+
+        // Categoría
+        if ($ivmP >= 75) {
+            $base['categoria'] = 'Promesa preñada sobresaliente';
+        } elseif ($ivmP >= 65) {
+            $base['categoria'] = 'Promesa preñada buena';
+        } elseif ($ivmP >= 50) {
+            $base['categoria'] = 'En observacion';
+        } else {
+            $base['categoria'] = 'Novilla vacia / revisar';
+        }
+
+        if ($edadMeses >= 35 && $estado === 'vacia') {
+            $base['categoria'] = 'Alerta reproductiva';
+        }
+
+        // Descarte: solo después de 48 meses
+        if ($edadMeses >= 48) {
+            $base['alerta'] = 'Linea de descarte por edad';
+        } else {
+            $base['alerta'] = null;
+        }
+
+        return $base;
+    }
+
+    /**
+     * Calcula el Índice de Valor Maternal (IVM) — corregido.
+     *
+ * 5 criterios (0–100 pts máx):
+ *   1. Edad al primer parto       — 15 pts
+ *   2. Intervalo entre partos      — 25 pts
+ *   3. Resultado de crías          — 30 pts
+ *   4. Consistencia                —  8 pts
+ *   5. Bono precocidad sostenida   — máx +5
+     */
+    public static function calcularIVM(int $vacaId, int $usuarioId): array
+    {
+        // ── Datos básicos ──
+        $animal = Database::queryOne(
+            "SELECT fecha_nacimiento, estado_reproductivo,
+                    TIMESTAMPDIFF(MONTH, fecha_nacimiento, CURDATE()) AS meses
+             FROM animales WHERE id = :id",
+            [':id' => $vacaId]
+        );
+        if (!$animal || empty($animal['fecha_nacimiento'])) {
+            return self::ivmVacio();
+        }
+
+        $edadMeses = (int)($animal['meses'] ?? 0);
+        $fechaNacimiento = $animal['fecha_nacimiento'];
+        $estadoReproductivo = $animal['estado_reproductivo'] ?? 'Vacia';
+
+        // ── Partos (formales + implícitos por crías) ──
+        $partosFormales = Database::query(
+            "SELECT fecha FROM partos WHERE animal_id = :aid AND usuario_id = :uid ORDER BY fecha",
+            [':aid' => $vacaId, ':uid' => $usuarioId]
+        );
+        $fechasFormales = array_column($partosFormales, 'fecha');
+
+        $criasData = Database::query(
+            "SELECT id, fecha_nacimiento, estado_general, activo, fecha_salida,
+                    TIMESTAMPDIFF(DAY, fecha_nacimiento, COALESCE(fecha_salida, CURDATE())) AS dias_vida,
+                    TIMESTAMPDIFF(MONTH, fecha_nacimiento, CURDATE()) AS meses_actuales
+             FROM animales
+             WHERE madre_id = :aid AND usuario_id = :uid",
+            [':aid' => $vacaId, ':uid' => $usuarioId]
+        );
+
+        $fechasImplicitos = [];
+        foreach ($criasData as $c) {
+            if (!empty($c['fecha_nacimiento'])) {
+                $fechasImplicitos[] = $c['fecha_nacimiento'];
+            }
+        }
+
+        $todasLasFechas = array_unique(array_merge($fechasFormales, $fechasImplicitos));
+        sort($todasLasFechas);
+        $cantidadPartos = count($todasLasFechas);
+
+        // ── Si 0 partos → delegar a IVM-P ──
+        if ($cantidadPartos === 0) {
+            return self::calcularIVMP($vacaId, $usuarioId);
+        }
+
+        // ═══════════════════════════════════════════
+        // CRITERIO 1: Edad al primer parto (15 pts)
+        // ═══════════════════════════════════════════
+        $nacimiento = new \DateTime($fechaNacimiento);
+        $primerParto = new \DateTime($todasLasFechas[0]);
+        $edadPrimerPartoMeses = $nacimiento->diff($primerParto)->m
+            + ($nacimiento->diff($primerParto)->y * 12);
+
+        if ($edadPrimerPartoMeses >= 24 && $edadPrimerPartoMeses <= 34) {
+            $puntajeEdadPrimerParto = 15.0;
+        } elseif ($edadPrimerPartoMeses <= 40) {
+            $puntajeEdadPrimerParto = 12.0;
+        } elseif ($edadPrimerPartoMeses <= 44) {
+            $puntajeEdadPrimerParto = 8.0;
+        } elseif ($edadPrimerPartoMeses <= 48) {
+            $puntajeEdadPrimerParto = 5.0;
+        } elseif ($edadPrimerPartoMeses > 48) {
+            $puntajeEdadPrimerParto = 2.0;
+        } else {
+            $puntajeEdadPrimerParto = 12.0; // < 24m, revisar dato
+        }
+
+        // ═══════════════════════════════════════════
+        // CRITERIO 2: Intervalo entre partos (25 pts)
+        // ═══════════════════════════════════════════
+        $puntajesIntervalos = [];
+        $intervalosMayores700 = 0;
+        $intervalosMayores600 = 0;
+        $promedioIEP = null;
+        $totalDiasIEP = 0;
+        $cantidadIntervalosValidos = 0;
+        $diasUltimoParto = null;
+
+        if (!empty($todasLasFechas)) {
+            $ultimo = end($todasLasFechas);
+            $diasUltimoParto = (new \DateTime($ultimo))->diff(new \DateTime())->days;
+        }
+
+        if ($cantidadPartos >= 2) {
+            for ($i = 1; $i < $cantidadPartos; $i++) {
+                $dias = (new \DateTime($todasLasFechas[$i]))
+                    ->diff(new \DateTime($todasLasFechas[$i - 1]))->days;
+                if ($dias < 280) continue;
+
+                $totalDiasIEP += $dias;
+                $cantidadIntervalosValidos++;
+
+                if ($dias <= 365)       $pBase = 25.0;
+                elseif ($dias <= 420)   $pBase = 22.5;
+                elseif ($dias <= 450)   $pBase = 20.0;
+                elseif ($dias <= 480)   $pBase = 17.5;
+                elseif ($dias <= 540)   $pBase = 12.5;
+                elseif ($dias <= 600)   $pBase = 10.0;
+                elseif ($dias <= 700)   $pBase = 5.0;
+                else                    $pBase = 0.0;
+
+                $puntajesIntervalos[] = $pBase;
+                if ($dias > 700) $intervalosMayores700++;
+                if ($dias > 600) $intervalosMayores600++;
+            }
+        }
+
+        if ($cantidadIntervalosValidos > 0) {
+            $promedioIEP = round($totalDiasIEP / $cantidadIntervalosValidos, 0);
+            $promedioPuntajesInt = array_sum($puntajesIntervalos) / count($puntajesIntervalos);
+            $puntajeIntervalo = min(25.0, $promedioPuntajesInt);
+        } elseif ($cantidadPartos == 1) {
+            // Un solo parto: sin historial de intervalos, no se puede medir
+            $puntajeIntervalo = 0.0;
+        } else {
+            // Sin intervalos válidos
+            $puntajeIntervalo = 0.0;
+        }
+
+        // ═══════════════════════════════════════════
+        // CRITERIO 3: Resultado de crías (30 pts)
+        // ═══════════════════════════════════════════
+        $puntajesCrias = [];
+        $criasVendidas = 0;
+        $criasVivasDesarrollo = 0;
+        $criasVivasJoven = 0;
+        $criasMuertasAntes7 = 0;
+        $criasMuertasAntes30 = 0;
+        $detalleCrias = [];
+
+        foreach ($criasData as $cria) {
+            $estadoG = $cria['estado_general'];
+            $diasVida = (int)$cria['dias_vida'];
+            $mesesAct = (int)$cria['meses_actuales'];
+            $activo = (int)$cria['activo'];
+
+            if ($estadoG === 'Vendido') {
+                $pCria = 30;
+                $criasVendidas++;
+                $estadoCria = 'Vendido';
+            } elseif ($activo == 1) {
+                if ($mesesAct >= 18) {
+                    $pCria = 25.5;
+                    $estadoCria = 'Viva (desarrollo)';
+                    $criasVivasDesarrollo++;
+                } else {
+                    $pCria = 21;
+                    $estadoCria = 'Viva (joven)';
+                    $criasVivasJoven++;
+                }
+            } elseif ($estadoG === 'Muerto') {
+                if ($diasVida <= 7) {
+                    $pCria = -10;
+                    $estadoCria = 'Muerta 0-7d';
+                    $criasMuertasAntes7++;
+                    $criasMuertasAntes30++;
+                } else {
+                    $pCria = 0;
+                    $estadoCria = $diasVida <= 30 ? 'Muerta 8-30d' : 'Muerta 31+d';
+                    if ($diasVida <= 30) $criasMuertasAntes30++;
+                }
+            } else {
+                $pCria = 21;
+                $estadoCria = 'Indeterminado';
+                $criasVivasJoven++;
+            }
+
+            $puntajesCrias[] = $pCria;
+            $detalleCrias[] = [
+                'id'       => (int)$cria['id'],
+                'dias_vida'=> $diasVida,
+                'estado'   => $estadoCria,
+                'puntaje'  => $pCria,
+            ];
+        }
+
+        // Penalización 2+ muertas 0-7d → -20 cada una
+        if ($criasMuertasAntes7 >= 2) {
+            foreach ($puntajesCrias as $i => $score) {
+                if ($score === -10) {
+                    $puntajesCrias[$i] = -20;
+                }
+            }
+            foreach ($detalleCrias as &$dc) {
+                if ($dc['estado'] === 'Muerta 0-7d') {
+                    $dc['puntaje'] = -20;
+                }
+            }
+            unset($dc);
+        }
+
+        // ── Puntaje de crías: suma con tope 30 ──
+        $totalCrias = count($puntajesCrias);
+        $puntajeCrias = min(30.0, max(0.0, array_sum($puntajesCrias)));
+
+        // ═══════════════════════════════════════════
+        // CRITERIO 4: Consistencia (8 pts)
+        // ═══════════════════════════════════════════
+        $esPrenada = in_array($estadoReproductivo, ['Prenada', 'Lactando']);
+        $baseConsistencia = match(true) {
+            $cantidadPartos >= 4 => 8,
+            $cantidadPartos == 3 => 7,
+            $cantidadPartos == 2 => 5,
+            $cantidadPartos == 1 && $esPrenada => 4,
+            $cantidadPartos == 1 => 2,
+            default => 0,
+        };
+
+        $penalizaciones = 0;
+        // Std dev de intervalos > 200
+        if (count($puntajesIntervalos) >= 2) {
+            $diasIntervalos = [];
+            for ($i = 1; $i < $cantidadPartos; $i++) {
+                $d = (new \DateTime($todasLasFechas[$i]))
+                    ->diff(new \DateTime($todasLasFechas[$i - 1]))->days;
+                if ($d >= 280) $diasIntervalos[] = $d;
+            }
+            if (count($diasIntervalos) >= 2) {
+                $avg = array_sum($diasIntervalos) / count($diasIntervalos);
+                $sumSq = 0;
+                foreach ($diasIntervalos as $di) {
+                    $sumSq += pow($di - $avg, 2);
+                }
+                $stdDev = sqrt($sumSq / count($diasIntervalos));
+                if ($stdDev > 200) $penalizaciones += 2;
+            }
+        }
+
+        if ($intervalosMayores600 >= 1) $penalizaciones += 2;
+        if (empty($fechaNacimiento)) $penalizaciones += 1;
+
+        $puntajeConsistencia = max(0, $baseConsistencia - $penalizaciones);
+
+        // Penalización por inactividad: días sin parir
+        $penalizacionInactividad = 0.0;
+        if ($diasUltimoParto !== null) {
+            if ($diasUltimoParto > 1095) {
+                $penalizacionInactividad = 40.0;
+            } elseif ($diasUltimoParto > 900) {
+                $penalizacionInactividad = 10.0;
+            } elseif ($diasUltimoParto > 720) {
+                $penalizacionInactividad = 5.0;
+            } elseif ($diasUltimoParto > 500) {
+                $penalizacionInactividad = 3.0;
+            } elseif ($diasUltimoParto > 365) {
+                $penalizacionInactividad = 1.0;
+            }
+        }
+
+        // ═══════════════════════════════════════════
+        // CRITERIO 5: Bono precocidad sostenida (máx +5)
+        // ═══════════════════════════════════════════
+        $bonoPrecocidad = 0.0;
+
+        // Bono por primer parto joven (incluso 1 solo parto)
+        if ($edadPrimerPartoMeses !== null && $edadPrimerPartoMeses <= 34) {
+            $bonoPrecocidad = $edadPrimerPartoMeses <= 30 ? 3.0 : 2.0;
+        }
+
+        // Bono extra si mantuvo ritmo (2+ partos con buenos intervalos)
+        if ($cantidadIntervalosValidos > 0) {
+            $intervalosBuenos = 0;
+            $diasIntervalosBono = [];
+            for ($i = 1; $i < $cantidadPartos; $i++) {
+                $d = (new \DateTime($todasLasFechas[$i]))
+                    ->diff(new \DateTime($todasLasFechas[$i - 1]))->days;
+                if ($d >= 280) $diasIntervalosBono[] = $d;
+            }
+            foreach ($diasIntervalosBono as $d) {
+                if ($d <= 420) $intervalosBuenos++;
+            }
+            $totalIntBono = count($diasIntervalosBono);
+            $pctBuenos = $totalIntBono > 0 ? $intervalosBuenos / $totalIntBono : 0;
+
+            if ($edadPrimerPartoMeses >= 24 && $edadPrimerPartoMeses <= 34 && $pctBuenos >= 0.80) {
+                $bonoPrecocidad = max($bonoPrecocidad, 5.0);
+            } elseif ($edadPrimerPartoMeses >= 24 && $edadPrimerPartoMeses <= 34 && $intervalosBuenos >= 1) {
+                $bonoPrecocidad = max($bonoPrecocidad, 3.0);
+            }
+
+            // Bono por recuperación: empezó tarde (>34m) pero mantuvo ritmo
+            if ($edadPrimerPartoMeses > 34 && $pctBuenos >= 0.80 && $cantidadIntervalosValidos >= 2) {
+                $bonoPrecocidad = max($bonoPrecocidad, 3.0);
+            }
+        }
+
+        // Bono por vaca vieja que mejoró ritmo (últimos 3 años con intervalos ≤420d)
+        if ($edadMeses > 84 && $cantidadIntervalosValidos >= 2) {
+            $recientesBuenos = 0;
+            $recientesTotal = 0;
+            for ($i = max(1, $cantidadPartos - 3); $i < $cantidadPartos; $i++) {
+                $d = (new \DateTime($todasLasFechas[$i]))
+                    ->diff(new \DateTime($todasLasFechas[$i - 1]))->days;
+                if ($d >= 280) {
+                    $recientesTotal++;
+                    if ($d <= 420) $recientesBuenos++;
+                }
+            }
+            if ($recientesTotal >= 2 && $recientesBuenos == $recientesTotal) {
+                $bonoPrecocidad = max($bonoPrecocidad, 3.0);
+            }
+        }
+
+        // ═══════════════════════════════════════════
+        // IVM Bruto
+        // ═══════════════════════════════════════════
+        $ivmBruto = $puntajeEdadPrimerParto
+                  + $puntajeIntervalo
+                  + $puntajeCrias
+                  + $puntajeConsistencia
+                  + $bonoPrecocidad
+                  - $penalizacionInactividad;
+
+        $ivmBrutoCorregido = max(0, min(100, $ivmBruto));
+
+        // ═══════════════════════════════════════════
+        // Factor de confianza
+        // ═══════════════════════════════════════════
+        $factorConfianza = match(true) {
+            $cantidadPartos >= 4 => 1.00,
+            $cantidadPartos == 3 => 0.90,
+            $cantidadPartos == 2 => 0.75,
+            default => 0.55,
+        };
+
+        // ═══════════════════════════════════════════
+        // IVM Final
+        // ═══════════════════════════════════════════
+        $ivmFinal = 50 + $factorConfianza * ($ivmBrutoCorregido - 50);
+        $ivmFinal = max(0, min(100, $ivmFinal));
+
+        // ═══════════════════════════════════════════
+        // Categoría y subcategoría
+        // ═══════════════════════════════════════════
+        $alerta = null;
+
+        // Reglas de descarte
+        $categoriaForzada = null;
+        if ($criasMuertasAntes30 >= 2) {
+            $alerta = 'Linea de descarte';
+        } elseif ($intervalosMayores700 >= 2) {
+            $alerta = 'Linea de descarte';
+        }
+
+        if ($ivmFinal >= 78) {
+            $cat = 'Elite';
+        } elseif ($ivmFinal >= 68) {
+            $cat = 'Muy buena';
+        } elseif ($ivmFinal >= 58) {
+            $cat = 'Buena';
+        } elseif ($ivmFinal >= 50) {
+            $cat = 'Regular';
+        } elseif ($ivmFinal >= 40) {
+            $cat = 'Aceptable';
+        } else {
+            $cat = 'Mala';
+        }
+
+        $categoria = $cat;
+
+        return [
+            'ivm_tipo'                     => 'IVM',
+            'ivm_p'                        => null,
+            'cantidad_partos'              => $cantidadPartos,
+            'edad_primer_parto_meses'      => $edadPrimerPartoMeses,
+            'promedio_iep_dias'            => $promedioIEP,
+            'intervalos_mayores_700'       => $intervalosMayores700,
+            'intervalos_mayores_600'       => $intervalosMayores600,
+            'cantidad_crias'               => $totalCrias,
+            'crias_vendidas'               => $criasVendidas,
+            'crias_vivas'                  => $criasVivasDesarrollo + $criasVivasJoven,
+            'crias_muertas_antes_7'        => $criasMuertasAntes7,
+            'crias_muertas_antes_30'       => $criasMuertasAntes30,
+            'puntaje_edad_primer_parto'    => round($puntajeEdadPrimerParto, 2),
+            'puntaje_intervalo'            => round($puntajeIntervalo, 2),
+            'puntaje_crias'                => round($puntajeCrias, 2),
+            'puntaje_consistencia'         => round($puntajeConsistencia, 2),
+            'bono_precocidad'              => round($bonoPrecocidad, 2),
+            'ivm_bruto'                    => round($ivmBruto, 2),
+            'factor_confianza'             => $factorConfianza,
+            'ivm_final'                    => round($ivmFinal, 2),
+            'categoria'                    => $categoria,
+            'alerta'                       => $alerta,
+            'detalle_crias'                => $detalleCrias,
         ];
     }
 
@@ -378,10 +908,10 @@ class ScorecardHelper
         $rebanoFiltro = $rebanoId !== null ? 'AND a.rebano_id = ' . (int)$rebanoId : '';
 
         $toros = Database::query(
-            "SELECT a.id, a.nombre
+            "SELECT a.id, a.nombre, a.foto
              FROM animales a
              WHERE a.usuario_id = :uid AND a.activo = 1 AND a.sexo = 'Macho'
-               AND a.estado_reproductivo = 'Padrote'
+                AND a.estado_reproductivo = 'Padrote'
                $rebanoFiltro
              ORDER BY a.nombre",
             [':uid' => $usuarioId]
@@ -390,7 +920,7 @@ class ScorecardHelper
         $ranking = [];
         foreach ($toros as $t) {
             $sc = self::scorecardToro((int)$t['id'], $usuarioId);
-            $ranking[] = array_merge(['id' => (int)$t['id'], 'nombre' => $t['nombre']], $sc);
+            $ranking[] = array_merge(['id' => (int)$t['id'], 'nombre' => $t['nombre'], 'foto' => $t['foto']], $sc);
         }
 
         // Ordenar por tasa_vigente descendente
@@ -400,45 +930,88 @@ class ScorecardHelper
     }
 
     /**
-     * Ranking de vacas para un usuario/rebaño.
+     * Ranking de vacas — 2 grupos.
+     *
+     * Grupo A: Vacas con partos (1+ partos)
+     * Grupo B: Hembras preparto (0 partos, >= 18 meses)
      */
     public static function rankingVacas(int $usuarioId, ?int $rebanoId = null): array
     {
         $rebanoFiltro = $rebanoId !== null ? 'AND a.rebano_id = ' . (int)$rebanoId : '';
 
         $vacas = Database::query(
-            "SELECT a.id, a.nombre
+            "SELECT a.id, a.nombre, a.foto
              FROM animales a
              WHERE a.usuario_id = :uid AND a.activo = 1 AND a.sexo = 'Hembra'
-               AND TIMESTAMPDIFF(MONTH, a.fecha_nacimiento, CURDATE()) >= 30
+               AND TIMESTAMPDIFF(MONTH, a.fecha_nacimiento, CURDATE()) >= 18
                $rebanoFiltro
              ORDER BY a.nombre",
             [':uid' => $usuarioId]
         );
 
-        $hato = self::benchmarksHato($usuarioId);
+        $grupoA = []; // 1+ partos
+        $grupoB = []; // 0 partos (preparto)
 
-        $ranking = [];
         foreach ($vacas as $v) {
-            $sc = self::scorecardVaca((int)$v['id'], $usuarioId);
-
-            // Score compuesto simple: partos_total * 10 + crias_total * 5 - (dias_ultimo_parto / 30 si >365)
-            $score = ($sc['partos_total'] * 10) + ($sc['crias_total'] * 5);
-            if ($sc['dias_ultimo_parto'] && $sc['dias_ultimo_parto'] > 365) {
-                $score -= floor(($sc['dias_ultimo_parto'] - 365) / 30) * 2;
-            }
-            if ($sc['iep_promedio_dias'] && $sc['iep_promedio_dias'] > 400) {
-                $score -= 5;
+            try {
+                $ivm = self::calcularIVM((int)$v['id'], $usuarioId);
+            } catch (\Throwable $e) {
+                $ivm = self::ivmVacio();
             }
 
-            $ranking[] = array_merge(
-                ['id' => (int)$v['id'], 'nombre' => $v['nombre'], 'score' => max(0, $score)],
-                $sc
+            $entry = array_merge(
+                ['id' => (int)$v['id'], 'nombre' => $v['nombre'], 'foto' => $v['foto']],
+                $ivm
             );
+
+            $partos = (int)($ivm['cantidad_partos'] ?? 0);
+            if ($partos >= 1) {
+                $grupoA[] = $entry;
+            } else {
+                $grupoB[] = $entry;
+            }
         }
 
-        usort($ranking, fn($a, $b) => $b['score'] <=> $a['score']);
+        // Ordenar A por IVM final descendente (forzar float)
+        usort($grupoA, function ($a, $b) {
+            $aScore = (float)($a['ivm_final'] ?? 0);
+            $bScore = (float)($b['ivm_final'] ?? 0);
+            return $bScore <=> $aScore;
+        });
 
-        return $ranking;
+        // Numerar posiciones
+        $pos = 1;
+        foreach ($grupoA as &$item) {
+            $item['posicion'] = $pos++;
+        }
+        unset($item);
+
+        // Ordenar B: preñadas → servicio → vacías
+        usort($grupoB, function ($a, $b) {
+            $order = ['prenada' => 0, 'servicio' => 1, 'vacia' => 2];
+            $catA = $a['categoria'] ?? '';
+            $catB = $b['categoria'] ?? '';
+
+            $tipoA = stripos($catA, 'prenada') !== false ? 'prenada'
+                : (stripos($catA, 'servicio') !== false || stripos($catA, 'observacion') !== false ? 'servicio' : 'vacia');
+            $tipoB = stripos($catB, 'prenada') !== false ? 'prenada'
+                : (stripos($catB, 'servicio') !== false || stripos($catB, 'observacion') !== false ? 'servicio' : 'vacia');
+
+            $oa = $order[$tipoA] ?? 3;
+            $ob = $order[$tipoB] ?? 3;
+            return $oa <=> $ob;
+        });
+
+        // Numerar posiciones grupo B
+        $posB = 1;
+        foreach ($grupoB as &$item) {
+            $item['posicion'] = $posB++;
+        }
+        unset($item);
+
+        return [
+            'grupo_a' => $grupoA,
+            'grupo_b' => $grupoB,
+        ];
     }
 }
