@@ -144,13 +144,14 @@ const PDFExport = {
   },
 
   /**
-   * Asegura que el doc esté creado. Llamar antes de cualquier addSection.
+   * Asegura que las dependencias y el doc estén listos.
+   * Idempotente: solo carga lo que falte.
    */
-  _ensureDoc() {
-    if (this._doc) return;
-    if (!window.jspdf || !window.jspdf.jsPDF) {
-      throw new Error('[PDFExport] jsPDF no está cargado. Llama a save() o _ensureDeps() primero.');
+  async _ensureDoc() {
+    if (!this._depsLoaded) {
+      await this._ensureDeps();
     }
+    if (this._doc) return;
     const { jsPDF } = window.jspdf;
     this._doc = new jsPDF({
       orientation: this._config.orientation,
@@ -165,11 +166,12 @@ const PDFExport = {
 
   /**
    * Agrega una sección al PDF.
+   * Carga dependencias automáticamente si es necesario.
    * @param {{type: string, data: Object}} section
-   * @returns {this}
+   * @returns {Promise<this>}
    */
-  addSection(section) {
-    this._ensureDoc();
+  async addSection(section) {
+    await this._ensureDoc();
     if (!section || !section.type) {
       console.warn('[PDFExport] addSection sin type, ignorando');
       return this;

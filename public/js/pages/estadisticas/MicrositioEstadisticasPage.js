@@ -226,8 +226,8 @@ const MicrositioEstadisticasPage = {
 
       const tab = this.tabs.find(t => t.id === this.tabActual);
       const sectionTitle = tab ? tab.label : 'Reporte';
-      pdf.addSection({ type: 'title', data: { text: sectionTitle } });
-      pdf.addSection({ type: 'spacer', data: { height: 5 } });
+      await pdf.addSection({ type: 'title', data: { text: sectionTitle } });
+      await pdf.addSection({ type: 'spacer', data: { height: 5 } });
 
       const scorecardOpen = !!document.getElementById('scorecard-overlay');
       if (scorecardOpen) {
@@ -282,8 +282,8 @@ const MicrositioEstadisticasPage = {
   async _exportDashboard(pdf) {
     const kpiRows = this._extractKpiCards('#micrositio-content .kpi-card');
     if (kpiRows.length) {
-      pdf.addSection({ type: 'text', data: { text: 'Indicadores Clave' } });
-      pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
+      await pdf.addSection({ type: 'text', data: { text: 'Indicadores Clave' } });
+      await pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
     }
     await this._captureAllCharts(pdf, '#micrositio-content');
   },
@@ -303,8 +303,8 @@ const MicrositioEstadisticasPage = {
         return [label, value];
       }).filter(([l, v]) => l && v);
       if (items.length) {
-        pdf.addSection({ type: 'text', data: { text: 'Resumen' } });
-        pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: items } });
+        await pdf.addSection({ type: 'text', data: { text: 'Resumen' } });
+        await pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: items } });
       }
     }
     // Podium as image
@@ -312,8 +312,8 @@ const MicrositioEstadisticasPage = {
     if (podium) {
       const img = await pdf.captureChart('.rankings-podium');
       if (img) {
-        pdf.addSection({ type: 'spacer', data: { height: 4 } });
-        pdf.addSection({ type: 'chart', data: { image: img } });
+        await pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        await pdf.addSection({ type: 'chart', data: { image: img } });
       }
     }
     // Ranking cards as image
@@ -321,8 +321,8 @@ const MicrositioEstadisticasPage = {
     if (cards) {
       const img = await pdf.captureChart('.ranking-cards');
       if (img) {
-        pdf.addSection({ type: 'spacer', data: { height: 4 } });
-        pdf.addSection({ type: 'chart', data: { image: img } });
+        await pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        await pdf.addSection({ type: 'chart', data: { image: img } });
       }
     }
   },
@@ -339,8 +339,8 @@ const MicrositioEstadisticasPage = {
   async _exportDescarte(pdf) {
     const kpiRows = this._extractKpiCards('#micrositio-content .kpi-card');
     if (kpiRows.length) {
-      pdf.addSection({ type: 'text', data: { text: 'Resumen' } });
-      pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
+      await pdf.addSection({ type: 'text', data: { text: 'Resumen' } });
+      await pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
     }
     await this._addAllTables(pdf, '#micrositio-content');
   },
@@ -353,26 +353,26 @@ const MicrositioEstadisticasPage = {
     const animalName = nameEl?.firstChild?.textContent?.trim()
       || nameEl?.textContent?.trim()
       || 'Animal';
-    pdf.addSection({ type: 'text', data: { text: `Animal: ${animalName}` } });
-    pdf.addSection({ type: 'spacer', data: { height: 3 } });
+    await pdf.addSection({ type: 'text', data: { text: `Animal: ${animalName}` } });
+    await pdf.addSection({ type: 'spacer', data: { height: 3 } });
 
     const kpiRows = this._extractKpiCards('#scorecard-overlay .kpi-mini');
     if (kpiRows.length) {
-      pdf.addSection({ type: 'text', data: { text: 'Metricas' } });
-      pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
+      await pdf.addSection({ type: 'text', data: { text: 'Metricas' } });
+      await pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
     }
 
-    modal.querySelectorAll('table').forEach(table => {
+    for (const table of modal.querySelectorAll('table')) {
       const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-      if (!headers.length) return;
+      if (!headers.length) continue;
       const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr =>
         Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
       ).filter(r => r.length);
       if (rows.length) {
-        pdf.addSection({ type: 'spacer', data: { height: 4 } });
-        pdf.addSection({ type: 'table', data: { headers, rows } });
+        await pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        await pdf.addSection({ type: 'table', data: { headers, rows } });
       }
-    });
+    }
   },
 
   // ============================================================================
@@ -398,8 +398,8 @@ const MicrositioEstadisticasPage = {
         Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
       ).filter(r => r.length);
       if (rows.length) {
-        pdf.addSection({ type: 'spacer', data: { height: 4 } });
-        pdf.addSection({ type: 'table', data: { headers, rows } });
+        await pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        await pdf.addSection({ type: 'table', data: { headers, rows } });
       }
     }
   },
@@ -409,8 +409,8 @@ const MicrositioEstadisticasPage = {
     for (const el of charts) {
       const img = await pdf.captureChart(`#${el.id}`);
       if (img) {
-        pdf.addSection({ type: 'spacer', data: { height: 4 } });
-        pdf.addSection({ type: 'chart', data: { image: img } });
+        await pdf.addSection({ type: 'spacer', data: { height: 4 } });
+        await pdf.addSection({ type: 'chart', data: { image: img } });
       }
     }
   },
