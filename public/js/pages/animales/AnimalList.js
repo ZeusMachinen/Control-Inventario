@@ -10,12 +10,18 @@ const AnimalListPage = {
   filtroRebanoUrl: null,
   filtroEstadoUrl: null,
   filtroSearchUrl: null,
+  filtroSexoUrl: null,
+  filtroEdadMinUrl: null,
+  filtroEdadMaxUrl: null,
 
   async render() {
     try {
       this.filtroRebanoUrl = null;
       this.filtroEstadoUrl = null;
       this.filtroSearchUrl = null;
+      this.filtroSexoUrl = null;
+      this.filtroEdadMinUrl = null;
+      this.filtroEdadMaxUrl = null;
       const hash = window.location.hash;
       const qIdx = hash.indexOf('?');
       if (qIdx !== -1) {
@@ -25,6 +31,9 @@ const AnimalListPage = {
           if (k === 'rebano_id') this.filtroRebanoUrl = decodeURIComponent(v || '');
           if (k === 'estado') this.filtroEstadoUrl = decodeURIComponent(v || '');
           if (k === 'search') this.filtroSearchUrl = decodeURIComponent(v || '');
+          if (k === 'sexo') this.filtroSexoUrl = decodeURIComponent(v || '');
+          if (k === 'edad_min') this.filtroEdadMinUrl = decodeURIComponent(v || '');
+          if (k === 'edad_max') this.filtroEdadMaxUrl = decodeURIComponent(v || '');
         });
       }
 
@@ -172,6 +181,10 @@ const AnimalListPage = {
       const inp = document.getElementById('filtro-nombre');
       if (inp) inp.value = this.filtroSearchUrl;
     }
+    if (this.filtroSexoUrl) {
+      const sel = document.getElementById('filtro-sexo');
+      if (sel) sel.value = this.filtroSexoUrl;
+    }
 
     // Restaurar preferencia de vista
     try {
@@ -194,6 +207,25 @@ const AnimalListPage = {
     }
 
     this.aplicarFiltro();
+
+    // Aplicar filtros de URL sin control DOM (edad, estados fuera del dropdown)
+    let recargar = false;
+    if (this.filtroEdadMinUrl) {
+      this.filtros.edad_min = this.filtroEdadMinUrl;
+      recargar = true;
+    }
+    if (this.filtroEdadMaxUrl) {
+      this.filtros.edad_max = this.filtroEdadMaxUrl;
+      recargar = true;
+    }
+    // Estados no presentes en el dropdown (ej. Padrote, Ceba)
+    if (this.filtroEstadoUrl && !['Vacia','Prenada','Lactando',''].includes(this.filtroEstadoUrl)) {
+      this.filtros.estado = this.filtroEstadoUrl;
+      recargar = true;
+    }
+    if (recargar) {
+      this.cargarAnimales();
+    }
   },
 
   toggleTodos(checkbox) {

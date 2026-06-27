@@ -1,17 +1,21 @@
 const ServicioFormPage = {
   editandoId: null,
   celosSinServicio: [],
+  _animalesCache: [],
+  _reproductoresCache: [],
 
   async render(params) {
     this.editandoId = params?.id ? parseInt(params.id) : null;
     try {
       const [animalsRes, reproductoresRes] = await Promise.all([
-        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 15 }),
-        API.get('/animales', { por_pagina: 1000, sexo: 'Macho', edad_min: 15 }),
+        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 18 }),
+        API.get('/animales', { por_pagina: 1000, sexo: 'Macho', edad_min: 18 }),
       ]);
 
       const animals = animalsRes.data.data || [];
       const reproductores = reproductoresRes.data.data || [];
+      this._animalesCache = animals;
+      this._reproductoresCache = reproductores;
 
       try {
         const { data: celos } = await API.get('/reproduccion/celos');
@@ -22,11 +26,28 @@ const ServicioFormPage = {
       if (this.editandoId) {
         const { data: res } = await API.get(`/reproduccion/servicios/${this.editandoId}`);
         editData = res.data || {};
+        // Si el animal/reproductor no está en las listas, cargarlos
+        if (editData.animal_id && !animals.find(a => a.id == editData.animal_id)) {
+          try { const { data: m } = await API.get(`/animales/${editData.animal_id}`); if (m.data) animals.unshift(m.data); } catch (_) {}
+        }
+        if (editData.reproductor_id && !reproductores.find(r => r.id == editData.reproductor_id)) {
+          try { const { data: p } = await API.get(`/animales/${editData.reproductor_id}`); if (p.data) reproductores.unshift(p.data); } catch (_) {}
+        }
       }
 
       const titulo = this.editandoId ? 'Editar Servicio' : 'Registrar Servicio';
       const btnTexto = this.editandoId ? 'Guardar Cambios' : 'Registrar Servicio';
       const fecha = editData?.fecha ? DateUtil.formatoInput(editData.fecha) : new Date().toISOString().substring(0, 10);
+
+      const animalSel = editData?.animal_id ? animals.find(a => a.id == editData.animal_id) : null;
+      const animalDisplay = animalSel
+        ? `${animalSel.nombre} (${DateUtil.edadTexto(animalSel.fecha_nacimiento)})`
+        : 'Seleccione una hembra...';
+
+      const repSel = editData?.reproductor_id ? reproductores.find(r => r.id == editData.reproductor_id) : null;
+      const repDisplay = repSel
+        ? `${repSel.nombre} (${DateUtil.edadTexto(repSel.fecha_nacimiento)})`
+        : 'Seleccione un reproductor...';
 
       return MainLayout.render(`
         <div class="page-header">
@@ -40,12 +61,34 @@ const ServicioFormPage = {
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">Animal (Hembra) *</label>
-                  <select class="form-select" id="servicio-animal" required onchange="ServicioFormPage.filtrarCelos()">
-                    <option value="">Seleccione...</option>
-                    ${animals.map(a => `
-                      <option value="${a.id}" ${editData?.animal_id == a.id ? 'selected' : ''}>${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
-                    `).join('')}
-                  </select>
+                  <div class="parent-picker" id="animal-picker">
+                    <button class="parent-picker-btn form-select text-start text-truncate" type="button"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                            id="animal-picker-btn">
+                      <span id="animal-display-text">${animalDisplay}</span>
+                    </button>
+                    <div class="dropdown-menu shadow-sm parent-picker-menu" id="animal-picker-menu">
+                      <div class="px-2 pt-2 pb-1">
+                        <input type="text" class="form-control form-control-sm parent-picker-search"
+                               placeholder="Buscar hembra..." data-target="animal"
+                               oninput="ServicioFormPage.filtrarDropdown(this, 'animal')"
+                               onclick="event.stopPropagation()">
+                      </div>
+                      <div class="dropdown-divider my-1"></div>
+                      <div class="parent-picker-list" id="animal-options-list">
+                        ${animals.map(a => `
+                          <button type="button" class="dropdown-item parent-option"
+                                  data-id="${a.id}"
+                                  data-search="${(a.nombre || '').toLowerCase()} ${(a.rebano_nombre || '').toLowerCase()}"
+                                  onclick="ServicioFormPage.seleccionarAnimal(event, 'animal', '${a.id}')">
+                            <span class="fw-medium">${(a.nombre || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                            <small class="text-secondary ms-2">${DateUtil.edadTexto(a.fecha_nacimiento)}${a.rebano_nombre ? ' · ' + a.rebano_nombre : ''}${a.estado_reproductivo ? ' · ' + a.estado_reproductivo : ''}</small>
+                          </button>
+                        `).join('')}
+                      </div>
+                    </div>
+                    <input type="hidden" id="servicio-animal" value="${editData?.animal_id || ''}">
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Tipo de Servicio *</label>
@@ -60,12 +103,39 @@ const ServicioFormPage = {
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">Reproductor (Macho)</label>
-                  <select class="form-select" id="servicio-reproductor">
-                    <option value="">Seleccione...</option>
-                    ${reproductores.map(r => `
-                      <option value="${r.id}" ${editData?.reproductor_id == r.id ? 'selected' : ''}>${r.nombre}</option>
-                    `).join('')}
-                  </select>
+                  <div class="parent-picker" id="reproductor-picker">
+                    <button class="parent-picker-btn form-select text-start text-truncate" type="button"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                            id="reproductor-picker-btn">
+                      <span id="reproductor-display-text">${repDisplay}</span>
+                    </button>
+                    <div class="dropdown-menu shadow-sm parent-picker-menu" id="reproductor-picker-menu">
+                      <div class="px-2 pt-2 pb-1">
+                        <input type="text" class="form-control form-control-sm parent-picker-search"
+                               placeholder="Buscar reproductor..." data-target="reproductor"
+                               oninput="ServicioFormPage.filtrarDropdown(this, 'reproductor')"
+                               onclick="event.stopPropagation()">
+                      </div>
+                      <div class="dropdown-divider my-1"></div>
+                      <div class="parent-picker-list" id="reproductor-options-list">
+                        <button type="button" class="dropdown-item parent-option"
+                                data-id=""
+                                onclick="ServicioFormPage.seleccionarAnimal(event, 'reproductor', '')">
+                          <span class="text-secondary fst-italic">Sin reproductor</span>
+                        </button>
+                        ${reproductores.map(r => `
+                          <button type="button" class="dropdown-item parent-option"
+                                  data-id="${r.id}"
+                                  data-search="${(r.nombre || '').toLowerCase()} ${(r.rebano_nombre || '').toLowerCase()}"
+                                  onclick="ServicioFormPage.seleccionarAnimal(event, 'reproductor', '${r.id}')">
+                            <span class="fw-medium">${(r.nombre || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                            <small class="text-secondary ms-2">${DateUtil.edadTexto(r.fecha_nacimiento)}${r.rebano_nombre ? ' · ' + r.rebano_nombre : ''}</small>
+                          </button>
+                        `).join('')}
+                      </div>
+                    </div>
+                    <input type="hidden" id="servicio-reproductor" value="${editData?.reproductor_id || ''}">
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Nombre del Reproductor</label>
@@ -104,9 +174,60 @@ const ServicioFormPage = {
   },
 
   afterRender() {
+    this._setupDropdownClose();
     if (this.editandoId) {
       this.filtrarCelos();
     }
+  },
+
+  /** Filtra opciones de un dropdown por texto */
+  filtrarDropdown(input, target) {
+    const search = input.value.toLowerCase();
+    const list = document.getElementById(target + '-options-list');
+    if (!list) return;
+    const options = list.querySelectorAll('.parent-option');
+    options.forEach(opt => {
+      const text = (opt.dataset.search || '') + ' ' + (opt.textContent || '').toLowerCase();
+      opt.style.display = !search || text.includes(search) ? '' : 'none';
+    });
+  },
+
+  /** Selecciona un animal/reproductor del dropdown */
+  seleccionarAnimal(event, type, id) {
+    const hiddenId = type === 'animal' ? 'servicio-animal' : 'servicio-reproductor';
+    document.getElementById(hiddenId).value = id;
+
+    let displayText;
+    if (!id && type === 'reproductor') {
+      displayText = 'Sin reproductor';
+    } else {
+      const btn = event.target.closest('.dropdown-item');
+      const nameEl = btn ? btn.querySelector('.fw-medium') : null;
+      const smallEl = btn ? btn.querySelector('small') : null;
+      const name = nameEl ? nameEl.textContent.trim() : '';
+      const info = smallEl ? smallEl.textContent.trim().replace(/ · /g, ', ') : '';
+      displayText = name + (info ? ' (' + info + ')' : '');
+    }
+
+    const displayEl = document.getElementById(type + '-display-text');
+    if (displayEl) displayEl.textContent = displayText;
+
+    // Cerrar dropdown
+    const toggleBtn = document.getElementById(type + '-picker-btn');
+    if (toggleBtn) {
+      try {
+        const bsDropdown = bootstrap.Dropdown.getInstance(toggleBtn);
+        if (bsDropdown) bsDropdown.hide();
+      } catch (_) {
+        toggleBtn.classList.remove('show');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        const menu = document.getElementById(type + '-picker-menu');
+        if (menu) menu.classList.remove('show');
+      }
+    }
+
+    // Si cambió el animal, recargar celos asociados
+    if (type === 'animal') this.filtrarCelos();
   },
 
   filtrarCelos() {
@@ -120,6 +241,20 @@ const ServicioFormPage = {
           select.innerHTML += `<option value="${c.id}">#${c.id} — ${DateUtil.formatear(c.fecha_inicio)}</option>`;
         });
     }
+  },
+
+  _setupDropdownClose() {
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.parent-picker')) {
+        document.querySelectorAll('.parent-picker-menu.show').forEach(menu => {
+          menu.classList.remove('show');
+        });
+        document.querySelectorAll('.parent-picker-btn.show').forEach(btn => {
+          btn.classList.remove('show');
+          btn.setAttribute('aria-expanded', 'false');
+        });
+      }
+    });
   },
 
   async guardar(e) {

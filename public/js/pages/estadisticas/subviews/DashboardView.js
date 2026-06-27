@@ -35,6 +35,10 @@ const DashboardView = {
         }).join('')}</div>
 
         <div class="chart-card mt-3">
+          <h3><i class="fas fa-chart-area me-2"></i>Evolucion del Hato</h3>
+          <div id="chart-evolucion" style="height:300px"></div>
+        </div>
+        <div class="chart-card mt-3">
           <h3><i class="fas fa-chart-line me-2"></i>Natalidad vs Partos</h3>
           <div id="chart-nat-partos" style="height:320px"></div>
         </div>
@@ -91,6 +95,29 @@ const DashboardView = {
           makeTrace(keys2, keys2.map(k => ing[k]||0), 'Ingresos', '#2E7D32'),
           makeTrace(keys2, keys2.map(k => gas[k]||0), 'Gastos', '#C62828')
         ], layout(), { responsive: true, displaylogo: false });
+
+        // Grafico de evolucion del hato
+        const { data: ev } = await API.get(`/analitica/evolucion${qp}`);
+        const evolData = ev.data?.evolucion || {};
+        const evKeys = Object.keys(evolData).sort();
+        if (evKeys.length) {
+          Plotly.newPlot('chart-evolucion', [{
+            x: evKeys, y: evKeys.map(k => evolData[k]),
+            name: 'Total Animales', type: 'scatter', mode: 'lines+markers+text',
+            text: evKeys.map(k => evolData[k] > 0 ? evolData[k] : ''),
+            textposition: 'top center', textfont: { size: 10, color: '#2E7D32' },
+            marker: { size: 5, color: '#2E7D32' },
+            line: { width: 3, color: '#2E7D32' },
+            fill: 'tozeroy', fillcolor: 'rgba(46,125,50,0.08)',
+            hovertemplate: '<b>%{y}</b> animales<extra></extra>'
+          }], {
+            margin: { t: 10, r: 15, b: 50, l: 50 },
+            paper_bgcolor: 'transparent', plot_bgcolor: 'rgba(0,0,0,0.02)',
+            xaxis: { tickangle: -45, tickfont: { size: 9, color: '#666' }, gridcolor: 'rgba(0,0,0,0.06)' },
+            yaxis: { tickfont: { size: 9, color: '#666' }, gridcolor: 'rgba(0,0,0,0.06)' },
+            showlegend: false
+          }, { responsive: true, displaylogo: false });
+        }
       }
     } catch (e) {
       container.innerHTML = `<div class="alert alert-danger">Error: ${e.message}</div>`;

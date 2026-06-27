@@ -25,13 +25,13 @@ class ProyeccionHelper
         // Tasas historicas mensuales (ultimos 24 meses)
         $historial = Database::query(
             "SELECT
-                DATE_FORMAT(fecha, '%Y-%m') AS mes,
+                DATE_FORMAT(a.fecha_nacimiento, '%Y-%m') AS mes,
                 COUNT(*) AS cantidad
-             FROM animales
-             WHERE usuario_id = :uid AND activo = 1
-               AND fecha_nacimiento >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH)
+             FROM animales a
+             WHERE a.usuario_id = :uid AND a.activo = 1
+               AND a.fecha_nacimiento >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH)
                $rebanoFiltro
-             GROUP BY DATE_FORMAT(fecha, '%Y-%m')
+             GROUP BY DATE_FORMAT(a.fecha_nacimiento, '%Y-%m')
              ORDER BY mes",
             [':uid' => $usuarioId]
         );
@@ -48,10 +48,10 @@ class ProyeccionHelper
 
         // Mortalidad historica (ultimos 24 meses)
         $muertes = Database::query(
-            "SELECT COUNT(*) AS total FROM animales
-             WHERE usuario_id = :uid AND activo = 0
-               AND estado_general = 'Muerto'
-               AND updated_at >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH)
+            "SELECT COUNT(*) AS total FROM animales a
+             WHERE a.usuario_id = :uid AND a.activo = 0
+               AND a.estado_general = 'Muerto'
+               AND a.updated_at >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH)
                $rebanoFiltro",
             [':uid' => $usuarioId]
         );
@@ -129,12 +129,12 @@ class ProyeccionHelper
 
         // Costos proyectados (simple: costo/cabeza actual * proyeccion)
         $costoActual = Database::queryOne(
-            "SELECT AVG(costo_por_cabeza) AS avg_costo
+            "SELECT AVG(cm.monto / cm.cabezas) AS avg_costo
              FROM costos_mensuales cm
              JOIN conteo_mensual_rebano cmr ON cmr.rebano_id = cm.rebano_id
                AND cmr.mes = cm.mes
              WHERE cm.usuario_id = :uid
-               AND cmr.cantidad > 0
+               AND cm.cabezas > 0
              ORDER BY cm.mes DESC
              LIMIT 3",
             [':uid' => $usuarioId]

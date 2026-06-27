@@ -55,7 +55,7 @@ class ReproduccionController
     {
         $uid = $this->usuarioId();
         $incluirInactivos = !empty($_GET['inactivos']);
-        $sql = 'SELECT dc.*, a.nombre as animal_nombre
+        $sql = 'SELECT dc.*, a.nombre as animal_nombre, a.estado_reproductivo
                 FROM diagnosticos_celo dc
                 JOIN animales a ON a.id = dc.animal_id
                 WHERE dc.usuario_id = :uid';
@@ -202,7 +202,7 @@ class ReproduccionController
     {
         $uid = $this->usuarioId();
         $incluirInactivos = !empty($_GET['inactivos']);
-        $sql = 'SELECT s.*, a.nombre as animal_nombre,
+        $sql = 'SELECT s.*, a.nombre as animal_nombre, a.estado_reproductivo,
                        dc.fecha_inicio as celo_fecha_inicio,
                        r.nombre as reproductor_nombre_animal
                 FROM servicios s
@@ -374,7 +374,7 @@ class ReproduccionController
     {
         $uid = $this->usuarioId();
         $incluirInactivos = !empty($_GET['inactivos']);
-        $sql = 'SELECT dg.*, a.nombre as animal_nombre, s.fecha as servicio_fecha, s.tipo as servicio_tipo
+        $sql = 'SELECT dg.*, a.nombre as animal_nombre, a.estado_reproductivo, s.fecha as servicio_fecha, s.tipo as servicio_tipo
                 FROM diagnosticos_gestacion dg
                 JOIN animales a ON a.id = dg.animal_id
                 LEFT JOIN servicios s ON s.id = dg.servicio_id
@@ -552,6 +552,7 @@ class ReproduccionController
         $sql = "SELECT
                     madre.id as animal_id,
                     madre.nombre as animal_nombre,
+                    madre.estado_reproductivo,
                     hijo.id as cria_id,
                     hijo.nombre as cria_nombre,
                     hijo.sexo as cria_sexo,
@@ -589,6 +590,7 @@ class ReproduccionController
                     'diagnostico_gestacion_id' => null,
                     'animal_id'                => (int)$f['animal_id'],
                     'animal_nombre'            => $f['animal_nombre'],
+                    'estado_reproductivo'      => $f['estado_reproductivo'],
                     'fecha'                    => $f['fecha'],
                     'crias'                    => [],
                     'observaciones'            => null,
@@ -624,7 +626,7 @@ class ReproduccionController
     {
         $uid = $this->usuarioId();
         $incluirInactivos = !empty($_GET['inactivos']);
-        $sql = 'SELECT p.*, a.nombre as animal_nombre
+        $sql = 'SELECT p.*, a.nombre as animal_nombre, a.estado_reproductivo
                 FROM partos p
                 JOIN animales a ON a.id = p.animal_id
                 WHERE p.usuario_id = :uid';

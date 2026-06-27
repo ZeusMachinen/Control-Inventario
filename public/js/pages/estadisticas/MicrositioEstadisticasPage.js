@@ -14,7 +14,6 @@ const MicrositioEstadisticasPage = {
 
     { id: 'comparativa',  label: 'Comparativa',     icon: 'fa-balance-scale', view: 'ComparativaRebanos' },
     { id: 'proyecciones', label: 'Proyecciones',    icon: 'fa-chart-area',  view: 'ProyeccionesView' },
-    { id: 'descarte',     label: 'Descarte',        icon: 'fa-ban',         view: 'DescarteView' },
   ],
 
   async render() {
@@ -102,7 +101,6 @@ const MicrositioEstadisticasPage = {
 
         case 'comparativa':  await ComparativaRebanos.render(content); break;
         case 'proyecciones': await ProyeccionesView.render(content); break;
-        case 'descarte':     await DescarteView.render(content); break;
       }
     } catch (e) {
       content.innerHTML = `<div class="alert alert-danger">Error al cargar: ${e.message}</div>`;
@@ -239,7 +237,6 @@ const MicrositioEstadisticasPage = {
           case 'rankings':     await this._exportRankings(pdf); break;
           case 'comparativa':  await this._exportComparativa(pdf); break;
           case 'proyecciones': await this._exportProyecciones(pdf); break;
-          case 'descarte':     await this._exportDescarte(pdf); break;
         }
       }
 
@@ -334,15 +331,6 @@ const MicrositioEstadisticasPage = {
   async _exportProyecciones(pdf) {
     await this._addAllTables(pdf, '#micrositio-content');
     await this._captureAllCharts(pdf, '#micrositio-content');
-  },
-
-  async _exportDescarte(pdf) {
-    const kpiRows = this._extractKpiCards('#micrositio-content .kpi-card');
-    if (kpiRows.length) {
-      await pdf.addSection({ type: 'text', data: { text: 'Resumen' } });
-      await pdf.addSection({ type: 'table', data: { headers: ['Indicador', 'Valor'], rows: kpiRows } });
-    }
-    await this._addAllTables(pdf, '#micrositio-content');
   },
 
   async _exportScorecard(pdf) {

@@ -108,6 +108,8 @@ return [
 
     // ─── Analítica (Micrositio) ───────────────────────────
     'GET|/api/analitica/dashboard-kpis'           => ['AnaliticaController', 'dashboardKpis',        true],
+    'GET|/api/analitica/historico-kpis'           => ['AnaliticaController', 'historicoKpis',         true],
+    'GET|/api/analitica/evolucion'                => ['AnaliticaController', 'evolucion',             true],
     'GET|/api/analitica/composicion'              => ['AnaliticaController', 'composicion',          true],
     'GET|/api/analitica/series-temporales'        => ['AnaliticaController', 'seriesTemporales',     true],
     'GET|/api/analitica/rankings'                 => ['AnaliticaController', 'rankings',             true],

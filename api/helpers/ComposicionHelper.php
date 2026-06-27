@@ -114,7 +114,8 @@ class ComposicionHelper
                     // Nota: una vaca puede estar en ambas categorias (vacas y vacas_vacias no son mutuamente excluyentes)
                     // vacas_vacias es un subconjunto de vacas para propositos de alerta
                     // No incrementamos total dos veces — el total se cuenta una vez por animal
-                    continue; // ya fue contada en vacas
+                    $total++;
+                    continue;
                 }
                 // Hembra 18+ sin partos → no clasifica en vacas ni vacias (vaquillas en desarrollo)
                 // Se cuentan en total pero sin categoria especifica por ahora

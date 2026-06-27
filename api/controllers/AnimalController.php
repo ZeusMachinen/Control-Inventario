@@ -111,16 +111,16 @@ class AnimalController
             $params
         )['total'];
 
-        // Contadores globales para stats (sin filtros — siempre el total real del usuario)
+        // Contadores para stats — reflejan los filtros aplicados
         $counters = [];
         $counters['total'] = (int)Database::queryOne(
-            "SELECT COUNT(*) as total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1",
-            [':uid' => $uid]
+            "SELECT COUNT(*) as total FROM animales a WHERE $whereClause",
+            $params
         )['total'];
 
         $sexCounts = Database::query(
-            "SELECT sexo, COUNT(*) as total FROM animales a WHERE a.usuario_id = :uid AND a.activo = 1 GROUP BY sexo",
-            [':uid' => $uid]
+            "SELECT sexo, COUNT(*) as total FROM animales a WHERE $whereClause GROUP BY sexo",
+            $params
         );
         $counters['machos'] = 0;
         $counters['hembras'] = 0;
@@ -343,9 +343,6 @@ class AnimalController
 
         // Detectar cambio de rebaño para loguear movimiento
         $rebanoNuevo = $datos['rebano_id'] ?? null;
-        if ($rebanoNuevo && (int)$rebanoNuevo === (int)$existente['rebano_id']) {
-            Response::error('El animal ya está en el rebaño seleccionado', 422);
-        }
         if ($rebanoNuevo && (int)$rebanoNuevo !== (int)$existente['rebano_id']) {
             $rebanoOrigen = (int)$existente['rebano_id'];
         } else {

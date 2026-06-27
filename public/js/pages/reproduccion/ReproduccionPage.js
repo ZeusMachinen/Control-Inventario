@@ -3,6 +3,7 @@ const ReproduccionPage = {
   mesActual: new Date().toISOString().substring(0, 7),
   anioActual: new Date().getFullYear().toString(),
   searchTerm: '',
+  estadoFiltro: '',
   mostrarInactivos: false,
   datos: [],
   expanded: new Set(),
@@ -30,8 +31,8 @@ const ReproduccionPage = {
 
       <div class="filter-panel">
         <div class="mb-0">
-          <label class="form-label">Buscar animal</label>
-          <input type="text" class="form-control form-control-sm" id="repro-search" placeholder="Nombre..." oninput="ReproduccionPage.aplicarFiltro()" style="min-width:160px">
+          <label class="form-label">Buscar</label>
+          <input type="text" class="form-control form-control-sm" id="repro-search" placeholder="Nombre, observaciones, crías..." oninput="ReproduccionPage.aplicarFiltro()" style="min-width:160px">
         </div>
         <div class="mb-0">
           <label class="form-label">Período</label>
@@ -56,6 +57,15 @@ const ReproduccionPage = {
             <input type="checkbox" id="repro-toggle-inactivos" onchange="ReproduccionPage.toggleInactivos()">
             Mostrar inactivos
           </label>
+        </div>
+        <div class="mb-0">
+          <label class="form-label">Estado</label>
+          <select class="form-select form-select-sm" id="repro-filtro-estado" onchange="ReproduccionPage.cambiarEstado()" style="min-width:150px">
+            <option value="">Todos</option>
+            <option value="Vacia">Vacía</option>
+            <option value="Prenada">Preñada</option>
+            <option value="Lactando">Lactando</option>
+          </select>
         </div>
       </div>
 
@@ -99,6 +109,11 @@ const ReproduccionPage = {
     this.cargar();
   },
 
+  cambiarEstado() {
+    this.estadoFiltro = document.getElementById('repro-filtro-estado')?.value || '';
+    this.renderTimeline();
+  },
+
   obtenerFiltroFechas() {
     if (this.modoFiltro === 'todo') return { desde: null, hasta: null };
 
@@ -138,26 +153,26 @@ const ReproduccionPage = {
 
       celos.forEach(c => {
         const key = c.animal_id;
-        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: c.animal_nombre, eventos: [] };
+        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: c.animal_nombre, estado_reproductivo: c.estado_reproductivo || '', eventos: [] };
         porAnimal[key].eventos.push({ ...c, tipo: 'celo', fecha: c.fecha_inicio, label: 'Diagnóstico de Celo' });
       });
 
       servicios.forEach(s => {
         const key = s.animal_id;
-        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: s.animal_nombre, eventos: [] };
+        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: s.animal_nombre, estado_reproductivo: s.estado_reproductivo || '', eventos: [] };
         porAnimal[key].eventos.push({ ...s, tipo: 'servicio', label: 'Servicio' });
       });
 
       diagnosticos.forEach(d => {
         const key = d.animal_id;
-        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: d.animal_nombre, eventos: [] };
+        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: d.animal_nombre, estado_reproductivo: d.estado_reproductivo || '', eventos: [] };
         porAnimal[key].eventos.push({ ...d, tipo: 'diagnostico', label: 'Diagnóstico de Gestación' });
       });
 
       partos.forEach(p => {
         p.crias = typeof p.crias === 'string' ? JSON.parse(p.crias) : (p.crias || []);
         const key = p.animal_id;
-        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: p.animal_nombre, eventos: [] };
+        if (!porAnimal[key]) porAnimal[key] = { animal_id: key, animal_nombre: p.animal_nombre, estado_reproductivo: p.estado_reproductivo || '', eventos: [] };
         porAnimal[key].eventos.push({ ...p, tipo: 'parto', label: 'Parto' });
       });
 
@@ -188,7 +203,30 @@ const ReproduccionPage = {
       return { ...grupo, eventos };
     }).filter(grupo => {
       if (grupo.eventos.length === 0) return false;
-      if (this.searchTerm && !grupo.animal_nombre.toLowerCase().includes(this.searchTerm)) return false;
+      // Filtro por estado reproductivo
+      if (this.estadoFiltro && grupo.estado_reproductivo !== this.estadoFiltro) return false;
+      // Búsqueda amplia: nombre, observaciones, resultado, subtipo, crias, reproductor, sintomas
+      if (this.searchTerm) {
+        const term = this.searchTerm.toLowerCase();
+        const nombreMatch = grupo.animal_nombre.toLowerCase().includes(term);
+        if (nombreMatch) return true;
+        // Buscar en todos los eventos del grupo
+        return grupo.eventos.some(ev => {
+          const campos = [
+            ev.observaciones,
+            ev.subtipo,
+            ev.resultado,
+            ev.reproductor_nombre,
+            ev.reproductor_nombre_animal,
+            ev.sintomas,
+            ev.comportamiento,
+            ev.label,
+            // Nombres de crías (en partos)
+            ...(Array.isArray(ev.crias) ? ev.crias.map(c => c.nombre || '') : []),
+          ];
+          return campos.some(c => c && String(c).toLowerCase().includes(term));
+        });
+      }
       return true;
     });
 
@@ -224,15 +262,25 @@ const ReproduccionPage = {
       parto: '<i class="fas fa-baby text-warning"></i>',
     };
 
+    const estadoColor = {
+      Vacia: 'bg-info',
+      Prenada: 'bg-warning',
+      Lactando: 'bg-success',
+    };
+
     container.innerHTML = gruposFiltrados.map(grupo => {
       const isExpanded = this.expanded.has(grupo.animal_id);
       const ultimaFecha = grupo.eventos[grupo.eventos.length - 1]?.fecha;
+      const estadoBadge = grupo.estado_reproductivo
+        ? `<span class="badge ${estadoColor[grupo.estado_reproductivo] || 'bg-secondary'}">${grupo.estado_reproductivo}</span>`
+        : '';
       return `
         <div class="card mb-2">
           <div class="card-header repro-card-header" onclick="ReproduccionPage.toggleAnimal(${grupo.animal_id})" style="cursor:pointer">
             <div class="d-flex align-items-center gap-2">
               <span class="small text-secondary" style="transition:transform 0.2s">${isExpanded ? '▼' : '▶'}</span>
               <strong>${grupo.animal_nombre}</strong>
+              ${estadoBadge}
               <span class="badge bg-primary">${grupo.eventos.length} evento${grupo.eventos.length !== 1 ? 's' : ''}</span>
               ${ultimaFecha ? `<span class="small text-secondary ms-auto">Último: ${DateUtil.formatear(ultimaFecha)}</span>` : ''}
             </div>

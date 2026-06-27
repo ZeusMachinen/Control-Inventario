@@ -3,11 +3,7 @@
  */
 const ProyeccionesView = {
   async render(container) {
-    const rid = MicrositioEstadisticasPage.rebanoId();
-    if (!rid) {
-      container.innerHTML = '<p class="text-muted">Selecciona un rebano para ver proyecciones.</p>';
-      return;
-    }
+    const rid = MicrositioEstadisticasPage.rebanoId() || '0';
 
     try {
       const { data } = await API.get(`/analitica/rebanos/${rid}/proyecciones`);

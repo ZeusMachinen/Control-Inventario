@@ -1,14 +1,16 @@
 const PartoFormPage = {
   editandoId: null,
   contadorCrias: 0,
+  _animalesCache: [],
 
   async render(params) {
     this.editandoId = params?.id ? parseInt(params.id) : null;
     try {
       const { data: animals } = await API.get('/animales', {
-        por_pagina: 1000, sexo: 'Hembra', edad_min: 15,
+        por_pagina: 1000, sexo: 'Hembra', edad_min: 18,
       });
       const animalsList = animals.data || [];
+      this._animalesCache = animalsList;
 
       let editData = null;
       if (this.editandoId) {
@@ -17,11 +19,23 @@ const PartoFormPage = {
         if (editData.crias && typeof editData.crias === 'string') {
           editData.crias = JSON.parse(editData.crias);
         }
+        // Si la madre seleccionada no está en la lista (ej. inactiva), cargarla
+        if (editData.animal_id && !animalsList.find(a => a.id == editData.animal_id)) {
+          try {
+            const { data: m } = await API.get(`/animales/${editData.animal_id}`);
+            if (m.data) animalsList.unshift(m.data);
+          } catch (_) {}
+        }
       }
 
       const titulo = this.editandoId ? 'Editar Parto' : 'Registrar Parto';
       const btnTexto = this.editandoId ? 'Guardar Cambios' : 'Registrar Parto';
       const fecha = editData?.fecha ? DateUtil.formatoInput(editData.fecha) : new Date().toISOString().substring(0, 10);
+
+      const madreSel = editData?.animal_id ? animalsList.find(a => a.id == editData.animal_id) : null;
+      const madreDisplay = madreSel
+        ? `${madreSel.nombre} (${DateUtil.edadTexto(madreSel.fecha_nacimiento)})`
+        : 'Seleccione una madre...';
 
       return MainLayout.render(`
         <div class="page-header">
@@ -34,13 +48,35 @@ const PartoFormPage = {
             <form id="parto-form" onsubmit="PartoFormPage.guardar(event)">
               <div class="row g-3">
                 <div class="col-md-6">
-                  <label class="form-label">Madre (Hembra preñada) *</label>
-                  <select class="form-select" id="parto-animal" required>
-                    <option value="">Seleccione...</option>
-                    ${animalsList.map(a => `
-                      <option value="${a.id}" ${editData?.animal_id == a.id ? 'selected' : ''}>${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
-                    `).join('')}
-                  </select>
+                  <label class="form-label">Madre (Hembra) *</label>
+                  <div class="parent-picker" id="madre-picker">
+                    <button class="parent-picker-btn form-select text-start text-truncate" type="button"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                            id="madre-picker-btn">
+                      <span id="madre-display-text">${madreDisplay}</span>
+                    </button>
+                    <div class="dropdown-menu shadow-sm parent-picker-menu" id="madre-picker-menu">
+                      <div class="px-2 pt-2 pb-1">
+                        <input type="text" class="form-control form-control-sm parent-picker-search"
+                               placeholder="Buscar madre..." data-target="madre"
+                               oninput="PartoFormPage.filtrarAnimalDropdown(this)"
+                               onclick="event.stopPropagation()">
+                      </div>
+                      <div class="dropdown-divider my-1"></div>
+                      <div class="parent-picker-list" id="madre-options-list">
+                        ${animalsList.map(a => `
+                          <button type="button" class="dropdown-item parent-option"
+                                  data-id="${a.id}"
+                                  data-search="${(a.nombre || '').toLowerCase()} ${(a.rebano_nombre || '').toLowerCase()}"
+                                  onclick="PartoFormPage.seleccionarAnimal(event, '${a.id}')">
+                            <span class="fw-medium">${(a.nombre || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                            <small class="text-secondary ms-2">${DateUtil.edadTexto(a.fecha_nacimiento)}${a.rebano_nombre ? ' · ' + a.rebano_nombre : ''}</small>
+                          </button>
+                        `).join('')}
+                      </div>
+                    </div>
+                    <input type="hidden" id="parto-animal" value="${editData?.animal_id || ''}">
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Fecha del Parto *</label>
@@ -77,16 +113,73 @@ const PartoFormPage = {
   },
 
   afterRender() {
+    this._setupDropdownClose();
+
     if (this.editandoId) {
       setTimeout(() => {
-        // Cargar las crías desde editData (las guardamos al inicio)
         this.cargarCriasExistente();
       }, 100);
     }
   },
 
+  /** Filtra las opciones del dropdown según el texto ingresado */
+  filtrarAnimalDropdown(input) {
+    const search = input.value.toLowerCase();
+    const list = document.getElementById('madre-options-list');
+    if (!list) return;
+    const options = list.querySelectorAll('.parent-option');
+    options.forEach(opt => {
+      const text = (opt.dataset.search || '') + ' ' + (opt.textContent || '').toLowerCase();
+      opt.style.display = !search || text.includes(search) ? '' : 'none';
+    });
+  },
+
+  /** Selecciona un animal del dropdown y cierra el menú */
+  seleccionarAnimal(event, id) {
+    document.getElementById('parto-animal').value = id;
+
+    // Construir texto para mostrar en el botón
+    const btn = event.target.closest('.dropdown-item');
+    const nameEl = btn ? btn.querySelector('.fw-medium') : null;
+    const smallEl = btn ? btn.querySelector('small') : null;
+    const name = nameEl ? nameEl.textContent.trim() : '';
+    const info = smallEl ? smallEl.textContent.trim().replace(/ · /g, ', ') : '';
+    const displayText = name + (info ? ' (' + info + ')' : '');
+
+    const displayEl = document.getElementById('madre-display-text');
+    if (displayEl) displayEl.textContent = displayText;
+
+    // Cerrar dropdown
+    const toggleBtn = document.getElementById('madre-picker-btn');
+    if (toggleBtn) {
+      try {
+        const bsDropdown = bootstrap.Dropdown.getInstance(toggleBtn);
+        if (bsDropdown) bsDropdown.hide();
+      } catch (_) {
+        toggleBtn.classList.remove('show');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        const menu = document.getElementById('madre-picker-menu');
+        if (menu) menu.classList.remove('show');
+      }
+    }
+  },
+
+  /** Cierra dropdowns al hacer clic fuera */
+  _setupDropdownClose() {
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.parent-picker')) {
+        document.querySelectorAll('.parent-picker-menu.show').forEach(menu => {
+          menu.classList.remove('show');
+        });
+        document.querySelectorAll('.parent-picker-btn.show').forEach(btn => {
+          btn.classList.remove('show');
+          btn.setAttribute('aria-expanded', 'false');
+        });
+      }
+    });
+  },
+
   cargarCriasExistente() {
-    // Recuperar editData de las promise del render — recargamos del API
     if (!this.editandoId) return;
     API.get(`/reproduccion/partos/${this.editandoId}`).then(({ data: res }) => {
       const editData = res.data || {};
@@ -142,7 +235,7 @@ const PartoFormPage = {
 
     const animalId = document.getElementById('parto-animal').value;
     if (!animalId) {
-      Toast.warning('Debe seleccionar un animal');
+      Toast.warning('Debe seleccionar una madre');
       return;
     }
 
@@ -175,4 +268,3 @@ const PartoFormPage = {
     }
   },
 };
-

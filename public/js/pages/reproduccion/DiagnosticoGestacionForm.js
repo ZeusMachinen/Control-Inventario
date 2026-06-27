@@ -1,21 +1,26 @@
 const DiagnosticoGestacionFormPage = {
   editandoId: null,
+  _animalesCache: [],
 
   async render(params) {
     this.editandoId = params?.id ? parseInt(params.id) : null;
     try {
       const [animalsRes, serviciosRes] = await Promise.all([
-        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 15 }),
+        API.get('/animales', { por_pagina: 1000, sexo: 'Hembra', edad_min: 18 }),
         API.get('/reproduccion/servicios'),
       ]);
 
       const animals = animalsRes.data.data || [];
       const servicios = serviciosRes.data?.data || [];
+      this._animalesCache = animals;
 
       let editData = null;
       if (this.editandoId) {
         const { data: res } = await API.get(`/reproduccion/diagnosticos-gestacion/${this.editandoId}`);
         editData = res.data || {};
+        if (editData.animal_id && !animals.find(a => a.id == editData.animal_id)) {
+          try { const { data: m } = await API.get(`/animales/${editData.animal_id}`); if (m.data) animals.unshift(m.data); } catch (_) {}
+        }
       }
 
       const titulo = this.editandoId ? 'Editar Diagnóstico de Gestación' : 'Registrar Diagnóstico de Gestación';
@@ -23,7 +28,12 @@ const DiagnosticoGestacionFormPage = {
       const fecha = editData?.fecha ? DateUtil.formatoInput(editData.fecha) : new Date().toISOString().substring(0, 10);
       const editAnimalId = editData?.animal_id || '';
 
-      // Filtrar servicios del animal seleccionado para editar
+      const animalSel = editAnimalId ? animals.find(a => a.id == editAnimalId) : null;
+      const animalDisplay = animalSel
+        ? `${animalSel.nombre} (${DateUtil.edadTexto(animalSel.fecha_nacimiento)})`
+        : 'Seleccione un animal...';
+
+      // Servicios del animal seleccionado (para editar)
       const serviciosAnimal = editAnimalId ? servicios.filter(s => String(s.animal_id) === String(editAnimalId)) : [];
 
       return MainLayout.render(`
@@ -38,12 +48,34 @@ const DiagnosticoGestacionFormPage = {
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label">Animal *</label>
-                  <select class="form-select" id="dg-animal" required onchange="DiagnosticoGestacionFormPage.cambioAnimal()">
-                    <option value="">Seleccione...</option>
-                    ${animals.map(a => `
-                      <option value="${a.id}" ${a.id == editAnimalId ? 'selected' : ''}>${a.nombre} — ${DateUtil.edadTexto(a.fecha_nacimiento)}</option>
-                    `).join('')}
-                  </select>
+                  <div class="parent-picker" id="dg-picker">
+                    <button class="parent-picker-btn form-select text-start text-truncate" type="button"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                            id="dg-picker-btn">
+                      <span id="dg-display-text">${animalDisplay}</span>
+                    </button>
+                    <div class="dropdown-menu shadow-sm parent-picker-menu" id="dg-picker-menu">
+                      <div class="px-2 pt-2 pb-1">
+                        <input type="text" class="form-control form-control-sm parent-picker-search"
+                               placeholder="Buscar animal..." data-target="dg"
+                               oninput="DiagnosticoGestacionFormPage.filtrarDropdown(this)"
+                               onclick="event.stopPropagation()">
+                      </div>
+                      <div class="dropdown-divider my-1"></div>
+                      <div class="parent-picker-list" id="dg-options-list">
+                        ${animals.map(a => `
+                          <button type="button" class="dropdown-item parent-option"
+                                  data-id="${a.id}"
+                                  data-search="${(a.nombre || '').toLowerCase()} ${(a.rebano_nombre || '').toLowerCase()}"
+                                  onclick="DiagnosticoGestacionFormPage.seleccionarAnimal(event, '${a.id}')">
+                            <span class="fw-medium">${(a.nombre || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                            <small class="text-secondary ms-2">${DateUtil.edadTexto(a.fecha_nacimiento)}${a.rebano_nombre ? ' · ' + a.rebano_nombre : ''}${a.estado_reproductivo ? ' · ' + a.estado_reproductivo : ''}</small>
+                          </button>
+                        `).join('')}
+                      </div>
+                    </div>
+                    <input type="hidden" id="dg-animal" value="${editAnimalId}">
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Fecha *</label>
@@ -97,6 +129,51 @@ const DiagnosticoGestacionFormPage = {
     }
   },
 
+  afterRender() {
+    this._setupDropdownClose();
+  },
+
+  filtrarDropdown(input) {
+    const search = input.value.toLowerCase();
+    const list = document.getElementById('dg-options-list');
+    if (!list) return;
+    const options = list.querySelectorAll('.parent-option');
+    options.forEach(opt => {
+      const text = (opt.dataset.search || '') + ' ' + (opt.textContent || '').toLowerCase();
+      opt.style.display = !search || text.includes(search) ? '' : 'none';
+    });
+  },
+
+  seleccionarAnimal(event, id) {
+    document.getElementById('dg-animal').value = id;
+
+    const btn = event.target.closest('.dropdown-item');
+    const nameEl = btn ? btn.querySelector('.fw-medium') : null;
+    const smallEl = btn ? btn.querySelector('small') : null;
+    const name = nameEl ? nameEl.textContent.trim() : '';
+    const info = smallEl ? smallEl.textContent.trim().replace(/ · /g, ', ') : '';
+    const displayText = name + (info ? ' (' + info + ')' : '');
+
+    const displayEl = document.getElementById('dg-display-text');
+    if (displayEl) displayEl.textContent = displayText;
+
+    const toggleBtn = document.getElementById('dg-picker-btn');
+    if (toggleBtn) {
+      try {
+        const bsDropdown = bootstrap.Dropdown.getInstance(toggleBtn);
+        if (bsDropdown) bsDropdown.hide();
+      } catch (_) {
+        toggleBtn.classList.remove('show');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        const menu = document.getElementById('dg-picker-menu');
+        if (menu) menu.classList.remove('show');
+      }
+    }
+
+    // Recargar servicios asociados al cambiar animal
+    this.cambioAnimal();
+  },
+
   cambioAnimal() {
     const animalId = document.getElementById('dg-animal').value;
     const select = document.getElementById('dg-servicio');
@@ -121,6 +198,20 @@ const DiagnosticoGestacionFormPage = {
         ).join('');
     }).catch(() => {
       select.innerHTML = '<option value="">Error al cargar servicios</option>';
+    });
+  },
+
+  _setupDropdownClose() {
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.parent-picker')) {
+        document.querySelectorAll('.parent-picker-menu.show').forEach(menu => {
+          menu.classList.remove('show');
+        });
+        document.querySelectorAll('.parent-picker-btn.show').forEach(btn => {
+          btn.classList.remove('show');
+          btn.setAttribute('aria-expanded', 'false');
+        });
+      }
     });
   },
 
